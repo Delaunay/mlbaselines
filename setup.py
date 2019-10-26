@@ -22,4 +22,9 @@ if __name__ == '__main__':
         ],
         setup_requires=['setuptools'],
         tests_require=['pytest', 'flake8', 'codecov', 'pytest-cov'],
+        entry_points={
+            'console_scripts': [
+                'olympus = olympus.scripts.launch:main',
+            ]
+        }
     )
