@@ -3,10 +3,10 @@ from torch.utils.data import DataLoader
 import torch.optim
 
 import torchvision.models
-import mlbaselines.transforms as T
+import olympus.transforms as T
 
-from mlbaselines.tasks.detection import ObjectDetection
-from mlbaselines.datasets.detection import PennFudanDataset
+from olympus.tasks.detection import ObjectDetection
+from olympus.datasets.detection import PennFudanDataset
 
 parser = argparse.ArgumentParser()
 parser.add_argument('--data', type=str, default='/fast/PennFudanPed/', help='Data location')

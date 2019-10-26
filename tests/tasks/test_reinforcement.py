@@ -8,8 +8,8 @@ from torch.optim import Adam
 import torchvision.transforms as transforms
 import torch.nn.functional as F
 
-from mlbaselines.reinforcement.dataloader import RLDataloader
-from mlbaselines.tasks.rl import ReinforcementLearningA2C, ActorCritic
+from olympus.reinforcement.dataloader import RLDataloader
+from olympus.tasks.rl import ReinforcementLearningA2C, ActorCritic
 
 
 # Return the best prob action to take

@@ -6,8 +6,8 @@ import torch.nn.functional as F
 import torch.optim as optim
 from torchvision import datasets, transforms
 
-from mlbaselines.tasks import GAN
-from mlbaselines.metrics import ValidationAccuracy
+from olympus.tasks import GAN
+from olympus.metrics import ValidationAccuracy
 
 
 def arg_parser():

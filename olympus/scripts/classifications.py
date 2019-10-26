@@ -9,8 +9,9 @@ from torchvision import datasets, transforms
 
 import orion.client.manual
 
-from mlbaselines.tasks import Classification
-from mlbaselines.metrics import ValidationAccuracy
+from olympus.tasks import Classification
+from olympus.metrics import ValidationAccuracy
+import olympus.distributed.multigpu as distributed
 
 
 def arg_parser():
@@ -31,9 +32,11 @@ def arg_parser():
                         help='random seed (default: 1)')
     parser.add_argument('--log-interval', type=int, default=10, metavar='N',
                         help='how many batches to wait before logging training status')
-
     parser.add_argument('--save-model', action='store_true', default=False,
                         help='For Saving the current Model')
+
+    distributed.arguments(parser)
+
     return parser
 
 
@@ -59,6 +62,7 @@ hpo_client.new_trial(
 
 # Apply Orion overrides
 args = hpo_client.sample(args)
+distributed.enable_distributed_process(args)
 
 
 class Net(nn.Module):
@@ -110,8 +114,9 @@ train_loader = torch.utils.data.DataLoader(
     num_workers=1,
     pin_memory=True)
 
-model = Net()
-model = hpo_client.resume(model)
+model_ = Net()
+model_ = hpo_client.resume(model_)
+model = distributed.data_parallel(model_)
 
 task = Classification(
     classifier=model,

@@ -1,5 +1,5 @@
-from mlbaselines.prime import PrimeMonitor
-from mlbaselines.worker import Worker
+from olympus.prime import PrimeMonitor
+from olympus.worker import Worker
 
 
 def remove(name):

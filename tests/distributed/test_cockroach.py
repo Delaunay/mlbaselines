@@ -1,5 +1,5 @@
-from mlbaselines.distributed.cockroachdb import start_message_queue, CKMQClient
-from mlbaselines.utils import debug
+from olympus.distributed.cockroachdb import start_message_queue, CKMQClient
+from olympus.utils import debug
 
 
 def test_cockroach():

@@ -2,7 +2,7 @@ import torch
 
 from torch.utils.data.dataloader import DataLoader
 from torch.utils.data.sampler import BatchSampler
-from mlbaselines.sampler import RandomSampler
+from olympus.sampler import RandomSampler
 from torch.utils.data.dataset import TensorDataset
 
 

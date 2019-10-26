@@ -1,5 +1,5 @@
 
-from mlbaselines.distributed.mongo import MongoDB
+from olympus.distributed.mongo import MongoDB
 
 
 if __name__ == '__main__':
