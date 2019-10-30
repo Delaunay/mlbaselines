@@ -1,4 +1,3 @@
-from collections import OrderedDict
 import functools
 
 import torch
@@ -12,7 +11,8 @@ class MNIST(AllDataset):
     """
     Properties
     ----------
-    * 60,000 images in the training set
+    * 50,000 images in the training set
+    * 10,000 images in the validation set
     * 10,000 images in the test set
 
     Reference

@@ -29,6 +29,9 @@ class AllDataset(TorchDataset):
         self._input_shape = input_shape
         self._output_shape = output_shape
 
+        if transforms is None:
+            transforms = lambda data: data
+
         if not isinstance(transforms, dict):
             transforms = dict(train=transforms, valid=transforms, test=transforms)
 
@@ -56,7 +59,7 @@ class AllDataset(TorchDataset):
 
     def __len__(self):
         return len(self.dataset)
-    
+
     @property
     def input_shape(self):
         if self._input_shape is None:
