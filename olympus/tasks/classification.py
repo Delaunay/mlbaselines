@@ -22,6 +22,7 @@ class Classification(Task):
         ClassifierAdversary(epsilon=0.25).every(epoch=1, batch=1)
     )
 
+    @property
     def metrics(self):
         return self._metrics
 
@@ -33,7 +34,21 @@ class Classification(Task):
     def model(self, model):
         self.classifier = model
 
-    def fit(self, step, input, context):
+    def fit(self, dataloader, epochs, context):
+        steps = 0
+        for epoch in range(epochs):
+            print(epoch)
+            steps = self.epoch(dataloader, epoch, steps, context)
+
+    def epoch(self, dataloader, epoch, steps, context):
+        for mini_batch in dataloader:
+            print(steps)
+            self.step(steps, mini_batch, context)
+            steps += 1
+        
+        return steps
+
+    def step(self, step, input, context):
         self.classifier.train()
         self.optimizer.zero_grad()
 

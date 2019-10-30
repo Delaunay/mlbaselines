@@ -18,7 +18,9 @@ if __name__ == '__main__':
         install_requires=[
             'dataclasses',
             'typing',
-            'pytorch'
+            'torch',
+            'torchvision',
+            'orion'
         ],
         setup_requires=['setuptools'],
         tests_require=['pytest', 'flake8', 'codecov', 'pytest-cov'],

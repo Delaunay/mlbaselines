@@ -155,7 +155,7 @@ class StatStream(object):
             return [transform(self.avg), 'NA', transform(self.min), transform(self.max), self.count]
         return [self.avg, self.sd, self.min, self.max, self.count]
 
-    def to_dict(self):
+    def to_json(self):
         data = {
             'avg': self.avg,
             'min': self.min,
@@ -165,6 +165,3 @@ class StatStream(object):
             'unit': 's'
         }
         return data
-
-    def to_json(self):
-        return json.dumps(self.to_dict())

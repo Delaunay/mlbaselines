@@ -116,3 +116,36 @@ def get_value(item):
     if isinstance(item, torch.Tensor):
         return item.item()
     return item
+
+
+def find_batch_size(model, shape, low, high, dtype=torch.float32):
+    """Find the highest batch size that can fit in memory using binary search"""
+    low = (low // 8) * 8
+    high = (1 + high // 8) * 8
+
+    batches = list(range(low, high, 8))
+
+    a = 0
+    b = len(batches)
+    mid = a + (b - a) // 2
+
+    while b != a + 1:
+        mid = a + (b - a) // 2
+
+        try:
+            batch_size = batches[mid]
+            tensor = torch.randn((batch_size,) + shape, dtype=dtype)
+
+            model(tensor)
+
+            # ran successfully
+            a = mid
+
+        # ran out of memory
+        except RuntimeError as e:
+            if 'out of memory' in str(e):
+                b = mid
+            else:
+                raise e
+
+    return batches[mid]

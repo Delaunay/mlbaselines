@@ -84,10 +84,10 @@ def init_process_group(backend, world_size=None, rank=None, node_list=None, addr
             return b
         return a
 
-    init = not bool(os.getenv('MLBASELINES_WORKER', False))
+    init = not bool(os.getenv('OLYMPUS_WORKER', False))
 
-    addr        = _select(addr      , os.environ.get('MLBASELINES_ADDR'))
-    port        = _select(port      , os.environ.get('MLBASELINES_PORT'))
+    addr        = _select(addr      , os.environ.get('OLYMPUS_ADDR'))
+    port        = _select(port      , os.environ.get('OLYMPUS_PORT'))
     world_size  = _select(world_size, int(os.environ.get('SLURM_NPROCS', 1)))
     rank        = _select(rank      , int(os.environ.get('SLURM_PROCID', 1)))
     node_list   = _select(node_list , os.environ.get('SLURM_JOB_NODELIST'))
@@ -103,16 +103,16 @@ def init_process_group(backend, world_size=None, rank=None, node_list=None, addr
     info(f'initializing using {init_method}')
 
     if init:
-        from mlbaselines.prime import PrimeMonitor
+        from olympus.prime import PrimeMonitor
         init_node = PrimeMonitor(init_method, world_size=world_size)
 
         environ = dict(
-            MLBASELINES_WORKER='1',
-            MLBASELINES_ADDR=addr,
-            MLBASELINES_PORT=port
+            OLYMPUS_WORKER='1',
+            OLYMPUS_ADDR=addr,
+            OLYMPUS_PORT=port
         )
 
-        script = _select(os.getenv('MLBASELINES_SCRIPT'), get_main_script())
+        script = _select(os.getenv('OLYMPUS_SCRIPT'), get_main_script())
         argv = ' '.join(sys.argv)
 
         info(f'Using {script} and {argv}')

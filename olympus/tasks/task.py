@@ -34,15 +34,16 @@ class Task:
         """
         raise NotImplementedError()
 
+    @property
     def metrics(self):
         pass
 
     def report(self, pprint=True, print_fun=print):
-        m = self.metrics()
+        m = self.metrics
         if m:
-            return self.metrics().report(pprint, print_fun)
+            return self.metrics.report(pprint, print_fun)
 
     def finish(self):
-        m = self.metrics()
+        m = self.metrics
         if m:
-            return self.metrics().finish(self)
+            return self.metrics.finish(self)

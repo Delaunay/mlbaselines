@@ -51,7 +51,7 @@ class CocoDetection(torchvision.datasets.CocoDetection):
         return img, target
 
 
-class PennFudanDataset(object):
+class PennFudanDataset:
     def __init__(self, root, transforms):
         self.root = root
         self.transforms = transforms

@@ -71,7 +71,7 @@ def main():
     current_env["MASTER_ADDR"] = args.master_addr
     current_env["MASTER_PORT"] = str(args.master_port)
     current_env["WORLD_SIZE"] = str(dist_world_size)
-    current_env['MLBASELINES_SCRIPT'] = args.training_script
+    current_env['OLYMPUS_SCRIPT'] = args.training_script
 
     processes = []
 
