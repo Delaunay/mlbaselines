@@ -46,6 +46,9 @@ def enable_distributed_process(rank, dist_url, world_size,
                                silence_stdout=options('distributed.noprint', True)):
     global _stdout
 
+    if rank is None:
+        return
+
     if world_size > 1:
         set_rank(rank)
 
@@ -62,5 +65,7 @@ def enable_distributed_process(rank, dist_url, world_size,
             sys.stdout = NoOut()
 
 
-def data_parallel(model, *args, **kwargs):
-    return torch.nn.parallel.DistributedDataParallel(model, *args, **kwargs)
+def data_parallel(model, device_ids=None, *args, **kwargs):
+    if device_ids is not None or rank() != -1:
+        return torch.nn.parallel.DistributedDataParallel(model, device_ids, *args, **kwargs)
+    return model

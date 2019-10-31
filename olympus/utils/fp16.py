@@ -47,3 +47,59 @@ def batchnorm_convert_float(module):
 
 def network_to_half(network):
     return nn.Sequential(ImplicitFp16Cast(), batchnorm_convert_float(network.half()))
+
+
+class OptimizerAdapter:
+    """MixedPrecision Optimizer Adapter
+    This handles fp32 & fp16 optimization by providing a common API to both
+    """
+    def __init__(self, optimizer, half=False, *args, **kwargs):
+        if half:
+            import apex.fp16_utils.fp16_optimizer as apex_optimizer
+            self.optimizer = apex_optimizer.FP16_Optimizer(optimizer, *args, **kwargs)
+        else:
+            self.optimizer = optimizer
+
+        self.half = half
+
+    def backward(self, loss):
+        if self.half:
+            self.optimizer.backward(loss)
+        else:
+            loss.backward()
+
+        return self.optimizer
+
+    def step(self):
+        return self.optimizer.step()
+
+    def zero_grad(self):
+        return self.optimizer.zero_grad()
+
+    @property
+    def param_groups(self):
+        return self.optimizer.param_groups
+
+    def __getattr__(self, item):
+        return getattr(self.optimizer, item)
+
+
+class ModelAdapter(nn.Module):
+    """Add a fp16 cast at the beginning of the model to make switching between fp16 & fp32
+    seamless
+    """
+    def __init__(self, model, half=False):
+        super(ModelAdapter, self).__init__()
+
+        self.model = model
+        self.transform = lambda x: x
+
+        if half:
+            self.model = network_to_half(model)
+            self.transform = lambda x: x.half()
+
+    def forward(self, input):
+        return self.model(self.transform(input))
+
+    def __getattr__(self, item):
+        return getattr(self.model, item)

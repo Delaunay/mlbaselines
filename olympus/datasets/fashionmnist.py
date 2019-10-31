@@ -18,12 +18,12 @@ class FashionMNIST(AllDataset):
 
     """
     def __init__(self, data_path):
-        train_dataset = datasets.MNIST(
+        train_dataset = datasets.FashionMNIST(
             data_path, train=True, download=True,
             transform=transforms.ToTensor()
         )
 
-        test_dataset = datasets.MNIST(
+        test_dataset = datasets.FashionMNIST(
             data_path, train=False, download=True,
             transform=transforms.ToTensor()
         )

@@ -5,6 +5,8 @@ from torch.utils.data.dataset import Dataset
 
 
 class Gaussian(Dataset):
+    data = None
+
     def __init__(self, width, n_classes, mean, std, length):
         self.width = width
         self.n_classes = n_classes

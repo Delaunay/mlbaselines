@@ -30,9 +30,9 @@ class CIFAR100(AllDataset):
             transforms.ToTensor()] + transformations
 
         transformations = dict(
-            train = transforms.Compose(train_transform),
-            valid = transforms.Compose(transformations),
-            test = transforms.Compose(transformations))
+            train=transforms.Compose(train_transform),
+            valid=transforms.Compose(transformations),
+            test=transforms.Compose(transformations))
 
         train_dataset = datasets.CIFAR100(root=data_path, train=True, download=True, transform=transforms.ToTensor())
         test_dataset = datasets.CIFAR100(root=data_path, train=False, download=True, transform=transforms.ToTensor())

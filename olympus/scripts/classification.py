@@ -1,25 +1,19 @@
 from __future__ import print_function
 import argparse
 import torch
-import torch.nn as nn
-import torch.nn.functional as F
-import torch.optim as optim
 import torch.utils.data
-from torchvision import datasets, transforms
 
 from orion.client import create_experiment
 
 from olympus.datasets import build_loaders, merge_data_loaders
 from olympus.datasets import factories as dataset_factories
 import olympus.distributed.multigpu as distributed
-from olympus.hpo import OrionClient
 from olympus.metrics import ValidationAccuracy
 from olympus.models import build_model
 from olympus.models import factories as model_factories
 from olympus.tasks import Classification
 from olympus.optimizers import get_optimizer_builder
 from olympus.optimizers import factories as optimizer_factories
-
 
 
 DEFAULT_EXP_NAME = 'classification_{dataset}_{model}_{optimizer}'
@@ -33,28 +27,39 @@ def arg_parser(subparsers=None):
         parser = argparse.ArgumentParser(description=description)
 
     parser.add_argument(
-        '--experiment-name', type=str, default=DEFAULT_EXP_NAME,
-        metavar='EXP_NAME',
+        '--experiment-name', type=str, default=DEFAULT_EXP_NAME,  metavar='EXP_NAME',
         help='Name of the experiment in Orion storage (default: {})'.format(DEFAULT_EXP_NAME))
     parser.add_argument(
-        '--model', type=str,
-        metavar='MODEL_NAME', choices=model_factories.keys(),
+        '--model', type=str, metavar='MODEL_NAME', choices=model_factories.keys(),
         help='Name of the model')
     parser.add_argument(
-        '--dataset', type=str,
-        metavar='DATASET_NAME', choices=dataset_factories.keys(),
+        '--dataset', type=str, metavar='DATASET_NAME', choices=dataset_factories.keys(),
         help='Name of the dataset')
     parser.add_argument(
-        '--optimizer', type=str,
+        '--optimizer', type=str, default='sgd',
         metavar='OPTIMIZER_NAME', choices=optimizer_factories.keys(),
-        default='sgd',
         help='Name of the optimiser (default: sgd)')
-    parser.add_argument('--batch-size', type=int, default=128, metavar='N',
-                        help='input batch size for training (default: 128)')
-    parser.add_argument('--epochs', type=int, default=300, metavar='N',
-                        help='maximum number of epochs to train (default: 300)')
-    parser.add_argument('--seed', type=int, default=1, metavar='S',
-                        help='random seed (default: 1)')
+    parser.add_argument(
+        '--batch-size', type=int, default=128, metavar='N',
+        help='input batch size for training (default: 128)')
+    parser.add_argument(
+        '--epochs', type=int, default=300, metavar='N',
+        help='maximum number of epochs to train (default: 300)')
+    parser.add_argument(
+        '--seed', type=int, default=1, metavar='S',
+        help='random seed (default: 1)')
+
+    # Distributed arguments
+    parser.add_argument(
+        '--rank', type=int, default=0, metavar='R',
+        help='process rank')
+    parser.add_argument(
+        '--dist-url', type=str, default=None, metavar='DIST_URL',
+        help='distributed backend (nccl:tcp://localhost:8123)')
+    parser.add_argument(
+        '--world-size', type=int, default=1, metavar='WS',
+        help='Number of process running in parallel')
+
     return parser
 
 
@@ -65,11 +70,18 @@ def parse_args(argv=None):
 def train(dataset, model, optimizer, epochs, merge_train_val=False, **kwargs):
 
     # Apply Orion overrides
-    if 'rank' in kwargs:
-        distributed.enable_distributed_process(kwargs['rank'], kwargs['dist_url'], kwargs['world_size'])
+    distributed.enable_distributed_process(
+        kwargs.get('rank'),
+        kwargs.get('dist_url'),
+        kwargs.get('world_size')
+    )
 
-    datasets, loaders = build_loaders(dataset, sampling_method={'name': 'original'},
-                                      batch_size=kwargs['batch_size'])
+    datasets, loaders = build_loaders(
+        dataset,
+        sampling_method={'name': 'original'},
+        batch_size=kwargs['batch_size']
+    )
+
     train_loader = loaders['train']
     valid_loader = loaders['valid']
 
@@ -77,12 +89,15 @@ def train(dataset, model, optimizer, epochs, merge_train_val=False, **kwargs):
         train_loader = merge_data_loaders(train_loader, valid_loader)
         valid_loader = loaders['test']
 
-    model = build_model(model, input_size=datasets.input_shape,
-                        output_size=datasets.output_shape[0])
+    model = build_model(
+        model,
+        input_size=datasets.input_shape,
+        output_size=datasets.output_shape[0]
+    )
+
     # NOTE: Some model have specific way of building for distributed computing
     #       (i.e. large output layers) This may be better integrated in the model builder.
-    if 'rank' in kwargs:
-        model = distributed.data_parallel(model)
+    model = distributed.data_parallel(model)
 
     optimizer_builder = get_optimizer_builder(optimizer)
 
@@ -91,7 +106,8 @@ def train(dataset, model, optimizer, epochs, merge_train_val=False, **kwargs):
         optimizer=optimizer_builder(
             model.parameters(),
             weight_decay=kwargs['weight_decay'],
-            **optimizer_builder.get_params(kwargs)))
+            **optimizer_builder.get_params(kwargs))
+    )
 
     task.device = torch.device('cpu')
 

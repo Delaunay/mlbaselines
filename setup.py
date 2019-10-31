@@ -28,5 +28,10 @@ if __name__ == '__main__':
             'console_scripts': [
                 'olympus = olympus.scripts.launch:main',
             ]
+        },
+        extras_require={
+            'geffnet': ['geffnet'],
+            # NVIDIA Apex would go there if there was a pip to give
+            'float16': []
         }
     )
