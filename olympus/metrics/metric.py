@@ -1,4 +1,4 @@
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 import datetime
 import json
 
@@ -138,11 +138,11 @@ class ValidationAccuracy(Metric):
 
 @dataclass
 class TrainAccuracy(Metric):
-    accuracies = []
-    losses = []
-    accumulator = 0
-    loss = 0
-    count = 0
+    accuracies: list = field(default_factory=list)
+    losses: list = field(default_factory=list)
+    accumulator: int = 0
+    loss: int = 0
+    count: int = 0
 
     def on_new_batch(self, step, task, input, context):
         _, targets = input

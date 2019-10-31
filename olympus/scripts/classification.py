@@ -9,7 +9,7 @@ from torchvision import datasets, transforms
 
 from orion.client import create_experiment
 
-from olympus.datasets import build_loaders
+from olympus.datasets import build_loaders, merge_data_loaders
 from olympus.datasets import factories as dataset_factories
 import olympus.distributed.multigpu as distributed
 from olympus.hpo import OrionClient
@@ -62,47 +62,29 @@ def parse_args(argv=None):
     return arg_parser().parse_args(argv)
 
 
-def main(experiment_name, dataset, model, optimizer, epochs, **kwargs):
-
-    experiment_name = experiment_name
-
-    for key in ['dataset', 'model', 'optimizer']:
-        experiment_name = experiment_name.replace('{' + key + '}', locals()[key])
-
-    space = {
-            'weight_decay': 'loguniform(1e-10, 1e-3)',
-            'epochs': 'fidelity(1, {}, base=4)'.format(epochs)}
-
-    optimizer_builder = get_optimizer_builder(optimizer)
-
-    space.update(optimizer_builder.get_space())
-
-    hpo_client = OrionClient()
-
-    hpo_client.new_trial(
-        name=experiment_name,
-        space=space,
-        algorithms={
-            'asha': {
-                'seed': 1,
-                'num_rungs': 5,
-                'num_brackets': 1
-            }})
+def train(dataset, model, optimizer, epochs, merge_train_val=False, **kwargs):
 
     # Apply Orion overrides
-    kwargs = hpo_client.sample(kwargs)
     if 'rank' in kwargs:
         distributed.enable_distributed_process(kwargs['rank'], kwargs['dist_url'], kwargs['world_size'])
 
-    datasets, loaders = build_loaders(dataset, sampling_method={'name': 'original'}, batch_size=kwargs['batch_size'])
+    datasets, loaders = build_loaders(dataset, sampling_method={'name': 'original'},
+                                      batch_size=kwargs['batch_size'])
     train_loader = loaders['train']
     valid_loader = loaders['valid']
 
-    model = build_model(model, input_size=datasets.input_shape, output_size=datasets.output_shape[0])
+    if merge_train_val:
+        train_loader = merge_data_loaders(train_loader, valid_loader)
+        valid_loader = loaders['test']
+
+    model = build_model(model, input_size=datasets.input_shape,
+                        output_size=datasets.output_shape[0])
     # NOTE: Some model have specific way of building for distributed computing
     #       (i.e. large output layers) This may be better integrated in the model builder.
     if 'rank' in kwargs:
         model = distributed.data_parallel(model)
+
+    optimizer_builder = get_optimizer_builder(optimizer)
 
     task = Classification(
         classifier=model,
@@ -125,9 +107,70 @@ def main(experiment_name, dataset, model, optimizer, epochs, **kwargs):
 
     task.report(pprint=True, print_fun=print)
 
-    hpo_client.report_objective(
-        name='ValidationAccuracy',
-        value=task.metrics.value()['validation_accuracy'])
+    return task.metrics.value()['validation_accuracy']
+
+
+def main(experiment_name, dataset, model, optimizer, epochs, **kwargs):
+
+    experiment_name = experiment_name
+
+    for key in ['dataset', 'model', 'optimizer']:
+        experiment_name = experiment_name.replace('{' + key + '}', locals()[key])
+
+    space = {
+            'weight_decay': 'loguniform(1e-10, 1e-3)',
+            'epochs': 'fidelity(1, {}, base=4)'.format(epochs)}
+
+    optimizer_builder = get_optimizer_builder(optimizer)
+
+    space.update(optimizer_builder.get_space())
+
+    experiment = create_experiment(
+        name=experiment_name,
+        max_trials=5,
+        space=space,
+        algorithms={
+            'asha': {
+                'seed': 1,
+                'num_rungs': 5,
+                'num_brackets': 1
+            }},
+        storage={
+            'type': 'legacy',
+            'database': {
+                'type': 'pickleddb',
+                'name': f'test.pkl'
+            }
+        })
+
+    while not (experiment.is_done or experiment.is_broken):
+
+        trial = experiment.suggest()
+        if trial is None:
+            break
+
+        print(trial.params)
+
+        kwargs.update(trial.params)
+
+        validation_accuracy = train(dataset, model, optimizer, **kwargs)
+
+        experiment.observe(
+            trial, [dict(name='ValidationAccuracy', value=validation_accuracy, type='objective')])
+
+    if experiment.is_broken:
+        raise RuntimeError('Experiment is broken!')
+
+    trial = experiment.get_trial(uid=experiment.stats['best_trials_id'])
+
+    kwargs.update(trial.params)
+
+    print('Training with best hyper-parameters on train+valid.')
+    print(trial.params)
+    test_accuracy = train(dataset, model, optimizer, **kwargs)
+
+    # TODO: Find a way so register this
+    print(test_accuracy)
 
 
 if __name__ == '__main__':

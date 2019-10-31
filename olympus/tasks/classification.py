@@ -15,12 +15,14 @@ class Classification(Task):
     classifier: Module
     optimizer: Optimizer
     criterion: Module = CrossEntropyLoss()
-    _metrics = MetricList(
-        TrainAccuracy().every(epoch=1, batch=1),
-        ElapsedRealTime().every(batch=1),
-        SampleCount().every(batch=1, epoch=1),
-        ClassifierAdversary(epsilon=0.25).every(epoch=1, batch=1)
-    )
+
+    def __post_init__(self):
+        self._metrics = MetricList(
+            TrainAccuracy().every(epoch=1, batch=1),
+            ElapsedRealTime().every(batch=1),
+            SampleCount().every(batch=1, epoch=1),
+            ClassifierAdversary(epsilon=0.25).every(epoch=1, batch=1)
+        )
 
     @property
     def metrics(self):
