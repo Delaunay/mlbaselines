@@ -2,6 +2,7 @@ import logging
 import sys
 import time
 
+from olympus.utils.arguments import task_arguments
 from typing import Callable, Optional, TypeVar
 from urllib.parse import urlparse
 
@@ -30,11 +31,11 @@ class TimeThrottler:
 
 
 def set_log_level(level=logging.INFO):
-    mbs_log.setLevel(level)
+    oly_log.setLevel(level)
 
 
 def log_record(name, level, path, lno, msg, args, exc_info, func=None, sinfo=None, **kwargs):
-    start = path.rfind('mlbaselines')
+    start = path.rfind('olympus')
     path = path[start:]
     return logging.LogRecord(name, level, path, lno, msg, args, exc_info, func, sinfo, **kwargs)
 
@@ -100,16 +101,37 @@ def parse_uri(uri):
     return arguments
 
 
-if globals().get('mbs_log') is None:
-    mbs_log = make_logger('MBS')
+def storage(uri):
+    """Shorten the storage config from orion that is super long an super confusing
+        <storage_type>:<database>:<file or address>
+
+        legacy:pickleddb:my_data.pkl
+        legacy:mongodb://user@pass:192.168.0.0:8989
+    """
+    storage_type, storage_uri = uri.split(':', maxsplit=1)
+    arguments = parse_uri(storage_uri)
+    database = arguments.get('scheme', 'pickleddb')
+    database_resource = arguments.get('path', arguments.get('address'))
+
+    return {
+        'type': storage_type,
+        'database': {
+            'type': database,
+            'host': database_resource,
+        }
+    }
+
+
+if globals().get('oly_log') is None:
+    oly_log = make_logger('OLY')
     set_log_level(logging.DEBUG)
 
-    warning = mbs_log.warning
-    info = mbs_log.info
-    debug = mbs_log.debug
-    error = mbs_log.error
-    critical = mbs_log.critical
-    exception = mbs_log.exception
+    warning = oly_log.warning
+    info = oly_log.info
+    debug = oly_log.debug
+    error = oly_log.error
+    critical = oly_log.critical
+    exception = oly_log.exception
 
 
 def get_value(item):

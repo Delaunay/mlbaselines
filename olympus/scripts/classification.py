@@ -1,10 +1,10 @@
 from __future__ import print_function
-import argparse
 import torch
 import torch.utils.data
 
 from orion.client import create_experiment
 
+from olympus.hpo import TrialIterator
 from olympus.datasets import build_loaders, merge_data_loaders
 from olympus.datasets import factories as dataset_factories
 import olympus.distributed.multigpu as distributed
@@ -14,17 +14,13 @@ from olympus.models import factories as model_factories
 from olympus.tasks import Classification
 from olympus.optimizers import get_optimizer_builder
 from olympus.optimizers import factories as optimizer_factories
-
+from olympus.utils import task_arguments, storage
 
 DEFAULT_EXP_NAME = 'classification_{dataset}_{model}_{optimizer}'
 
 
-def arg_parser(subparsers=None):
-    description = 'Classification script'
-    if subparsers:
-        parser = subparsers.add_parser('classification', help=description)
-    else:
-        parser = argparse.ArgumentParser(description=description)
+def arguments(subparsers=None):
+    parser = task_arguments('classification', 'Classification script', subparsers)
 
     parser.add_argument(
         '--experiment-name', type=str, default=DEFAULT_EXP_NAME,  metavar='EXP_NAME',
@@ -49,22 +45,8 @@ def arg_parser(subparsers=None):
         '--seed', type=int, default=1, metavar='S',
         help='random seed (default: 1)')
 
-    # Distributed arguments
-    parser.add_argument(
-        '--rank', type=int, default=0, metavar='R',
-        help='process rank')
-    parser.add_argument(
-        '--dist-url', type=str, default=None, metavar='DIST_URL',
-        help='distributed backend (nccl:tcp://localhost:8123)')
-    parser.add_argument(
-        '--world-size', type=int, default=1, metavar='WS',
-        help='Number of process running in parallel')
-
-    return parser
-
-
-def parse_args(argv=None):
-    return arg_parser().parse_args(argv)
+    # add the arguments related to distributed training
+    return distributed.arguments(parser)
 
 
 def train(dataset, model, optimizer, epochs, merge_train_val=False, **kwargs):
@@ -134,8 +116,9 @@ def main(experiment_name, dataset, model, optimizer, epochs, **kwargs):
         experiment_name = experiment_name.replace('{' + key + '}', locals()[key])
 
     space = {
-            'weight_decay': 'loguniform(1e-10, 1e-3)',
-            'epochs': 'fidelity(1, {}, base=4)'.format(epochs)}
+        'weight_decay': 'loguniform(1e-10, 1e-3)',
+        'epochs': f'fidelity(1, {epochs}, base=4)'
+    }
 
     optimizer_builder = get_optimizer_builder(optimizer)
 
@@ -151,20 +134,10 @@ def main(experiment_name, dataset, model, optimizer, epochs, **kwargs):
                 'num_rungs': 5,
                 'num_brackets': 1
             }},
-        storage={
-            'type': 'legacy',
-            'database': {
-                'type': 'pickleddb',
-                'name': f'test.pkl'
-            }
-        })
+        storage=storage('legacy:pickleddb:test.pkl')
+    )
 
-    while not (experiment.is_done or experiment.is_broken):
-
-        trial = experiment.suggest()
-        if trial is None:
-            break
-
+    for trial in TrialIterator(experiment):
         print(trial.params)
 
         kwargs.update(trial.params)
@@ -190,4 +163,4 @@ def main(experiment_name, dataset, model, optimizer, epochs, **kwargs):
 
 
 if __name__ == '__main__':
-    main(**parse_args())
+    main(**arguments().parse_args())

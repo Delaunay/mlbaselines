@@ -30,7 +30,7 @@ if __name__ == '__main__':
             ]
         },
         extras_require={
-            'geffnet': ['geffnet'],
+            'geffnet': ['geffnet==0.9.3'],
             # NVIDIA Apex would go there if there was a pip to give
             'float16': []
         }

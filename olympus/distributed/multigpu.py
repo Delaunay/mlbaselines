@@ -32,13 +32,15 @@ class NoOut:
 
 
 def arguments(parser):
-    parser.add_argument('--rank', type=int, default=0,
-                        help='current process rank')
-    parser.add_argument('--world-size', type=int, default=1,
-                        help='Number of process running in parallel')
-    parser.add_argument('--dist-url', type=str, default='nccl:tcp://localhost:8181',
-                        help='distributed backend string')
-
+    parser.add_argument(
+        '--rank', type=int, default=0, metavar='R',
+        help='process rank')
+    parser.add_argument(
+        '--dist-url', type=str, default=None, metavar='DIST_URL',
+        help='distributed backend (nccl:tcp://localhost:8123)')
+    parser.add_argument(
+        '--world-size', type=int, default=1, metavar='WS',
+        help='Number of process running in parallel')
     return parser
 
 

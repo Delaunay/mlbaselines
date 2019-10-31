@@ -1,5 +1,6 @@
 from olympus.utils.gpu.nvidia import NvGpuMonitor
 from olympus.utils.gpu.amd import AmdGpuMonitor
+from olympus.utils import error
 
 from enum import IntEnum
 from multiprocessing import Process
@@ -52,7 +53,13 @@ class GpuMonitor:
 
     def __enter__(self):
         if self.enabled:
-            self.proc, self.monitor = make_monitor(self.loop, self.device)
+            try:
+                self.proc, self.monitor = make_monitor(self.loop, self.device)
+            except RuntimeError as e:
+                if 'cuda' in str(e):
+                    self.enabled = False
+                    error(f'Could not enable GPU acceleration')
+
         return self
 
     def __exit__(self, exc_type, exc_val, exc_tb):

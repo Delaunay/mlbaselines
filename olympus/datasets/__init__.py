@@ -1,17 +1,10 @@
-from collections import defaultdict, OrderedDict
-import logging
 import os
-
-import numpy
-
 import torch
 
 from olympus.utils.factory import fetch_factories
 from olympus.datasets.transform import TransformedSubset
 from olympus.datasets.sampling import generate_indices
 
-
-logger = logging.getLogger(__name__)
 
 factories = fetch_factories('olympus.datasets', __file__)
 
@@ -51,8 +44,8 @@ def merge_data_loaders(*data_loaders):
         dataset=dataset, batch_size=batch_size, sampler=sampler, num_workers=num_workers)
 
     return data_loader
- 
- 
+
+
 def build_loaders(name, sampling_method, batch_size=128, num_workers=0, **kwargs):
     set_data_path(kwargs)
     datasets = factories[name](**kwargs)

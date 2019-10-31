@@ -6,17 +6,16 @@ import subprocess
 import sys
 
 from olympus.utils.gpu import GpuMonitor
-from olympus.utils.factory import fetch_factories
-
-
-__ignored_files = {
-    '__init__.py',
-    '__pycache__',
-    'launch.py'
-}
+from olympus.utils import info
 
 
 def get_available_tasks():
+    __ignored_files = {
+        '__init__.py',
+        '__pycache__',
+        'launch.py'
+    }
+
     scripts = []
 
     for file_name in os.listdir(os.path.dirname(__file__)):
@@ -26,29 +25,19 @@ def get_available_tasks():
     return scripts
 
 
-task_factories = fetch_factories('olympus.scripts', __file__, function_name='arg_parser')
-
-
-def add_parsers(parser):
-    subparsers = parser.add_subparsers(dest='task', help='Tasks')
-    for task_name, task_factory in task_factories.items():
-        task_factory(subparsers)
-
-
-def main_arg_parser():
+def arguments():
     parser = ArgumentParser(description="Olympus task launcher")
     parser.add_argument('--no-mon', action='store_true', default=False,
                         help='Disable GPU monitoring')
 
     # When training on multi GPUs you can specify the devices on which to train
-    parser.add_argument('--devices', type=int, nargs='*', default=(0,),
-                        help='GPU ids used for the training')
+    parser.add_argument('--devices', type=str, default='0',
+                        help='GPU ids used for the training (comma separated value)')
 
-    add_parsers(parser)
+    parser.add_argument('task', choices=get_available_tasks())
 
     # rest from the training program
-    # parser.add_argument('args', nargs=REMAINDER)
-
+    parser.add_argument('args', nargs=REMAINDER)
     return parser
 
 
@@ -61,44 +50,58 @@ def get_available_port():
     return port
 
 
-def multigpu_launch(task_name, args, job_env, device_id, rank, world_size, port):
-    script = f'{os.path.dirname(__file__)}/{args.task}.py'
+def multigpu_launch(task_name, script_args, job_env, device_id, rank, world_size, port):
+    """Launch the task using multiple GPUs"""
+    info(f'Launching job on (device: {device_id})')
 
-    cmd = [f'CUDA_VISIBLE_DEVICES={device_id}', sys.executable, '-u']
+    script = f'{os.path.dirname(__file__)}/{task_name}.py'
+
+    cmd = list([f'CUDA_VISIBLE_DEVICES={device_id}', sys.executable, '-u'])
     cmd.append(script)
     cmd.extend(('--rank', str(rank)))
     cmd.extend(('--world-size', str(world_size)))
     cmd.extend(('--dist-url', f'nccl:tcp://localhost:{port}'))
-    cmd.extend(args)
+    cmd.extend(script_args)
 
     return subprocess.Popen(' '.join(cmd), env=job_env, shell=True)
 
 
-def debug_launch(task_name, args, job_env, device_id, rank, world_size, port):
+def simple_launch(task_name, script_args, job_env, device_id, rank, world_size, port):
+    """Launch the task without creating another python interpreter"""
     module = __import__("olympus.scripts.{}".format(task_name), fromlist=[''])
-
-    module.main(**args)
-    
+    parser = module.arguments()
+    args = parser.parse_args(script_args)
+    module.main(**vars(args))
     return subprocess.Popen('echo')  # Do nothing...
 
- 
-def simple_launch(task_name, args, job_env, device_id, rank, world_size, port):
-    script = f'{os.path.dirname(__file__)}/{args.task}.py'
 
-    cmd = [f'CUDA_VISIBLE_DEVICES={device_id}', sys.executable, "-u"]
+def single_gpu_launch(task_name, script_args, job_env, device_id, rank, world_size, port):
+    """Launch the task for a given GPU"""
+    info(f'Launching job on (device: {device_id})')
+
+    script = f'{os.path.dirname(__file__)}/{task_name}.py'
+
+    cmd = list([f'CUDA_VISIBLE_DEVICES={device_id}', sys.executable, '-u'])
     cmd.append(script)
-    cmd.extend(args)
+    cmd.extend(script_args)
 
     return subprocess.Popen(' '.join(cmd), env=job_env, shell=True)
 
 
 def main(argv=None):
-    args = main_arg_parser().parse_args(argv)
+    args = arguments().parse_args(argv)
+    args.devices = [int(d) for d in args.devices.split(',')]
     job_env = os.environ
     processes = []
     world_size = len(args.devices)
-    launcher = debug_launch
+    launcher = simple_launch
     port = None
+    script_args = args.args
+
+    # Pytorch by default uses GPU0 so we just keep the simple launch
+    # but if the user specifies a specific GPU we need to set CUDA_VISIBLE_DEVICES
+    if args.devices != [0]:
+        launcher = single_gpu_launch
 
     if world_size > 1:
         launcher = multigpu_launch
@@ -108,7 +111,7 @@ def main(argv=None):
         try:
             for rank, device_id in enumerate(args.devices):
                 process = launcher(
-                    args.task, vars(args), job_env, device_id, rank, world_size, port)
+                    args.task, script_args, job_env, device_id, rank, world_size, port)
                 processes.append(process)
 
             errors = []
