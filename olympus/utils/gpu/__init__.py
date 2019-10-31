@@ -2,6 +2,7 @@ from olympus.utils.gpu.nvidia import NvGpuMonitor
 from olympus.utils.gpu.amd import AmdGpuMonitor
 from olympus.utils import error
 
+import torch
 from enum import IntEnum
 from multiprocessing import Process
 
@@ -45,6 +46,8 @@ def make_monitor(loop_interval=1000, device_id=0):
 
 class GpuMonitor:
     def __init__(self, loop_interval=1000, device_id=0, enabled=True):
+        enabled = enabled and torch.cuda.is_available()
+
         self.loop = loop_interval
         self.device = device_id
         self.proc = None
