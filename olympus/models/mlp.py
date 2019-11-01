@@ -12,18 +12,6 @@ class MLP(nn.Module):
         for i, [insize, outsize] in enumerate(zip(insizes, outsizes)):
             setattr(self, 'fc{}'.format(i), nn.Linear(insize, outsize, bias=bias))
 
-        self._initialize_weights()
-
-    def _initialize_weights(self):
-        for m in self.modules():
-            if isinstance(m, nn.BatchNorm2d):
-                nn.init.constant_(m.weight, 1)
-                nn.init.constant_(m.bias, 0)
-            elif isinstance(m, nn.Linear):
-                nn.init.kaiming_normal_(m.weight, mode='fan_in', nonlinearity='relu')
-                if m.bias is not None:
-                    nn.init.constant_(m.bias, 0)
-
     def forward(self, x):
         x = x.view(x.size(0), self.input_size)
         layers = list(self.named_children())

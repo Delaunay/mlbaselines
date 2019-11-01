@@ -13,6 +13,8 @@ import olympus.distributed.multigpu as distributed
 from olympus.metrics import Accuracy
 from olympus.models import build_model
 from olympus.models import factories as model_factories
+from olympus.models.inits import make_init
+from olympus.models.inits import factories as init_factories
 from olympus.tasks import Classification
 from olympus.optimizers import get_optimizer_builder
 from olympus.optimizers import factories as optimizer_factories
@@ -22,7 +24,7 @@ from olympus.utils import task_arguments, get_storage, show_dict, fetch_device, 
 from olympus.utils.storage import StateStorage
 
 
-DEFAULT_EXP_NAME = 'classification_{dataset}_{model}_{optimizer}_{lr_scheduler}'
+DEFAULT_EXP_NAME = 'classification_{dataset}_{model}_{optimizer}_{lr_scheduler}_{init}'
 
 
 def arguments(subparsers=None):
@@ -45,7 +47,10 @@ def arguments(subparsers=None):
         '--lr-scheduler', type=str, default='none',
         metavar='LR_SCHEDULER_NAME', choices=lr_scheduler_factories.keys(),
         help='Name of the lr scheduler (default: none)')
-
+    parser.add_argument(
+        '--init', type=str, default='glorot_uniform',
+        metavar='INIT_NAME', choices=init_factories.keys(),
+        help='Name of the initialization (default: glorot_uniform)')
     parser.add_argument(
         '--batch-size', type=int, default=128, metavar='N',
         help='input batch size for training (default: 128)')
@@ -67,7 +72,7 @@ def arguments(subparsers=None):
     return distributed.arguments(parser)
 
 
-def train(dataset, model, optimizer,  lr_scheduler, epochs,
+def train(dataset, model, optimizer, lr_scheduler, init, epochs,
           model_seed=1, sampler_seed=1, merge_train_val=False,
           folder='.', **kwargs):
 
@@ -101,6 +106,8 @@ def train(dataset, model, optimizer,  lr_scheduler, epochs,
         input_size=datasets.input_shape,
         output_size=datasets.output_shape[0]
     ).to(device)
+
+    make_init(model, name=init)
 
     # NOTE: Some model have specific way of building for distributed computing
     #       (i.e. large output layers) This may be better integrated in the model builder.
@@ -155,9 +162,10 @@ def get_trial_folder(folder, trial, epochs):
     return os.path.join(folder, trial_id)
 
 
-def main(experiment_name, dataset, model, optimizer, lr_scheduler, epochs, folder='.', **kwargs):
+def main(experiment_name, dataset, model, optimizer, lr_scheduler, init, epochs, folder='.',
+         **kwargs):
 
-    for key in ['dataset', 'model', 'optimizer', 'lr_scheduler']:
+    for key in ['dataset', 'model', 'optimizer', 'lr_scheduler', 'init']:
         experiment_name = experiment_name.replace('{' + key + '}', locals()[key])
 
     space = {
@@ -194,8 +202,8 @@ def main(experiment_name, dataset, model, optimizer, lr_scheduler, epochs, folde
         show_dict(trial.params)
         kwargs.update(trial.params)
 
-        validation_accuracy = train(dataset, model, optimizer, lr_scheduler, folder=trial_folder,
-                                    **kwargs)
+        validation_accuracy = train(dataset, model, optimizer, lr_scheduler, init,
+                                    folder=trial_folder, **kwargs)
 
         experiment.observe(
             trial,
