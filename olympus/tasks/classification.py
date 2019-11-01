@@ -14,7 +14,8 @@ logging.getLogger(__name__)
 
 
 class Classification(Task):
-    def __init__(self, classifier, optimizer, criterion=None, device=None, storage=None):
+    def __init__(self, classifier, optimizer, dataloader, criterion=None, device=None,
+                 storage=None):
         super(Classification, self).__init__(device=device)
 
         if criterion is None:
@@ -23,6 +24,7 @@ class Classification(Task):
         self._first_epoch = 1
         self.classifier = classifier
         self.optimizer = optimizer
+        self.dataloader = dataloader
         self.criterion = criterion
         self.storage = storage
 
@@ -55,6 +57,7 @@ class Classification(Task):
                     state[k] = v.cuda()
 
         # TODO: Add lr_scheduler
+        self.dataloader.sampler.load_state_dict(state_dict['sampler'])
         self.metrics.load_state_dict(state_dict['metrics'])
 
     def checkpoint(self, epoch):
@@ -65,6 +68,7 @@ class Classification(Task):
                 model=self.model.state_dict(),
                 optimizer=self.optimizer.state_dict(),
                 # TODO: Add lr_schedule as well
+                sampler=self.dataloader.sampler.state_dict(),
                 metrics=self.metrics.state_dict()
                 ))
 
@@ -80,7 +84,7 @@ class Classification(Task):
     def model(self, model):
         self.classifier = model
 
-    def fit(self, dataloader, epochs, context):
+    def fit(self, epochs, context):
         self.classifier.to(self.device)
 
         if self._first_epoch == 1:
@@ -90,13 +94,13 @@ class Classification(Task):
 
         for epoch in range(self._first_epoch, epochs + 1):
             print(f'\rEpoch {epoch:3d}: ', end='')
-            self.epoch(dataloader, epoch, context)
+            self.epoch(epoch, context)
             self.report(pprint=True, print_fun=print)
 
         print()
 
-    def epoch(self, dataloader, epoch, context):
-        for step, mini_batch in enumerate(dataloader):
+    def epoch(self, epoch, context):
+        for step, mini_batch in enumerate(self.dataloader):
             self.step(step, mini_batch, context)
 
         self.metrics.epoch(epoch, self, context)

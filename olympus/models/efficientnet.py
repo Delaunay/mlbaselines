@@ -1,12 +1,14 @@
 def delayed_geffnet(name):
-    try:
-        import geffnet
-    except ImportError:
-        print('geffnet is not installed!')
-        print('> pip install geffnet')
-        raise
 
     def make_geffnet(input_size, output_size):
+
+        try:
+            import geffnet
+        except ImportError:
+            print('geffnet is not installed!')
+            print('> pip install geffnet')
+            raise
+
         # pytorch is CHW
         return geffnet.create_model(name, num_classes=output_size, in_chans=input_size[0])
 

@@ -1,13 +1,17 @@
 import logging
 import os
+import random
 import sys
 import time
-
-from olympus.utils.arguments import task_arguments
 from typing import Callable, Optional, TypeVar
 from urllib.parse import urlparse
 
+import numpy
+
 import torch
+
+from olympus.utils.arguments import task_arguments
+
 
 A = TypeVar('A')
 R = TypeVar('R')
@@ -188,3 +192,14 @@ def find_batch_size(model, shape, low, high, dtype=torch.float32):
                 raise e
 
     return batches[mid]
+
+
+def seed(seed):
+    if torch.cuda.is_available():
+        torch.backends.cudnn.benchmark = False
+        torch.backends.cudnn.deterministic = True
+
+    random.seed(seed)
+    numpy.random.seed(seed)
+    torch.manual_seed(seed)
+    torch.cuda.manual_seed_all(seed)

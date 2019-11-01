@@ -16,7 +16,7 @@ from olympus.models import factories as model_factories
 from olympus.tasks import Classification
 from olympus.optimizers import get_optimizer_builder
 from olympus.optimizers import factories as optimizer_factories
-from olympus.utils import task_arguments, get_storage, show_dict, fetch_device
+from olympus.utils import task_arguments, get_storage, show_dict, fetch_device, seed
 from olympus.utils.storage import StateStorage
 
 
@@ -46,8 +46,11 @@ def arguments(subparsers=None):
         '--epochs', type=int, default=300, metavar='N',
         help='maximum number of epochs to train (default: 300)')
     parser.add_argument(
-        '--seed', type=int, default=1, metavar='S',
-        help='random seed (default: 1)')
+        '--model-seed', type=int, default=1,
+        help='random seed for model initialization (default: 1)')
+    parser.add_argument(
+        '--sampler-seed', type=int, default=1,
+        help='random seed for sampler during iterations (default: 1)')
     parser.add_argument(
         '--half', action='store_true', default=False,
         help='enable fp16 training'
@@ -57,7 +60,9 @@ def arguments(subparsers=None):
     return distributed.arguments(parser)
 
 
-def train(dataset, model, optimizer, epochs, merge_train_val=False, folder='.', **kwargs):
+def train(dataset, model, optimizer, epochs, 
+          model_seed=1, sampler_seed=1, merge_train_val=False,
+          folder='.', **kwargs):
 
     # Apply Orion overrides
     distributed.enable_distributed_process(
@@ -70,6 +75,7 @@ def train(dataset, model, optimizer, epochs, merge_train_val=False, folder='.', 
 
     datasets, loaders = build_loaders(
         dataset,
+        seed=sampler_seed,
         sampling_method={'name': 'original'},
         batch_size=kwargs['batch_size']
     )
@@ -81,6 +87,7 @@ def train(dataset, model, optimizer, epochs, merge_train_val=False, folder='.', 
         train_loader = merge_data_loaders(train_loader, valid_loader)
         valid_loader = loaders['test']
 
+    seed(model_seed)
     model = build_model(
         model,
         half=kwargs.get('half', False),
@@ -101,6 +108,7 @@ def train(dataset, model, optimizer, epochs, merge_train_val=False, folder='.', 
             weight_decay=kwargs['weight_decay'],
             half=kwargs.get('half', False),
             **optimizer_builder.get_params(kwargs)),
+        dataloader=train_loader,
         device=device,
         storage=StateStorage(folder=folder))
 
@@ -110,7 +118,7 @@ def train(dataset, model, optimizer, epochs, merge_train_val=False, folder='.', 
     task.resume()
 
     # TODO: What is supposed to be the context?
-    task.fit(train_loader, epochs, {})
+    task.fit(epochs, {})
 
     # push the latest metrics
     task.finish()
