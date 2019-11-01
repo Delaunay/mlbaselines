@@ -14,7 +14,7 @@ logging.getLogger(__name__)
 
 
 class Classification(Task):
-    def __init__(self, classifier, optimizer, dataloader, criterion=None, device=None,
+    def __init__(self, classifier, optimizer, lr_scheduler, dataloader, criterion=None, device=None,
                  storage=None):
         super(Classification, self).__init__(device=device)
 
@@ -24,6 +24,7 @@ class Classification(Task):
         self._first_epoch = 1
         self.classifier = classifier
         self.optimizer = optimizer
+        self.lr_scheduler = lr_scheduler
         self.dataloader = dataloader
         self.criterion = criterion
         self.storage = storage
@@ -55,8 +56,8 @@ class Classification(Task):
             for k, v in state.items():
                 if torch.is_tensor(v):
                     state[k] = v.cuda()
-
-        # TODO: Add lr_scheduler
+                    
+        self.lr_scheduler.load_state_dict(state_dict['lr_scheduler'])
         self.dataloader.sampler.load_state_dict(state_dict['sampler'])
         self.metrics.load_state_dict(state_dict['metrics'])
 
@@ -67,7 +68,7 @@ class Classification(Task):
                 epoch=epoch,
                 model=self.model.state_dict(),
                 optimizer=self.optimizer.state_dict(),
-                # TODO: Add lr_schedule as well
+                lr_scheduler=self.lr_scheduler.state_dict(),
                 sampler=self.dataloader.sampler.state_dict(),
                 metrics=self.metrics.state_dict()
                 ))
@@ -104,7 +105,9 @@ class Classification(Task):
             self.step(step, mini_batch, context)
 
         self.metrics.epoch(epoch, self, context)
+        self.lr_scheduler.epoch(epoch, self.metrics.value()['validation_accuracy'])
         self.checkpoint(epoch)
+        print(self.lr_scheduler.get_lr()[0])
 
     def step(self, step, input, context):
         self.classifier.train()
@@ -124,6 +127,7 @@ class Classification(Task):
 
         # Metrics
         self.metrics.step(step, self, input, results)
+        self.lr_scheduler.step(step)
         return results
 
     def predict_probabilities(self, batch):

@@ -71,7 +71,7 @@ def arguments(parser):
     return parser
 
 
-class OptimizerAdapter:
+class OptimizerAdapter(torch.optim.Optimizer):
     """MixedPrecision Optimizer Adapter
     This handles fp32 & fp16 optimization by providing a common API to both
     """
@@ -121,8 +121,22 @@ class OptimizerAdapter:
     def param_groups(self):
         return self.optimizer.param_groups
 
-    def __getattr__(self, item):
-        return getattr(self.optimizer, item)
+    @property
+    def defaults(self):
+        if self.half:
+            return self.optimizer.optimizer.defaults
+        
+        return self.optimizer.defaults
+
+    @property
+    def state(self):
+        return self.optimizer.state
+
+    def state_dict(self):
+        return self.optimizer.state_dict()
+
+    def load_state_dict(self, state_dict):
+        self.optimizer.load_state_dict(state_dict)
 
 
 class ModelAdapter(nn.Module):

@@ -16,11 +16,13 @@ from olympus.models import factories as model_factories
 from olympus.tasks import Classification
 from olympus.optimizers import get_optimizer_builder
 from olympus.optimizers import factories as optimizer_factories
+from olympus.optimizers.schedules import get_schedule_builder
+from olympus.optimizers.schedules import factories as lr_scheduler_factories
 from olympus.utils import task_arguments, get_storage, show_dict, fetch_device, seed
 from olympus.utils.storage import StateStorage
 
 
-DEFAULT_EXP_NAME = 'classification_{dataset}_{model}_{optimizer}'
+DEFAULT_EXP_NAME = 'classification_{dataset}_{model}_{optimizer}_{lr_scheduler}'
 
 
 def arguments(subparsers=None):
@@ -39,6 +41,11 @@ def arguments(subparsers=None):
         '--optimizer', type=str, default='sgd',
         metavar='OPTIMIZER_NAME', choices=optimizer_factories.keys(),
         help='Name of the optimiser (default: sgd)')
+    parser.add_argument(
+        '--lr-scheduler', type=str, default='none',
+        metavar='LR_SCHEDULER_NAME', choices=lr_scheduler_factories.keys(),
+        help='Name of the lr scheduler (default: none)')
+
     parser.add_argument(
         '--batch-size', type=int, default=128, metavar='N',
         help='input batch size for training (default: 128)')
@@ -60,7 +67,7 @@ def arguments(subparsers=None):
     return distributed.arguments(parser)
 
 
-def train(dataset, model, optimizer, epochs, 
+def train(dataset, model, optimizer,  lr_scheduler, epochs,
           model_seed=1, sampler_seed=1, merge_train_val=False,
           folder='.', **kwargs):
 
@@ -101,18 +108,25 @@ def train(dataset, model, optimizer, epochs,
 
     optimizer_builder = get_optimizer_builder(optimizer)
 
+    optimizer = optimizer_builder(
+        model.parameters(),
+        weight_decay=kwargs['weight_decay'],
+        half=kwargs.get('half', False),
+        **optimizer_builder.get_params(kwargs))
+
+    schedule_builder = get_schedule_builder(lr_scheduler)
+
+    lr_scheduler = schedule_builder(
+        optimizer, **schedule_builder.get_params(kwargs))
+
     task = Classification(
         classifier=model,
-        optimizer=optimizer_builder(
-            model.parameters(),
-            weight_decay=kwargs['weight_decay'],
-            half=kwargs.get('half', False),
-            **optimizer_builder.get_params(kwargs)),
+        optimizer=optimizer,
+        lr_scheduler=lr_scheduler,
         dataloader=train_loader,
         device=device,
         storage=StateStorage(folder=folder))
 
-    # task.metrics.append(Accuracy(name='training', loader=train_loader))
     task.metrics.append(Accuracy(name='validation', loader=valid_loader))
 
     task.resume()
@@ -136,13 +150,14 @@ def get_trial_folder(folder, trial, epochs):
         if param['name'] == 'epochs':
             param['value'] = epochs
     trial_id = type(trial)(**conf).id
+    trial_id = '3729b29c74cbfcd5a90a13c85f63ce93'
 
     return os.path.join(folder, trial_id)
 
 
-def main(experiment_name, dataset, model, optimizer, epochs, folder='.', **kwargs):
+def main(experiment_name, dataset, model, optimizer, lr_scheduler, epochs, folder='.', **kwargs):
 
-    for key in ['dataset', 'model', 'optimizer']:
+    for key in ['dataset', 'model', 'optimizer', 'lr_scheduler']:
         experiment_name = experiment_name.replace('{' + key + '}', locals()[key])
 
     space = {
@@ -153,6 +168,10 @@ def main(experiment_name, dataset, model, optimizer, epochs, folder='.', **kwarg
     optimizer_builder = get_optimizer_builder(optimizer)
 
     space.update(optimizer_builder.get_space())
+
+    lr_scheduler_builder = get_schedule_builder(lr_scheduler)
+
+    space.update(lr_scheduler_builder.get_space())
 
     experiment = create_experiment(
         name=experiment_name,
@@ -175,7 +194,8 @@ def main(experiment_name, dataset, model, optimizer, epochs, folder='.', **kwarg
         show_dict(trial.params)
         kwargs.update(trial.params)
 
-        validation_accuracy = train(dataset, model, optimizer, folder=trial_folder, **kwargs)
+        validation_accuracy = train(dataset, model, optimizer, lr_scheduler, folder=trial_folder,
+                                    **kwargs)
 
         experiment.observe(
             trial,
