@@ -2,7 +2,8 @@ import torch
 
 
 class Task:
-    _device = torch.device('cpu')
+    def __init__(self, device=None):
+        self._device = device if device else torch.device('cpu')
 
     @property
     def device(self):

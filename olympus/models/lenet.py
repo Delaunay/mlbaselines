@@ -1,4 +1,9 @@
+import logging
+
 import torch.nn as nn
+
+
+log = logging.getLogger(__name__)
 
 
 class LeNet(nn.Module):

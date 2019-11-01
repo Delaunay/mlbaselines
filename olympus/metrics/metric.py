@@ -6,13 +6,15 @@ import torch
 from torch.utils.data import DataLoader
 from torch.autograd import Variable
 
+from olympus.utils.stat import StatStream
+
 
 @dataclass
 class Metric:
     frequency_epoch: int = 0
     frequency_batch: int = 0
 
-    def on_new_epoch(self, step, task, input, context):
+    def on_new_epoch(self, epoch, task, context):
         pass
 
     def on_new_batch(self, step, task, input, context):
@@ -40,28 +42,31 @@ class MetricList:
     def __init__(self, *args):
         self.metrics = list(args)
         self.batch_id: int = 0
-        self.epoch: int = 0
+        self._epoch: int = 0
         self._previous_step = 0
-        self.name_2_metrics = {}
 
-    def __getitem__(self, item, default=None):
-        return self.name_2_metrics.get(item, default)
+    def state_dict(self):
+        return [m.state_dict() for m in self.metrics]
 
-    def metric_keys(self):
-        return self.name_2_metrics.keys()
+    def load_state_dict(self, state_dict):
+        for m, m_state_dict in zip(self.metrics, state_dict):
+            m.load_state_dict(m_state_dict)
 
     def append(self, m: Metric):
         self.metrics.append(m)
-        self.name_2_metrics[m.__class__] = m
+
+    def epoch(self, epoch, task, context):
+        for m in self.metrics:
+            if m.frequency_epoch > 0 and epoch % m.frequency_epoch == 0:
+                m.on_new_epoch(epoch, task, context)
+
+        self._epoch = epoch
+        self.batch_id = 0
 
     def step(self, step, task, input, context):
+        # Step back to 0, means it is a new epoch
         if self._previous_step > step:
-            for m in self.metrics:
-                if m.frequency_epoch > 0 and self.epoch % m.frequency_epoch == 0:
-                    m.on_new_epoch(step, task, input, context)
-
-            self.epoch += 1
-            self.batch_id = 0
+            assert self.batch_id == 0
 
         for m in self.metrics:
             if m.frequency_batch > 0 and self.batch_id % m.frequency_batch == 0:
@@ -90,59 +95,85 @@ class MetricList:
         return metrics
 
 
-class MeanAccumulator:
-    n = 0
-    acc = 0
-
-    def update(self, v):
-        self.acc += v
-        self.n += 1
-
-    def compute(self):
-        mean = self.acc / self.n
-        self.n = 0
-        self.acc = 0
-        return mean
-
-
 @dataclass
-class ValidationAccuracy(Metric):
+class Accuracy(Metric):
     loader: DataLoader = None
-    accuracies = []
-    losses = []
-    frequency = 1
+    accuracies: list = field(default_factory=list)
+    losses: list = field(default_factory=list)
+    frequency_epoch: int = 1
+    frequency_batch: int = 0
+    name: str = 'validation'
+    eval_time: StatStream = field(default_factory=lambda: StatStream(drop_first_obs=0))
+    total_time: int = 0
 
-    def on_new_epoch(self, step, task, input, context):
+    def state_dict(self):
+        return dict(accuracies=self.accuracies, losses=self.losses)
+
+    def load_state_dict(self, state_dict):
+        self.accuracies = state_dict['accuracies']
+        self.losses = state_dict['losses']
+
+    def on_new_epoch(self, epoch, task, context):
         acc = 0
         loss_acc = 0
 
+        start = datetime.datetime.utcnow()
+
         count = len(self.loader)
-        for input in self.loader:
-            accuracy, loss = task.accuracy(input[0], input[1])
+        for data, target in self.loader:
+            accuracy, loss = task.accuracy(data, target)
 
             acc += accuracy.item()
             loss_acc += loss.item()
 
+        end = datetime.datetime.utcnow()
+        self.eval_time += (end - start).seconds
         self.accuracies.append(acc / count)
         self.losses.append(loss_acc / count)
 
     def finish(self, task):
-        self.on_new_epoch(None, task, None, None)
+        self.on_new_epoch(None, task, None)
 
     def value(self):
+        if not self.accuracies:
+            return {}
+
         return {
-            'validation_accuracy': self.accuracies[-1],
-            'validation_loss': self.losses[-1]
+            f'{self.name}_accuracy': self.accuracies[-1],
+            f'{self.name}_loss': self.losses[-1],
+            f'{self.name}_time': self.eval_time.avg
         }
 
 
 @dataclass
-class TrainAccuracy(Metric):
+class OnlineTrainAccuracy(Metric):
+    """Reuse precomputed loss and prediction to get accuracy
+    because the model is updated in between each batch, this does not return the true accuracy on the training set,
+    """
     accuracies: list = field(default_factory=list)
     losses: list = field(default_factory=list)
     accumulator: int = 0
     loss: int = 0
     count: int = 0
+
+    frequency_epoch: int = 1
+    frequency_batch: int = 1
+
+    def state_dict(self):
+        return dict(
+            accuracies=self.accuracies,
+            losses=self.losses,
+            accumulator=self.accumulator,
+            loss=self.loss,
+            count=self.count
+        )
+
+    def load_state_dict(self, state_dict):
+        self.accuracies = state_dict['accuracies']
+        self.losses = state_dict['losses']
+        self.accumulator = state_dict['accumulator']
+        self.loss = state_dict['loss']
+        self.count = state_dict['count']
 
     def on_new_batch(self, step, task, input, context):
         _, targets = input
@@ -161,33 +192,37 @@ class TrainAccuracy(Metric):
             self.loss += loss
             self.count += 1
 
-    def on_new_epoch(self, step, task, input, context):
-        # new epoch
-        self.accuracies.append(self.accumulator / self.count)
-        self.losses.append(self.loss / self.count)
-        self.accumulator = 0
-        self.loss = 0
-        self.count = 0
+    def on_new_epoch(self, epoch, task, context):
+        if self.count > 0:
+            # new epoch
+            self.accuracies.append(self.accumulator / self.count)
+            self.losses.append(self.loss / self.count)
+            self.accumulator = 0
+            self.loss = 0
+            self.count = 0
 
     def finish(self, task):
         if self.count > 0:
             self.on_new_epoch(None, None, None, None)
 
     def value(self):
+        if not self.accuracies:
+            return {}
+
         return {
-            'train_accuracy': self.accuracies[-1],
-            'train_loss': self.losses[-1]
+            'online_train_accuracy': self.accuracies[-1],
+            'online_train_loss': self.losses[-1]
         }
 
 
 @dataclass
 class NamedMetric(Metric):
     name: str = None
-    metrics = []
+    metrics: list = field(default_factory=list)
     accumulator = 0
     count = 0
 
-    def on_new_epoch(self, step, task, input, context):
+    def on_new_epoch(self, epoch, task, context):
         self.metrics.append(self.accumulator / self.count)
         self.accumulator = 0
         self.count = 0
@@ -213,8 +248,15 @@ class SampleCount(Metric):
     sample_count: int = 0
     epoch: int = 0
 
-    def on_new_epoch(self, step, task, input, context):
-        self.epoch += 1
+    def state_dict(self):
+        return dict(epoch=self.epoch, sample_count=self.sample_count)
+
+    def load_state_dict(self, state_dict):
+        self.sample_count = state_dict['sample_count']
+        self.epoch = state_dict['epoch']
+
+    def on_new_epoch(self, epoch, task, context):
+        self.epoch = epoch
 
     def on_new_batch(self, step, task, input, context):
         if hasattr(input, '__getitem__'):
@@ -233,8 +275,14 @@ class SampleCount(Metric):
 
 @dataclass
 class ElapsedRealTime(Metric):
-    start = datetime.datetime.utcnow()
-    end = datetime.datetime.utcnow()
+    start: datetime.datetime = field(default_factory=datetime.datetime.utcnow)
+    end: datetime.datetime = field(default_factory=datetime.datetime.utcnow)
+
+    def state_dict(self):
+        return self.value()
+
+    def load_state_dict(self, state_dict):
+        self.start = self.end - datetime.timedelta(seconds=state_dict['elapsed_time'])
 
     def on_new_batch(self, step, task, input, context):
         self.end = datetime.datetime.utcnow()
@@ -263,22 +311,22 @@ class ClassifierAdversary(Metric):
 
     """
     epsilon: float = 0.25
-    accuracies = []
-    losses = []
-    distortions = []
+    accuracies: list = field(default_factory=list)
+    losses: list = field(default_factory=list)
+    distortions: list = field(default_factory=list)
     distortion = 0
     loss = 0
     accumulator = 0
     count = 0
     loader: DataLoader = None
 
-    def on_new_epoch(self, step, task, input, context):
+    def on_new_epoch(self, epoch, task, context):
         if self.loader:
             accuracy = 0
             total_loss = 0
 
-            for batch in self.loader:
-                acc, loss = self.adversarial(task, batch[0], batch[1])
+            for data, target in self.loader:
+                acc, loss = self.adversarial(task, data, target)
                 accuracy += acc.item()
                 total_loss += loss.item()
 

@@ -1,10 +1,15 @@
+import datetime
 import os
+
 import torch
 
 
 class StateStorage:
-    def __init__(self, folder):
+    def __init__(self, folder, time_buffer=5 * 60):
+        # typically root/task_name/experiment_name/trial_id
         self.folder = folder
+        self.time_buffer = time_buffer
+        self.last_save = datetime.datetime.utcnow()
         os.makedirs(self.folder, exist_ok=True)
         self.cache = set()
 
@@ -24,7 +29,9 @@ class StateStorage:
         return os.path.exists(self._file(filename))
 
     def save(self, filename, state):
-        torch.save(state, self._file(filename))
+        if (datetime.datetime.utcnow() - self.last_save).total_seconds() > self.time_buffer:
+            torch.save(state, self._file(filename))
+            self.last_save = datetime.datetime.utcnow()
 
     def load(self, filename):
         return torch.load(self._file(filename))

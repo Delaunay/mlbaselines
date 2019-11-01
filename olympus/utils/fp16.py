@@ -49,14 +49,55 @@ def network_to_half(network):
     return nn.Sequential(ImplicitFp16Cast(), batchnorm_convert_float(network.half()))
 
 
+def arguments(parser):
+    parser.add_argument(
+        '--loss-scale', type=float, default=1.0, metavar='SL',
+        help='Constant to use to scale loss')
+    parser.add_argument(
+        '--scale-dynamic', action='store_true', default=True,
+        help='Enable dynamic loss scaling')
+    parser.add_argument(
+        '--scale-factor', type=float, default=2, metavar='SF',
+        help='Factor to use to divide or multiply the scale constant')
+    parser.add_argument(
+        '--scale-window', type=int, default=1000, metavar='SW',
+        help='Number of batches to wait before increasing the scale factor')
+    parser.add_argument(
+        '--scale-min', type=float, default=1, metavar='SMN',
+        help='Minimum scaling factor')
+    parser.add_argument(
+        '--scale-max', type=float, default=2.**24, metavar='SMX',
+        help='Maximum scaling factor')
+    return parser
+
+
 class OptimizerAdapter:
     """MixedPrecision Optimizer Adapter
     This handles fp32 & fp16 optimization by providing a common API to both
     """
-    def __init__(self, optimizer, half=False, *args, **kwargs):
+    def __init__(self, optimizer, half=False, loss_scale=1,
+                 dynamic_loss_scale=False, scale_window=1000, scale_factor=2,
+                 min_loss_scale=None, max_loss_scale=2.**24):
         if half:
             import apex.fp16_utils.fp16_optimizer as apex_optimizer
-            self.optimizer = apex_optimizer.FP16_Optimizer(optimizer, *args, **kwargs)
+
+            static_loss_scale = loss_scale
+            if dynamic_loss_scale:
+                static_loss_scale = 'dynamic'
+
+            self.optimizer = apex_optimizer.FP16_Optimizer(
+                optimizer,
+                static_loss_scale,
+                dynamic_loss_scale,
+                dynamic_loss_args=dict(
+                    init_scale=loss_scale,
+                    scale_factor=scale_factor,
+                    scale_window=scale_window,
+                    min_loss_scale=min_loss_scale,
+                    max_loss_scale=max_loss_scale
+                ),
+                verbose=False
+            )
         else:
             self.optimizer = optimizer
 
@@ -93,6 +134,7 @@ class ModelAdapter(nn.Module):
 
         self.model = model
         self.transform = lambda x: x
+        self.half = half
 
         if half:
             self.model = network_to_half(model)
@@ -101,5 +143,15 @@ class ModelAdapter(nn.Module):
     def forward(self, input):
         return self.model(self.transform(input))
 
-    def __getattr__(self, item):
-        return getattr(self.model, item)
+    def state_dict(self, destination=None, prefix='', keep_vars=False):
+        destination = {
+            'model': self.model.state_dict(None, prefix, keep_vars),
+            'half': self.half
+        }
+        return destination
+
+    def load_state_dict(self, state_dict, strict=True):
+        self.half = state_dict['half']
+        if self.half:
+            self.transform = lambda x: x.half()
+        self.model.load_state_dict(state_dict['model'], strict=strict)

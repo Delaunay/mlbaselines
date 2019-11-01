@@ -1,9 +1,6 @@
 import functools
-import math
-
-import torch
+from olympus.utils import info
 import torch.nn as nn
-import torch.utils.model_zoo as model_zoo
 
 
 # All models here are assumed to accept RGB input, thus 3 input channels.
@@ -194,17 +191,20 @@ class ResNet(nn.Module):
 
 def build(block, cfg, input_size, output_size):
     if input_size == (1, 28, 28):
-        log.info('Using PreActResNet architecture for MNIST')
-        conv = {}
-        avgpool = {}
+        info('Using PreActResNet architecture for MNIST')
+
+        conv = {'kernel_size': 3, 'stride': 1, 'padding': 1}
+        avgpool = {'kernel_size': 4}
         maxpool = {}
     elif input_size == (3, 32, 32):
-        log.info('Using PreActResNet architecture for CIFAR10/100')
+        info('Using PreActResNet architecture for CIFAR10/100')
+
         conv = {'kernel_size': 3, 'stride': 1, 'padding': 1}
         avgpool = {'kernel_size': 4}
         maxpool = {}
     elif input_size == (3, 64, 64):
-        log.info('Using PreActResNet architecture for TinyImageNet')
+        info('Using PreActResNet architecture for TinyImageNet')
+
         conv = {'kernel_size': 7, 'stride': 2, 'padding': 3}
         avgpool = {'kernel_size': 4}
         maxpool = {'kernel_size': 3, 'stride': 2, 'padding': 1}

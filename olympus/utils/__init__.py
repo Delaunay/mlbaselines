@@ -1,4 +1,5 @@
 import logging
+import os
 import sys
 import time
 
@@ -10,6 +11,22 @@ import torch
 
 A = TypeVar('A')
 R = TypeVar('R')
+
+
+def fetch_device():
+    """Set the default device to CPU if cuda is not available"""
+    default = 'cpu'
+    if torch.cuda.is_available():
+        default = 'cuda'
+
+    return torch.device(os.environ.get('DEVICE_TYPE', default))
+
+
+def show_dict(dictionary):
+    print('-' * 80)
+    for k, v in dictionary.items():
+        print(f'{k:>30}: {v}')
+    print('-' * 80)
 
 
 class TimeThrottler:
@@ -101,7 +118,7 @@ def parse_uri(uri):
     return arguments
 
 
-def storage(uri):
+def get_storage(uri):
     """Shorten the storage config from orion that is super long an super confusing
         <storage_type>:<database>:<file or address>
 

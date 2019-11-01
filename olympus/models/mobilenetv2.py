@@ -4,13 +4,16 @@ Mobile Networks for Classification, Detection and Segmentation" for more details
 
 Note: Taken from https://github.com/kuangliu/pytorch-cifar/blob/master/models/mobilenetv2.py
 """
+
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
+from olympus.utils import info
+
 
 class Block(nn.Module):
-    '''expand + depthwise + pointwise'''
+    """expand + depthwise + pointwise"""
     def __init__(self, in_planes, out_planes, expansion, stride):
         super(Block, self).__init__()
         self.stride = stride
@@ -83,15 +86,18 @@ def build(input_size, output_size):
            [6, 320, 1, 1]]
 
     if input_size == (1, 28, 28):
-        log.info('Using MobileNetV2 architecture for MNIST')
+        info('Using MobileNetV2 architecture for MNIST')
+
         conv = {}
         avgpool = {}
     elif input_size == (3, 32, 32):
-        log.info('Using MobileNetV2 architecture for CIFAR10/100')
+        info('Using MobileNetV2 architecture for CIFAR10/100')
+
         conv = {'kernel_size': 3, 'stride': 1, 'padding': 1}
         avgpool = {'kernel_size': 4}
     elif input_size == (3, 64, 64):
-        log.info('Using MobileNetV2 architecture for TinyImageNet')
+        info('Using MobileNetV2 architecture for TinyImageNet')
+
         conv = {'kernel_size': 3, 'stride': 2, 'padding': 1}
         avgpool = {'kernel_size': 7}
         cfg[1][-1] = 2

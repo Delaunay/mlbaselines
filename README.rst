@@ -4,7 +4,8 @@ Olympus
 .. code-block:: bash
 
     $ pip install olympus
-    $ olympus --devices 0 1 2 3 --name classification --batch-size 32 --epochs 10 --seed 0
+    $ export OLYMPUS_DATA_PATH=/fast
+    $ olympus --devices 0 classification --batch-size 32 --epochs 10 --seed 0 --dataset mnist --model resnet18
     {
       "train_accuracy": 0.6458333333333334,
       "train_loss": 2.109870990117391,
