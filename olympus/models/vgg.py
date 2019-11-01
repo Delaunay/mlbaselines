@@ -25,6 +25,7 @@ class VGG(nn.Module):
         if input_size == (1, 28, 28):
             log.info('Using VGG architecture for MNIST')
             classifier = {'input': 512, 'hidden': None}
+            layers = layers[:-1]  # Drop last maxpool
         elif input_size == (3, 32, 32):
             log.info('Using VGG architecture for CIFAR10/100')
             classifier = {'input': 512, 'hidden': None}

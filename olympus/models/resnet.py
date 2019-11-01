@@ -183,6 +183,7 @@ class ResNet(nn.Module):
 
         if self.avgpool:
             x = self.avgpool(x)
+
         x = x.view(x.size(0), -1)
         x = self.fc(x)
 
@@ -192,7 +193,6 @@ class ResNet(nn.Module):
 def build(block, cfg, input_size, output_size):
     if input_size == (1, 28, 28):
         info('Using PreActResNet architecture for MNIST')
-
         conv = {'kernel_size': 3, 'stride': 1, 'padding': 1}
         avgpool = {'kernel_size': 4}
         maxpool = {}
@@ -206,7 +206,7 @@ def build(block, cfg, input_size, output_size):
         info('Using PreActResNet architecture for TinyImageNet')
 
         conv = {'kernel_size': 7, 'stride': 2, 'padding': 3}
-        avgpool = {'kernel_size': 4}
+        avgpool = {'kernel_size': 2}
         maxpool = {'kernel_size': 3, 'stride': 2, 'padding': 1}
 
     model = ResNet(

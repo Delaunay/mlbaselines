@@ -87,19 +87,16 @@ def build(input_size, output_size):
 
     if input_size == (1, 28, 28):
         info('Using MobileNetV2 architecture for MNIST')
-
-        conv = {}
-        avgpool = {}
+        conv = {'kernel_size': 3, 'stride': 1, 'padding': 1}
+        avgpool = {'kernel_size': 4}
     elif input_size == (3, 32, 32):
         info('Using MobileNetV2 architecture for CIFAR10/100')
-
         conv = {'kernel_size': 3, 'stride': 1, 'padding': 1}
         avgpool = {'kernel_size': 4}
     elif input_size == (3, 64, 64):
         info('Using MobileNetV2 architecture for TinyImageNet')
-
         conv = {'kernel_size': 3, 'stride': 2, 'padding': 1}
-        avgpool = {'kernel_size': 7}
+        avgpool = {'kernel_size': 2}
         cfg[1][-1] = 2
     # TODO: Add support for ImageNet
 

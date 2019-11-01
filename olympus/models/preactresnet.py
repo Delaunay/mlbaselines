@@ -147,8 +147,8 @@ def build(block, cfg, input_size, output_size):
 
     if input_size == (1, 28, 28):
         log.info('Using PreActResNet architecture for MNIST')
-        conv = {}
-        avgpool = {}
+        conv = {'kernel_size': 3, 'stride': 1, 'padding': 1}
+        avgpool = {'kernel_size': 4}
         maxpool = {}
     elif input_size == (3, 32, 32):
         log.info('Using PreActResNet architecture for CIFAR10/100')
@@ -158,9 +158,8 @@ def build(block, cfg, input_size, output_size):
     elif input_size == (3, 64, 64):
         log.info('Using PreActResNet architecture for TinyImageNet')
         conv = {'kernel_size': 7, 'stride': 2, 'padding': 3}
-        avgpool = {'kernel_size': 4}
+        avgpool = {'kernel_size': 2}
         maxpool = {'kernel_size': 3, 'stride': 2, 'padding': 1}
-
 
     return PreActResNet(block, cfg, input_size=input_size, num_classes=output_size, conv=conv,
                         maxpool=maxpool, avgpool=avgpool)
