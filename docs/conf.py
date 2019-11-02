@@ -34,6 +34,8 @@ docs_src_path = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, docs_src_path)
 src_path = os.path.abspath(os.path.join(docs_src_path, '..', 'olympus'))
 sys.path.insert(0, src_path)
+src_path = os.path.abspath(os.path.join(docs_src_path, '..'))
+sys.path.insert(0, src_path)
 
 
 import olympus  # noqa
