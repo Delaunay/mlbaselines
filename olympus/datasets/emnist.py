@@ -18,9 +18,6 @@ class BalancedEMNIST(AllDataset):
     classes: List[int]
         Return the mapping between samples index and their class
 
-    dataset: TorchDataset
-        Underlying dataset
-
     input_shape: (28, 28)
         Size of a sample stored in this dataset
 

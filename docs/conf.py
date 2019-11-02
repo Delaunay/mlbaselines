@@ -37,7 +37,6 @@ sys.path.insert(0, src_path)
 src_path = os.path.abspath(os.path.join(docs_src_path, '..'))
 sys.path.insert(0, src_path)
 
-
 import olympus  # noqa
 
 # -- General configuration ------------------------------------------------

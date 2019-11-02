@@ -6,8 +6,7 @@ from torch.utils.data import Dataset
 
 
 class HDF5Dataset(Dataset):
-    """Dataset wrapping HDF5 tensors.
-    """
+    """Dataset wrapping HDF5 tensors."""
 
     def __init__(self, file_name, transform=None, target_transform=None):
         self.file_name = file_name

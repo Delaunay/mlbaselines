@@ -72,7 +72,7 @@ def download(data_path):
         print("Zip file already downloaded")
         return
 
-    # download 
+    # download
     url = 'http://cs231n.stanford.edu/tiny-imagenet-200.zip'
     u = urllib.request.urlopen(url)
     with open(get_zipfile_path(data_path), 'wb') as f:
@@ -176,17 +176,35 @@ def create_val_loader(dirpath):
 
 
 class TinyImageNet(AllDataset):
-    """
-    Properties
-    ----------
-    * 90,000 images in the training set
-    * 10,000 images in the validation set
-    * 10,000 images in the test set
-    * 200 classes
+    """Tiny Imagenet has 200 classes. Each class has 500 training images, 50 validation images, and 50 test images.
+    We have released the training and validation sets with images and annotations.
+    We provide both class labels and bounding boxes as annotations;
+    however, you are asked only to predict the class label of each image without localizing the objects.
+    The test set is released without labels. More at `tiny-imagenet <https://tiny-imagenet.herokuapp.com/>`_.
 
-    Reference
-    ---------
-    * `Specification <https://tiny-imagenet.herokuapp.com/>`_
+    Attributes
+    ----------
+    classes: List[int]
+        Return the mapping between samples index and their class
+
+    input_shape: (3, 64, 64)
+        Size of a sample stored in this dataset
+
+    target_shape: (200,)
+        The dataset is composed of 200 classes
+
+    train_size: 90000
+        Size of the train dataset
+
+    valid_size: 10000
+        Size of the validation dataset
+
+    test_size: 10000
+        Size of the test dataset
+
+    References
+    ----------
+    .. [1] Jiayu Wu, Qixiang Zhang, Guoxi Xu. "Tiny ImageNet Challenge", 2017
 
     """
     def __init__(self, data_path):
