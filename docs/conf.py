@@ -30,14 +30,13 @@ import os
 import re
 import sys
 
-import olympus # noqa
-
 docs_src_path = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, docs_src_path)
-# src_path = os.path.abspath(os.path.join(docs_src_path, '..', 'olympus'))
-# sys.path.insert(0, src_path)
-sys.path.insert(0, os.path.dirname(olympus.__file__))
+src_path = os.path.abspath(os.path.join(docs_src_path, '..', 'olympus'))
+sys.path.insert(0, src_path)
 
+
+import olympus  # noqa
 
 # -- General configuration ------------------------------------------------
 
