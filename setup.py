@@ -11,9 +11,17 @@ if __name__ == '__main__':
         author='Pierre Delaunay, Xavier Bouthillier',
         packages=[
             'olympus',
+            'olympus.accumulators',
             'olympus.datasets',
-            'olympus.tasks',
             'olympus.distributed',
+            'olympus.hpo',
+            'olympus.metrics',
+            'olympus.models',
+            'olympus.optimizers',
+            'olympus.reinforcement',
+            'olympus.scripts',
+            'olympus.tasks',
+            'olympus.transforms',
             'olympus.utils',
         ],
         install_requires=[

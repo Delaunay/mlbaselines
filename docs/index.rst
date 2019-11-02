@@ -8,7 +8,6 @@
    datasets/index
    distributed/index
    hpo/index
-   meta/index
    metrics/index
    models/index
    optimizers/index

@@ -10,6 +10,11 @@ class AllDataset(TorchDataset):
     tests.
 
     Read more on how Olympus uses custom splits to evaluate model performance at :ref XYZ
+
+    Attributes
+    ----------
+    dataset: TorchDataset
+        Underlying dataset (concatenation of original train and test sets)
     """
     # Underlying Pytorch dataset
     dataset: TorchDataset = None

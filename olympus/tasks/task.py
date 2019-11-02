@@ -1,9 +1,7 @@
 import torch
 
-from olympus.meta import ReportMeta
 
-
-class Task(metaclass=ReportMeta):
+class Task:
     def __init__(self, device=None):
         self._device = device if device else torch.device('cpu')
 
