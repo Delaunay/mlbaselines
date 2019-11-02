@@ -22,7 +22,8 @@ if __name__ == '__main__':
             'orion',
             'h5py',
             'psycopg2-binary',
-            'gym'
+            'gym',
+            'tqdm'
         ],
         setup_requires=['setuptools'],
         tests_require=['pytest', 'flake8', 'codecov', 'pytest-cov'],
