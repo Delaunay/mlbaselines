@@ -17,11 +17,12 @@ if __name__ == '__main__':
             'olympus.utils',
         ],
         install_requires=[
-            'dataclasses',
-            'typing',
             'torch',
             'torchvision',
-            'orion'
+            'orion',
+            'h5py',
+            'psycopg2-binary',
+            'gym'
         ],
         setup_requires=['setuptools'],
         tests_require=['pytest', 'flake8', 'codecov', 'pytest-cov'],
