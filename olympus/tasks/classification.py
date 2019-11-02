@@ -1,6 +1,3 @@
-import json
-import logging
-
 import torch
 
 from torch.nn import Module, CrossEntropyLoss
@@ -10,10 +7,32 @@ from olympus.tasks.task import Task
 from olympus.metrics import OnlineTrainAccuracy, ElapsedRealTime, SampleCount, ClassifierAdversary, MetricList
 
 
-logging.getLogger(__name__)
-
-
 class Classification(Task):
+    """Train a model to recognize a range of classes
+
+    Attributes
+    ----------
+    classifier: Module
+        Module taking sample data and returning the probability of the sample belonging to a range of classes
+
+    optimizer: Optimizer
+        Optimizer taking model's parameters
+
+    criterion: Module
+        Function evaluating the quality of the model's predictions, also named cost function or loss function
+
+    dataloader: Iterator
+        Batch sample iterator used to train the model
+
+    device:
+        Acceleration device to run the task on
+
+    storage: Storage
+        Where to save checkpoints in case of failures
+
+    metrics: MetricList
+        List of metrics to compute for the tasks
+    """
     def __init__(self, classifier, optimizer, lr_scheduler, dataloader, criterion=None, device=None,
                  storage=None):
         super(Classification, self).__init__(device=device)
@@ -56,7 +75,7 @@ class Classification(Task):
             for k, v in state.items():
                 if torch.is_tensor(v):
                     state[k] = v.cuda()
-                    
+
         self.lr_scheduler.load_state_dict(state_dict['lr_scheduler'])
         self.dataloader.sampler.load_state_dict(state_dict['sampler'])
         self.metrics.load_state_dict(state_dict['metrics'])

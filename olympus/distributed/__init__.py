@@ -70,7 +70,7 @@ def get_main_script():
     return stack[-1].filename
 
 
-def launch(node, cmd, environ):
+def ssh_launch(node, cmd, environ):
     cmd = f'ssh -q {node} nohup {cmd} > {node}.out 2> {node}.err < /dev/null &'
     info(cmd)
     return True

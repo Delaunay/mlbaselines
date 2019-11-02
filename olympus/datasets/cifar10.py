@@ -6,18 +6,41 @@ from olympus.datasets.dataset import AllDataset
 
 
 class CIFAR10(AllDataset):
-    """
-    Properties
-    ----------
-    * 40,000 images in the training set
-    * 10,000 images in the validation set
-    * 10,000 images in the test set
-    * 10 classes
+    """The CIFAR-10 dataset (Canadian Institute For Advanced Research) is a collection of images
+    that are commonly used to train machine learning and computer vision algorithms.
+    It is one of the most widely used datasets for machine learning research.
+    The CIFAR-10 dataset contains 60,000 32x32 color images in 10 different classes.
+    More on `wikipedia <https://en.wikipedia.org/wiki/CIFAR-10>`_.
 
-    Reference
-    ---------
-    * `Specification <https://www.cs.toronto.edu/~kriz/cifar.html>`_
-    * `wikipedia <https://en.wikipedia.org/wiki/CIFAR-10>`_
+    The full specification can be found at `here <https://www.cs.toronto.edu/~kriz/cifar.html>`_.
+    See also :class:`.CIFAR100`
+
+    Attributes
+    ----------
+    classes: List[int]
+        Return the mapping between samples index and their class
+
+    dataset: TorchDataset
+        Underlying dataset
+
+    input_shape: (3, 32, 32)
+        Size of a sample stored in this dataset
+
+    target_shape: (10,)
+        There are 10 classes (airplane, automobile, bird, cat, deer, dog, frog, horse, ship, truck)
+
+    train_size: 40000
+        Size of the train dataset
+
+    valid_size: 10000
+        Size of the validation dataset
+
+    test_size: 10000
+        Size of the test dataset
+
+    References
+    ----------
+    .. [1] Alex Krizhevsky, "Learning Multiple Layers of Features from Tiny Images", 2009.
 
     """
     def __init__(self, data_path):

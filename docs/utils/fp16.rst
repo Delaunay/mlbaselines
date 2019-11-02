@@ -1,0 +1,7 @@
+olympus.utils.fp16 module
+=========================
+
+.. automodule:: olympus.utils.fp16
+    :members:
+    :undoc-members:
+    :show-inheritance:

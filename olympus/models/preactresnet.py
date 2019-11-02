@@ -1,9 +1,10 @@
-'''Pre-activation ResNet in PyTorch.
+"""Pre-activation ResNet in PyTorch"""
 
-Reference:
-[1] Kaiming He, Xiangyu Zhang, Shaoqing Ren, Jian Sun
-    Identity Mappings in Deep Residual Networks. arXiv:1603.05027
-'''
+# .. rubric:: References
+#
+# .. [PreactResnet] Kaiming He, Xiangyu Zhang, Shaoqing Ren, Jian Sun:
+#     Identity Mappings in Deep Residual Networks. arXiv:1603.05027
+
 import functools
 import logging
 
@@ -16,7 +17,7 @@ log = logging.getLogger(__name__)
 
 
 class PreActBlock(nn.Module):
-    '''Pre-activation version of the BasicBlock.'''
+    """Pre-activation version of the BasicBlock."""
     expansion = 1
 
     def __init__(self, in_planes, planes, stride=1, first=False):
@@ -46,7 +47,7 @@ class PreActBlock(nn.Module):
 
 
 class PreActBottleneck(nn.Module):
-    '''Pre-activation version of the original Bottleneck module.'''
+    """Pre-activation version of the original Bottleneck module."""
     expansion = 4
 
     def __init__(self, in_planes, planes, stride=1, first=False):

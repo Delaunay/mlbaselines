@@ -11,7 +11,8 @@ if __name__ == '__main__':
         author='Pierre Delaunay, Xavier Bouthillier',
         packages=[
             'olympus',
-            'olympus.classification',
+            'olympus.datasets',
+            'olympus.tasks',
             'olympus.distributed',
             'olympus.utils',
         ],
@@ -31,11 +32,12 @@ if __name__ == '__main__':
         },
         extras_require={
             'geffnet': ['geffnet==0.9.3'],
+            'rl': ['gym'],
             # NVIDIA Apex would go there if there was a pip to give
             # note that this does not work you need to install it manually
             # > pip install git+git://github.com/NVIDIA/apex.git@606c3dcccd6ca70
-            'float16': [
-                'git+git://github.com/NVIDIA/apex.git@606c3dcccd6ca70'
-            ]
+            # 'float16': [
+            #    'git+git://github.com/NVIDIA/apex.git@606c3dcccd6ca70'
+            # ]
         }
     )

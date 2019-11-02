@@ -8,21 +8,42 @@ from olympus.datasets.transform import minimize
 
 
 class MNIST(AllDataset):
-    """
-    Properties
+    """The MNIST database (Modified National Institute of Standards and Technology database)
+    is a large database of handwritten digits that is commonly used for training various image processing systems.
+    The database is also widely used for training and testing in the field of machine learning.
+    More on `wikipedia <https://en.wikipedia.org/wiki/MNIST_database>`_.
+
+    The full specification can be found at `here <http://yann.lecun.com/exdb/mnist/>`_.
+    See also :class:`.BalancedEMNIST` and :class:`.FashionMNIST`
+
+    Attributes
     ----------
-    * 50,000 images in the training set
-    * 10,000 images in the validation set
-    * 10,000 images in the test set
+    classes: List[int]
+        Return the mapping between samples index and their class
 
-    Reference
-    ---------
-    * `Specification <http://yann.lecun.com/exdb/mnist/>`_
-    * `wikipedia <https://en.wikipedia.org/wiki/MNIST_database>`_
+    dataset: TorchDataset
+        Underlying dataset
 
-    Related
-    -------
-    * Extended MNIST: EMNIST (240 000 + 40 000 images)
+    input_shape: (28, 28)
+        Size of a sample returned after transformation
+
+    target_shape: (10,)
+        The classes are numbers from 0 to 9
+
+    train_size: 50000
+        Size of the train dataset
+
+    valid_size: 10000
+        Size of the validation dataset
+
+    test_size: 10000
+        Size of the test dataset
+
+    References
+    ----------
+    .. [1] Y. LeCun, L. Bottou, Y. Bengio, and P. Haffner. "Gradient-based learning applied to document recognition."
+            Proceedings of the IEEE, 86(11):2278-2324, November 1998.
+
     """
     def __init__(self, data_path, mini=False):
         transformations = [

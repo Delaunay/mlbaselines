@@ -1,8 +1,16 @@
 
 from .orion import OrionClient
+from orion.client.experiment import ExperimentClient
 
 
 class TrialIterator:
+    """Take an Orion experiment and iterate through all the trials it suggests
+
+    Parameters
+    ----------
+    experiment: ExperimentClient
+        Orion Experiment
+    """
     def __init__(self, experiment):
         self.experiment = experiment
 

@@ -19,7 +19,7 @@ class AllDataset(TorchDataset):
     # ref...
     transforms: Callable = lambda sample: sample
 
-    def __init__(self, dataset, input_shape=None, output_shape=None,
+    def __init__(self, dataset, input_shape=None, target_shape=None,
                  train_size=None, valid_size=None, test_size=None, transforms=None):
         self.dataset = dataset
         self._input_shape = input_shape
@@ -27,7 +27,7 @@ class AllDataset(TorchDataset):
         self._valid_size = valid_size
         self._test_size = test_size
         self._input_shape = input_shape
-        self._output_shape = output_shape
+        self._target_shape = target_shape
 
         if transforms is None:
             transforms = lambda data: data
@@ -42,43 +42,51 @@ class AllDataset(TorchDataset):
 
     @property
     def train_size(self):
+        """Size of the training set"""
         if self._train_size is None:
             return len(self) - self.test_size - self.valid_size
 
     @property
     def valid_size(self):
+        """Size of the validation set"""
         if self._valid_size is None:
             return self.test_size
 
     @property
     def test_size(self):
+        """Size of the test set"""
         return self._test_size
 
     def __getitem__(self, idx):
+        """Return a sample from the entire dataset"""
         return self.dataset[idx]
 
     def __len__(self):
+        """Return the number of samples inside the dataset"""
         return len(self.dataset)
 
     @property
     def input_shape(self):
+        """Return the size of the samples"""
         if self._input_shape is None:
             return tuple(self.transforms['train'](self.dataset[0][0]).shape)
 
         return self._input_shape
 
     @property
-    def output_shape(self):
-        if self._output_shape is None:
+    def target_shape(self):
+        """Return the size of the target"""
+        if self._target_shape is None:
             if isinstance(self.dataset[0][1], int):
-                self._output_shape = (len(self.classes), )
+                self._target_shape = (len(self.classes), )
             else:
-                self._output_shape = self.dataset[0][1].shape
+                self._target_shape = self.dataset[0][1].shape
 
-        return self._output_shape
+        return self._target_shape
 
     @property
     def classes(self):
+        """Return the mapping between samples index and their class"""
         classes = defaultdict(list)
 
         for index, [_, y] in enumerate(self.dataset):

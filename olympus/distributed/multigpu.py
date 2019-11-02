@@ -44,8 +44,23 @@ def arguments(parser):
     return parser
 
 
-def enable_distributed_process(rank, dist_url, world_size,
-                               silence_stdout=options('distributed.noprint', True)):
+def enable_distributed_process(rank, dist_url, world_size, silence_stdout=options('distributed.noprint', True)):
+    """Initialize distributed system, if all required arguments are met, do nothing if not
+
+    Parameters
+    ----------
+    rank: Optional[int]
+        Process rank
+
+    dist_url: str
+        Distributed backend uri
+
+    world_size: int
+        Number of processes running in parallel
+
+    silence_stdout: bool
+        Silence the standard output for ranks superior to 0
+    """
     global _stdout
 
     if rank is None:
