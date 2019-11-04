@@ -20,7 +20,10 @@ class Metric:
     def on_new_batch(self, step, task, input, context):
         pass
 
-    def finish(self, task):
+    def start(self, task=None):
+        pass
+
+    def finish(self, task=None):
         pass
 
     def value(self):
@@ -109,6 +112,10 @@ class MetricList:
 
         self.batch_id += 1
         self._previous_step = step
+
+    def start(self, task=None):
+        for m in self.metrics:
+            m.start(task)
 
     def finish(self, task=None):
         for m in self.metrics:
@@ -295,6 +302,7 @@ class ProgressView(Metric):
         self.max_epoch = max(self.epoch, self.max_epoch)
         self.show_progress()
         self.step = 0
+        print()
 
     def on_new_batch(self, step, task, input, context):
         self.step = step

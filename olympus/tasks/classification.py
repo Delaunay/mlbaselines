@@ -3,6 +3,7 @@ import torch
 from torch.nn import Module, CrossEntropyLoss
 from torch.optim import Optimizer
 
+from olympus.utils import info
 from olympus.tasks.task import Task
 from olympus.metrics import OnlineTrainAccuracy, ElapsedRealTime, SampleCount, ProgressView, MetricList
 
@@ -84,6 +85,7 @@ class Classification(Task):
         self.metrics.load_state_dict(state_dict['metrics'])
 
     def checkpoint(self, epoch):
+        info('Saving checkpoint')
         self.storage.save(
             'checkpoint',
             dict(
@@ -95,6 +97,7 @@ class Classification(Task):
                 metrics=self.metrics.state_dict()
             )
         )
+        info('Checkpoint saved')
 
     @property
     def metrics(self):

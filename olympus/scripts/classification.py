@@ -91,9 +91,8 @@ def train(dataset, model, optimizer, lr_scheduler, init, epochs,
 
     seed(model_seed)
 
-    model_name = model
     model = Model(
-        model_name,
+        model,
         half=kwargs.get('half', False),
         input_size=loader.datasets.input_shape,
         output_size=loader.datasets.target_shape[0]
@@ -105,15 +104,13 @@ def train(dataset, model, optimizer, lr_scheduler, init, epochs,
     #       (i.e. large output layers) This may be better integrated in the model builder.
     model = distributed.data_parallel(model)
 
-    optimizer_name = optimizer
-    optimizer = Optimizer(optimizer_name, half=kwargs.get('half', False))
+    optimizer = Optimizer(optimizer, half=kwargs.get('half', False))
     optimizer = optimizer.init_optimizer(
         model.parameters(),
         weight_decay=kwargs['weight_decay'],
         **optimizer.get_params(kwargs))
 
-    lr_scheduler_name = lr_scheduler
-    lr_schedule = LRSchedule(lr_scheduler_name)
+    lr_schedule = LRSchedule(lr_scheduler)
     lr_schedule.init_schedule(
         optimizer,
         **lr_schedule.get_params(kwargs)
