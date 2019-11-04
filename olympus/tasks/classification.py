@@ -136,7 +136,7 @@ class Classification(Task):
         predictions = self.classifier(batch.to(device=self.device))
         loss = self.criterion(predictions, target.to(device=self.device))
 
-        loss.backward()
+        self.optimizer.backward(loss)
         self.optimizer.step()
 
         results = {
@@ -169,3 +169,61 @@ class Classification(Task):
         acc = (predicted == target.to(device=self.device)).sum()
 
         return acc.float() / target.size(0), loss
+
+    def summary(self):
+        GenerateSummary().task_summary(self)
+
+
+class GenerateSummary:
+    dispatch = {
+        'Model': lambda model: model.model,
+        'Optimizer': lambda optimizer: optimizer.optimizer,
+        'DataLoader': lambda data: data.dataset,
+        'TransformedSubset': lambda data: data.dataset,
+        'MetricList': lambda metrics: metrics.metrics,
+        'LRSchedule': lambda schedule: schedule.lr_scheduler
+    }
+
+    _rename = {
+        '_metrics': 'metrics',
+        '_device': 'device',
+        '_first_epoch': 'first_epoch'
+    }
+
+    def is_nested(self, name):
+        return name in GenerateSummary.dispatch
+
+    def retrieve_nested(self, name, obj):
+        return GenerateSummary.dispatch.get(name, lambda x: x)(obj)
+
+    def rename(self, name):
+        return GenerateSummary._rename.get(name, name)
+
+    def get_name(self, attr, obj, type_name, depth=0):
+        print(f'{"  " * depth} {self.rename(attr)}: ', end='')
+
+        if not self.is_nested(type_name):
+            if type_name == 'device':
+                print(str(obj))
+            elif type_name == 'list':
+                print()
+                for item in obj:
+                    print(f'{"  " * (depth + 1)} - {type(item).__name__}')
+            else:
+                print(type_name)
+
+        else:
+            print()
+            nested = self.retrieve_nested(type_name, obj)
+            nested_type = type(nested).__name__
+            self.get_name(type_name, nested, nested_type, depth + 1)
+
+    def task_summary(self, obj):
+        print('=' * 80)
+        print(type(obj).__name__)
+        print('-' * 80)
+        for attr, value in obj.__dict__.items():
+            type_name = type(value).__name__
+            self.get_name(attr, value, type_name)
+        print('=' * 80)
+

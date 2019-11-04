@@ -4,6 +4,15 @@ from olympus.models.inits.base import Initialization
 
 
 class Kaiming(Initialization):
+    """
+    References
+    ----------
+    .. [1] Xavier Glorot, Yoshua Bengio,
+        "Understanding the difficulty of training deep feedforward neural networks"
+
+    .. [2] Kaiming He, Xiangyu Zhang, Shaoqing Ren, Jian Sun
+        "Delving Deep into Rectifiers: Surpassing Human-Level Performance on ImageNet Classification", Feb 2015
+    """
     def __call__(self, model):
         """Init model using given function for Linear and Conv2d, and {0, 1} for BatchNorm."""
         # TODO: detect_non_linearities and pass relu or leaky_relu according to architecture.
@@ -20,6 +29,7 @@ class Kaiming(Initialization):
 
 
 class KaimingUniform(Kaiming):
+    """See :class`.Kaiming`"""
 
     def __init__(self, a=0, mode='fan_in'):
         self.a = a
@@ -30,11 +40,13 @@ class KaimingUniform(Kaiming):
 
 
 class KaimingNormal(Initialization):
+    """See :class`.Kaiming`"""
+
     def __init__(self, a=0, mode='fan_in'):
         self.a = a
         self.mode = mode
 
-    def layer_init(self, weight):
+    def layer_init(self, weight, non_linearity):
         torch.nn.init.kaiming_normal_(weight, self.a, self.mode, non_linearity)
 
 

@@ -7,6 +7,20 @@ log = logging.getLogger(__name__)
 
 
 class LeNet(nn.Module):
+    """
+    `Paper <http://vision.stanford.edu/cs598_spring07/papers/Lecun98.pdf>`_.
+
+    Attributes
+    ----------
+    input_size: (1, 28, 28), (3, 32, 32), (3, 64, 64)
+        Supported input sizes
+
+    References
+    ----------
+    .. [1] Y. LeCun, L. Bottou, Y. Bengio, and P. Haffner.
+        "Gradient-based learning applied to document recognition."
+        Proceedings of the IEEE, 86(11):2278-2324, November 1998.
+    """
     def __init__(self, input_size, num_classes):
         super(LeNet, self).__init__()
         n_channels = input_size[0]

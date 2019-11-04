@@ -1,5 +1,5 @@
-olympus.models.lenet module
-===========================
+LeNet
+=====
 
 .. automodule:: olympus.models.lenet
     :members:

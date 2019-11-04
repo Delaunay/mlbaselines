@@ -1,12 +1,7 @@
-import logging
-import math
-
 import torch
 import torch.nn as nn
-import torch.utils.model_zoo as model_zoo
 
-
-log = logging.getLogger(__name__)
+from olympus.utils import info
 
 # Possible configuration variants of VGG network
 cfg = {
@@ -18,19 +13,31 @@ cfg = {
 
 
 class VGG(nn.Module):
+    """Details on `arxiv <https://arxiv.org/abs/1409.1556>`_.
+
+    Attributes
+    ----------
+    input_size: (1, 28, 28), (3, 32, 32), (3, 64, 64)
+
+    References
+    ----------
+    .. [1] Karen Simonyan, Andrew Zisserman.
+        "Very Deep Convolutional Networks for Large-Scale Image Recognition", Apr 2015
+
+    """
 
     def __init__(self, layers, input_size, num_classes, batch_norm):
         super(VGG, self).__init__()
 
         if input_size == (1, 28, 28):
-            log.info('Using VGG architecture for MNIST')
+            info('Using VGG architecture for MNIST')
             classifier = {'input': 512, 'hidden': None}
             layers = layers[:-1]  # Drop last maxpool
         elif input_size == (3, 32, 32):
-            log.info('Using VGG architecture for CIFAR10/100')
+            info('Using VGG architecture for CIFAR10/100')
             classifier = {'input': 512, 'hidden': None}
         elif input_size == (3, 64, 64):
-            log.info('Using VGG architecture for TinyImageNet')
+            info('Using VGG architecture for TinyImageNet')
             classifier = {'input': 2048, 'hidden': 1024}
         # TODO: Add support for ImageNet
         else:
@@ -38,7 +45,7 @@ class VGG(nn.Module):
                 'There is no VGG architecture for an input size {}'.format(input_size))
 
         self.features = self.make_layers(input_size[0], layers, batch_norm)
-        
+
         if classifier.get('hidden'):
             self.classifier = nn.Sequential(
                 nn.Linear(classifier['input'], classifier['hidden']),
@@ -51,7 +58,7 @@ class VGG(nn.Module):
             )
         else:
             self.classifier = nn.Linear(classifier['input'], num_classes)
-            
+
         self._initialize_weights()
 
     def forward(self, x):
@@ -75,7 +82,7 @@ class VGG(nn.Module):
 
     def make_layers(self, in_channels, cfg, batch_norm):
         layers = []
-        
+
         for v in cfg:
             if isinstance(v, str) and v.startswith('M'):
                 layers += [nn.MaxPool2d(kernel_size=len(v) + 1, stride=len(v) + 1)]
@@ -88,8 +95,7 @@ class VGG(nn.Module):
                     layers += [conv2d, nn.ReLU(inplace=True)]
                 in_channels = v
         return nn.Sequential(*layers)
-        
-        
+
     def save_computations(self, input, output):
         setattr(self, "input", input)
         setattr(self, "output", output)

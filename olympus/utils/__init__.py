@@ -17,6 +17,10 @@ A = TypeVar('A')
 R = TypeVar('R')
 
 
+class MissingArgument(Exception):
+    pass
+
+
 def fetch_device():
     """Set the default device to CPU if cuda is not available"""
     default = 'cpu'

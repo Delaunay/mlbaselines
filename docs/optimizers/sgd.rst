@@ -1,5 +1,5 @@
-olympus.optimizers.sgd module
-=============================
+SGD
+===
 
 .. automodule:: olympus.optimizers.sgd
     :members:

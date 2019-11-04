@@ -22,6 +22,7 @@ def conv3x3(in_planes, out_planes, stride=1):
 
 
 class BasicBlock(nn.Module):
+    """See :class`.ResNet` for license and references`"""
     expansion = 1
 
     def __init__(self, inplanes, planes, stride=1, downsample=None):
@@ -54,6 +55,7 @@ class BasicBlock(nn.Module):
 
 
 class Bottleneck(nn.Module):
+    """See :class`.ResNet` for license and references`"""
     expansion = 4
 
     def __init__(self, inplanes, planes, stride=1, downsample=None):
@@ -93,7 +95,53 @@ class Bottleneck(nn.Module):
 
 
 class ResNet(nn.Module):
+    """A residual neural network (ResNet) is an artificial neural network (ANN) of a kind
+    that builds on constructs known from pyramidal cells in the cerebral cortex.
+    Residual neural networks do this by utilizing skip connections, or short-cuts to jump over some layers.
+    Typical ResNet models are implemented with double- or triple- layer skips that contain nonlinearities (ReLU) and
+    batch normalization in between.
+    An additional weight matrix may be used to learn the skip weights; these models are known as HighwayNets.
+    Models with several parallel skips are referred to as DenseNets.
+    In the context of residual neural networks, a non-residual network may be described as a plain network.
+    More on `wikipedia <https://en.wikipedia.org/wiki/Residual_neural_network>`_.
 
+    Paper available on `arxiv <https://arxiv.org/abs/1512.03385>`_.
+    Original source `github <https://github.com/kuangliu/pytorch-cifar/blob/master/models/resnet.py>`_.
+
+    Attributes
+    ----------
+    input_size: (1, 28, 28), (3, 32, 32), (3, 64, 64)
+
+    References
+    ----------
+    .. [1] Kaiming He, Xiangyu Zhang, Shaoqing Ren, Jian Sun.
+        "Deep Residual Learning for Image Recognition", Dec 2015
+
+    Notes
+    -----
+    MIT License
+
+    Copyright (c) 2017 liukuang
+
+    Permission is hereby granted, free of charge, to any person obtaining a copy
+    of this software and associated documentation files (the "Software"), to deal
+    in the Software without restriction, including without limitation the rights
+    to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+    copies of the Software, and to permit persons to whom the Software is
+    furnished to do so, subject to the following conditions:
+
+    The above copyright notice and this permission notice shall be included in all
+    copies or substantial portions of the Software.
+
+    THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+    IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+    FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+    AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+    LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+    OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+    SOFTWARE.
+
+    """
     def __init__(self, block, layers, input_size, conv, maxpool, avgpool, num_classes):
         self.inplanes = 64
         super(ResNet, self).__init__()
@@ -173,6 +221,9 @@ class ResNet(nn.Module):
 
 
 def build(block, cfg, input_size, output_size):
+    if isinstance(output_size, tuple):
+        output_size = output_size[0]
+
     if input_size == (1, 28, 28):
         info('Using PreActResNet architecture for MNIST')
         conv = {'kernel_size': 3, 'stride': 1, 'padding': 1}

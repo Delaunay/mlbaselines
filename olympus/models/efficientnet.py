@@ -1,4 +1,26 @@
 def delayed_geffnet(name):
+    """Convolutional Neural Networks (ConvNets) are commonly developed at a fixed resource budget,
+    and then scaled up for better accuracy if more resources are available. In this paper,
+    we systematically study model scaling and identify that carefully balancing
+    network depth, width, and resolution can lead to better performance.
+    Based on this observation, we propose a new scaling method that uniformly scales all dimensions of
+    depth/width/resolution using a simple yet highly effective compound coefficient.
+    We demonstrate the effectiveness of this method on scaling up MobileNets and ResNet.
+    More on `arxiv <https://arxiv.org/abs/1905.11946>`_
+
+    Source code available at `github <https://github.com/rwightman/gen-efficientnet-pytorch>`_
+
+    Attributes
+    ----------
+    input_size: (2, 224, 224)
+        expected sample size
+
+    References
+    ----------
+    .. [1] Mingxing Tan, Quoc V. Le.
+        "EfficientNet: Rethinking Model Scaling for Convolutional Neural Networks", Jun 2019
+
+    """
 
     def make_geffnet(input_size, output_size):
 
@@ -10,7 +32,9 @@ def delayed_geffnet(name):
             raise
 
         # pytorch is CHW
-        return geffnet.create_model(name, num_classes=output_size, in_chans=input_size[0])
+        model = geffnet.create_model(name, num_classes=output_size, in_chans=input_size[0])
+        model.__doc__ = delayed_geffnet.__doc__
+        return model
 
     return make_geffnet
 

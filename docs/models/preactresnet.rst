@@ -1,5 +1,5 @@
-olympus.models.preactresnet module
-==================================
+PreActResnet
+============
 
 .. automodule:: olympus.models.preactresnet
     :members:

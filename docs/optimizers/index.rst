@@ -1,8 +1,8 @@
 Optimizers
 ==========
 
-Submodules
-----------
+Registered Optimizers
+---------------------
 
 .. toctree::
 
@@ -10,6 +10,14 @@ Submodules
    amsgrad
    base
    sgd
+
+
+.. toctree::
+   :caption: Schedules
+   :maxdepth: 1
+
+   schedules/index
+
 
 Module contents
 ---------------

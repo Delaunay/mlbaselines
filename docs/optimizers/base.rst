@@ -1,5 +1,5 @@
-olympus.optimizers.base module
-==============================
+Base
+====
 
 .. automodule:: olympus.optimizers.base
     :members:

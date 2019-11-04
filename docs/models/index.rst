@@ -1,8 +1,8 @@
 Models
 ======
 
-Submodules
-----------
+Registered Models
+-----------------
 
 .. toctree::
 
@@ -14,6 +14,14 @@ Submodules
    preactresnet
    resnet
    vgg
+
+
+.. toctree::
+   :caption: Initializations
+   :maxdepth: 1
+
+   inits/index
+
 
 Module contents
 ---------------

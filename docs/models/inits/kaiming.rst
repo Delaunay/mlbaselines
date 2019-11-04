@@ -1,7 +1,7 @@
-AMSGrad
+Kaiming
 =======
 
-.. automodule:: olympus.optimizers.amsgrad
+.. automodule:: olympus.models.inits.kaiming
     :members:
     :undoc-members:
     :show-inheritance:

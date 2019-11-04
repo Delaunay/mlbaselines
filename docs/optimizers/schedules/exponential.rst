@@ -1,7 +1,7 @@
-Mobilenetv2
+Exponential
 ===========
 
-.. automodule:: olympus.models.mobilenetv2
+.. automodule:: olympus.optimizers.schedules.exponential
     :members:
     :undoc-members:
     :show-inheritance:
