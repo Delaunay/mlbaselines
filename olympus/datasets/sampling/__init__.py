@@ -29,7 +29,7 @@ class _BaseSampler(Sampler):
         if seed is None:
             seed = time.time()
         self.seed = seed
-        print(seed)
+
         self.rand_engine = numpy.random.RandomState(seed)
 
     def state_dict(self):

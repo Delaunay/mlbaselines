@@ -1,6 +1,6 @@
 import torch.nn as nn
 
-from olympus.utils import MissingArgument
+from olympus.utils import MissingArgument, warning
 from olympus.utils.factory import fetch_factories
 from olympus.utils.fp16 import network_to_half
 
@@ -9,6 +9,18 @@ registered_models = fetch_factories('olympus.models', __file__)
 
 def known_models():
     return registered_models.keys()
+
+
+def register_model(name, factory, override=False):
+    global registered_models
+
+    if name in registered_models:
+        warning(f'{name} was already registered, use override=True to ignore')
+
+        if not override:
+            return
+
+    registered_models[name] = factory
 
 
 class RegisteredModelNotFound(Exception):

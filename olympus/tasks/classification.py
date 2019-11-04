@@ -4,7 +4,7 @@ from torch.nn import Module, CrossEntropyLoss
 from torch.optim import Optimizer
 
 from olympus.tasks.task import Task
-from olympus.metrics import OnlineTrainAccuracy, ElapsedRealTime, SampleCount, ClassifierAdversary, MetricList
+from olympus.metrics import OnlineTrainAccuracy, ElapsedRealTime, SampleCount, ProgressView, MetricList
 
 
 class Classification(Task):
@@ -52,15 +52,18 @@ class Classification(Task):
             ElapsedRealTime().every(batch=1),
             SampleCount().every(batch=1, epoch=1),
             OnlineTrainAccuracy(),
+            ProgressView().every(epoch=1, batch=1)
             # ClassifierAdversary(epsilon=0.25).every(epoch=1, batch=1)
         )
 
     def resume(self):
         try:
             state_dict = self.storage.load('checkpoint')
+
         except RuntimeError as e:
             if 'CPU-only machine' in str(e):
                 raise KeyboardInterrupt('Job got scheduled on bad node.') from e
+
         except FileNotFoundError:
             print('Starting from scratch')
             return
@@ -90,7 +93,8 @@ class Classification(Task):
                 lr_scheduler=self.lr_scheduler.state_dict(),
                 sampler=self.dataloader.sampler.state_dict(),
                 metrics=self.metrics.state_dict()
-                ))
+            )
+        )
 
     @property
     def metrics(self):
@@ -104,8 +108,13 @@ class Classification(Task):
     def model(self, model):
         self.classifier = model
 
-    def fit(self, epochs, context):
+    def fit(self, epochs, context=None):
         self.classifier.to(self.device)
+        progress = self.metrics.get('ProgressView')
+
+        if progress:
+            progress.max_epoch = epochs
+            progress.max_step = len(self.dataloader)
 
         if self._first_epoch == 1:
             print('\rEpoch   0: ', end='')
@@ -126,7 +135,6 @@ class Classification(Task):
         self.metrics.epoch(epoch, self, context)
         self.lr_scheduler.epoch(epoch, self.metrics.value()['validation_accuracy'])
         self.checkpoint(epoch)
-        print(self.lr_scheduler.get_lr()[0])
 
     def step(self, step, input, context):
         self.classifier.train()
@@ -169,61 +177,3 @@ class Classification(Task):
         acc = (predicted == target.to(device=self.device)).sum()
 
         return acc.float() / target.size(0), loss
-
-    def summary(self):
-        GenerateSummary().task_summary(self)
-
-
-class GenerateSummary:
-    dispatch = {
-        'Model': lambda model: model.model,
-        'Optimizer': lambda optimizer: optimizer.optimizer,
-        'DataLoader': lambda data: data.dataset,
-        'TransformedSubset': lambda data: data.dataset,
-        'MetricList': lambda metrics: metrics.metrics,
-        'LRSchedule': lambda schedule: schedule.lr_scheduler
-    }
-
-    _rename = {
-        '_metrics': 'metrics',
-        '_device': 'device',
-        '_first_epoch': 'first_epoch'
-    }
-
-    def is_nested(self, name):
-        return name in GenerateSummary.dispatch
-
-    def retrieve_nested(self, name, obj):
-        return GenerateSummary.dispatch.get(name, lambda x: x)(obj)
-
-    def rename(self, name):
-        return GenerateSummary._rename.get(name, name)
-
-    def get_name(self, attr, obj, type_name, depth=0):
-        print(f'{"  " * depth} {self.rename(attr)}: ', end='')
-
-        if not self.is_nested(type_name):
-            if type_name == 'device':
-                print(str(obj))
-            elif type_name == 'list':
-                print()
-                for item in obj:
-                    print(f'{"  " * (depth + 1)} - {type(item).__name__}')
-            else:
-                print(type_name)
-
-        else:
-            print()
-            nested = self.retrieve_nested(type_name, obj)
-            nested_type = type(nested).__name__
-            self.get_name(type_name, nested, nested_type, depth + 1)
-
-    def task_summary(self, obj):
-        print('=' * 80)
-        print(type(obj).__name__)
-        print('-' * 80)
-        for attr, value in obj.__dict__.items():
-            type_name = type(value).__name__
-            self.get_name(attr, value, type_name)
-        print('=' * 80)
-

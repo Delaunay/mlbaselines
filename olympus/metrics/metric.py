@@ -40,7 +40,12 @@ class Metric:
 
 class MetricList:
     def __init__(self, *args):
-        self.metrics = list(args)
+        self._metrics_mapping = dict()
+        self.metrics = list()
+
+        for arg in args:
+            self.append(arg)
+
         self.batch_id: int = 0
         self._epoch: int = 0
         self._previous_step = 0
@@ -52,10 +57,40 @@ class MetricList:
         for m, m_state_dict in zip(self.metrics, state_dict):
             m.load_state_dict(m_state_dict)
 
-    def append(self, m: Metric):
+    def __getitem__(self, item):
+        v = self.get(item)
+
+        if v is None:
+            raise RuntimeError('Not found')
+
+    def __setitem__(self, key, value):
+        self.append(m=value, key=key)
+
+    def get(self, key, default=None):
+        if isinstance(key, int):
+            return self.metrics[key]
+
+        if isinstance(key, str):
+            return self._metrics_mapping.get(key, default)
+
+        return default
+
+    def append(self, m: Metric, key=None):
+        # Use name attribute as key
+        if hasattr(m, 'name') and not key:
+            key = m.name
+
+        # Use type name as key
+        elif not key:
+            key = type(m).__name__
+
+        # only insert if there are no conflicts
+        if key not in self._metrics_mapping:
+            self._metrics_mapping[key] = m
+
         self.metrics.append(m)
 
-    def epoch(self, epoch, task, context):
+    def epoch(self, epoch, task=None, context=None):
         for m in self.metrics:
             if m.frequency_epoch > 0 and epoch % m.frequency_epoch == 0:
                 m.on_new_epoch(epoch, task, context)
@@ -63,7 +98,7 @@ class MetricList:
         self._epoch = epoch
         self.batch_id = 0
 
-    def step(self, step, task, input, context):
+    def step(self, step, task=None, input=None, context=None):
         # Step back to 0, means it is a new epoch
         if self._previous_step > step:
             assert self.batch_id == 0
@@ -75,7 +110,7 @@ class MetricList:
         self.batch_id += 1
         self._previous_step = step
 
-    def finish(self, task):
+    def finish(self, task=None):
         for m in self.metrics:
             m.finish(task)
 
@@ -203,7 +238,7 @@ class OnlineTrainAccuracy(Metric):
 
     def finish(self, task):
         if self.count > 0:
-            self.on_new_epoch(None, None, None, None)
+            self.on_new_epoch(None, None, None)
 
     def value(self):
         if not self.accuracies:
@@ -235,12 +270,54 @@ class NamedMetric(Metric):
 
     def finish(self, task):
         if self.count > 0:
-            self.on_new_epoch(None, None, None, None)
+            self.on_new_epoch(None, None, None)
 
     def value(self):
         return {
             self.name: self.metrics[-1]
         }
+
+
+@dataclass
+class ProgressView(Metric):
+    print_fun = print
+    epoch = 0
+    step = 0
+    max_epoch: int = 0
+    max_step: int = 0
+
+    def show_progress(self):
+        self.print_fun(f'\rEpoch [{self.epoch:3d}/{self.max_epoch:3d}] '
+                       f'Step [{self.step:3d}/{self.max_step:3d}] ', end='')
+
+    def on_new_epoch(self, epoch, task, context):
+        self.epoch = epoch
+        self.max_epoch = max(self.epoch, self.max_epoch)
+        self.show_progress()
+        self.step = 0
+
+    def on_new_batch(self, step, task, input, context):
+        self.step = step
+        self.max_step = max(self.step, self.max_step)
+        self.show_progress()
+
+    def finish(self, task):
+        print()
+
+    def value(self):
+        return {}
+
+    def state_dict(self):
+        return dict(
+            max_epoch=self.max_epoch,
+            max_step=self.max_step
+        )
+
+    def load_state_dict(self, state_dict):
+        self.max_epoch = state_dict['max_epoch']
+        self.max_step = state_dict['max_step']
+        self.step = 0
+        self.epoch = 0
 
 
 @dataclass
@@ -299,15 +376,23 @@ class ElapsedRealTime(Metric):
 
 @dataclass
 class ClassifierAdversary(Metric):
-    """Simple Adversary Generator from https://arxiv.org/pdf/1412.6572.pdf.
+    """Simple Adversary Generator from `arxiv <https://arxiv.org/pdf/1412.6572.pdf.>`
     Measure how robust a network is from adversary attacks
+
+    .. math::
 
         image = original_image + epsilon * sign(grad(cost(theta, original_image, t), original_image)
 
-    epsilon corresponds to the magnitude of the smallest bit of an image encoding converted to real number
+    Attributes
+    ----------
 
-    ImageNet: 0.07
-    MNIST: 0.25
+    epislon: float = 0.25 (for mnist) 0.07 (for ImageNet)
+        Epsilon corresponds to the magnitude of the smallest bit of an image encoding converted to real number
+
+    References
+    ----------
+    .. [1] Ian J. Goodfellow, Jonathon Shlens, Christian Szegedy.
+        "Explaining and Harnessing Adversarial Examples", 20 Dec 2014
 
     """
     epsilon: float = 0.25
@@ -377,7 +462,7 @@ class ClassifierAdversary(Metric):
 
     def finish(self, task):
         if self.count > 0:
-            self.on_new_epoch(None, task, None, None)
+            self.on_new_epoch(None, task, None)
 
     def value(self):
         return {

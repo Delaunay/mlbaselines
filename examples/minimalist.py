@@ -1,9 +1,11 @@
 import torch.nn.functional as F
-from olympus.datasets import build_loaders
+from olympus.datasets import DataLoader
+from olympus.models.inits import initialize_weights
 
 from olympus.optimizers.schedules import LRSchedule
 from olympus.optimizers import Optimizer
 from olympus.models import Model
+from olympus.metrics import MetricList, ProgressView, Accuracy
 
 # Model
 model = Model(
@@ -11,6 +13,12 @@ model = Model(
     input_size=(1, 28, 28),
     output_size=(10,)
 ).cuda()
+
+
+initialize_weights(
+    model,
+    name='glorot_uniform',
+    seed=1)
 
 # Optimizer
 optimizer = Optimizer(
@@ -31,20 +39,22 @@ lr_schedule = LRSchedule(
 )
 
 # Dataloader
-datasets, loaders = build_loaders(
+loader = DataLoader(
     'mnist',
-    seed=0,
+    seed=1,
     sampling_method={'name': 'original'},
     batch_size=128
 )
 
-
-train_loader = loaders['train']
+# event handler
+event_handler = MetricList()
+event_handler.append(
+    ProgressView(max_epoch=5, max_step=len(loader.train())).every(epoch=1, batch=1))
 
 for e in range(5):
     losses = []
 
-    for step, (batch, target) in enumerate(train_loader):
+    for step, (batch, target) in enumerate(loader.train()):
 
         optimizer.zero_grad()
         predict = model(batch.cuda())
@@ -54,10 +64,11 @@ for e in range(5):
 
         optimizer.backward(loss)
         optimizer.step()
-        print(f'\r[{e:3d}] [{step:3d}] {loss:.4f}', end='')
 
-    print()
+        event_handler.step(step)
+
+    event_handler.epoch(e)
     losses = [l.item() for l in losses]
     loss = sum(losses) / len(losses)
 
-    print(f'[{e:3d}] {loss:.4f}')
+event_handler.finish()

@@ -1,7 +1,4 @@
-import logging
-
-
-logger = logging.getLogger(__name__)
+from olympus.utils import info
 
 
 def sample(datasets, data_size, **kwargs):
@@ -11,6 +8,6 @@ def sample(datasets, data_size, **kwargs):
     n_points = len(datasets)
     assert n_points == n_train + n_valid + n_test
 
-    logger.warning('Using the original split')
+    info('Using the original split')
     return dict(train=range(n_train), valid=range(n_train, n_train + n_valid),
                 test=range(n_train + n_valid, n_points))

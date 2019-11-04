@@ -17,6 +17,18 @@ def known_schedule():
     return registered_schedules.keys()
 
 
+def register_schedule(name, factory, override=False):
+    global registered_schedules
+
+    if name in registered_schedules:
+        warning(f'{name} was already registered, use override=True to ignore')
+
+        if not override:
+            return
+
+    registered_schedules[name] = factory
+
+
 class LRSchedule:
     """Lazy LRSchedule that allows you to first fetch the supported parameters using ``get_space`` and then
     initialize the underlying schedule using ``init_optimizer``
