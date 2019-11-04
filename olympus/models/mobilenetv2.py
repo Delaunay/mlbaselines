@@ -1,10 +1,3 @@
-"""MobileNetV2 in PyTorch.
-See the paper "Inverted Residuals and Linear Bottlenecks:
-Mobile Networks for Classification, Detection and Segmentation" for more details.
-
-Note: Taken from https://github.com/kuangliu/pytorch-cifar/blob/master/models/mobilenetv2.py
-"""
-
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
@@ -13,7 +6,11 @@ from olympus.utils import info
 
 
 class Block(nn.Module):
-    """expand + depthwise + pointwise"""
+    """expand + depthwise + pointwise
+
+    See :class`.MobileNetV2` for license and references`
+    """
+
     def __init__(self, in_planes, out_planes, expansion, stride):
         super(Block, self).__init__()
         self.stride = stride
@@ -37,11 +34,48 @@ class Block(nn.Module):
         out = F.relu(self.bn1(self.conv1(x)))
         out = F.relu(self.bn2(self.conv2(out)))
         out = self.bn3(self.conv3(out))
-        out = out + self.shortcut(x) if self.stride==1 else out
+        out = out + self.shortcut(x) if self.stride == 1 else out
         return out
 
 
 class MobileNetV2(nn.Module):
+    """Details on `arxiv <https://arxiv.org/abs/1801.04381>`_.
+
+    Original source `github <https://github.com/kuangliu/pytorch-cifar/blob/master/models/mobilenetv2.py>`_.
+
+    Attributes
+    ----------
+    input_size: (1, 28, 28), (3, 32, 32), (3, 64, 64)
+
+    References
+    ----------
+    .. [1] Mark Sandler, Andrew Howard, Menglong Zhu, Andrey Zhmoginov, Liang-Chieh Chen.
+        "MobileNetV2: Inverted Residuals and Linear Bottlenecks"  Mar 2019
+
+    Notes
+    -----
+    MIT License
+
+    Copyright (c) 2017 liukuang
+
+    Permission is hereby granted, free of charge, to any person obtaining a copy
+    of this software and associated documentation files (the "Software"), to deal
+    in the Software without restriction, including without limitation the rights
+    to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+    copies of the Software, and to permit persons to whom the Software is
+    furnished to do so, subject to the following conditions:
+
+    The above copyright notice and this permission notice shall be included in all
+    copies or substantial portions of the Software.
+
+    THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+    IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+    FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+    AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+    LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+    OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+    SOFTWARE.
+    """
     # (expansion, out_planes, num_blocks, stride)
     def __init__(self, cfg, input_size, conv, avgpool, num_classes=10):
         super(MobileNetV2, self).__init__()

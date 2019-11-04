@@ -1,5 +1,5 @@
-olympus.models.vgg module
-=========================
+VGG
+===
 
 .. automodule:: olympus.models.vgg
     :members:

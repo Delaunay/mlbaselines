@@ -1,7 +1,7 @@
-Resnet
+Cyclic
 ======
 
-.. automodule:: olympus.models.resnet
+.. automodule:: olympus.optimizers.schedules.cyclic
     :members:
     :undoc-members:
     :show-inheritance:

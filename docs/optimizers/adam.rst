@@ -1,5 +1,5 @@
-olympus.optimizers.adam module
-==============================
+Adam
+====
 
 .. automodule:: olympus.optimizers.adam
     :members:

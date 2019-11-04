@@ -1,23 +1,17 @@
-"""Pre-activation ResNet in PyTorch"""
-
-# .. rubric:: References
-#
-# .. [PreactResnet] Kaiming He, Xiangyu Zhang, Shaoqing Ren, Jian Sun:
-#     Identity Mappings in Deep Residual Networks. arXiv:1603.05027
-
 import functools
-import logging
 
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
-
-log = logging.getLogger(__name__)
+from olympus.utils import info
 
 
 class PreActBlock(nn.Module):
-    """Pre-activation version of the BasicBlock."""
+    """Pre-activation version of the BasicBlock.
+
+    See :class`.PreActResNet` for license and references`
+    """
     expansion = 1
 
     def __init__(self, in_planes, planes, stride=1, first=False):
@@ -47,7 +41,10 @@ class PreActBlock(nn.Module):
 
 
 class PreActBottleneck(nn.Module):
-    """Pre-activation version of the original Bottleneck module."""
+    """Pre-activation version of the original Bottleneck module.
+
+    See :class`.PreActResNet` for license and references`
+    """
     expansion = 4
 
     def __init__(self, in_planes, planes, stride=1, first=False):
@@ -80,6 +77,43 @@ class PreActBottleneck(nn.Module):
 
 
 class PreActResNet(nn.Module):
+    """Details on `arxiv <https://arxiv.org/abs/1603.05027>`_.
+
+    Original source `github <https://github.com/kuangliu/pytorch-cifar/blob/master/models/preact_resnet.py>`_.
+
+    Attributes
+    ----------
+    input_size: (1, 28, 28), (3, 32, 32), (3, 64, 64)
+
+    References
+    ----------
+    .. [1] Kaiming He, Xiangyu Zhang, Shaoqing Ren, Jian Sun.
+        "Identity Mappings in Deep Residual Networks." arXiv:1603.05027
+
+    Notes
+    -----
+    MIT License
+
+    Copyright (c) 2017 liukuang
+
+    Permission is hereby granted, free of charge, to any person obtaining a copy
+    of this software and associated documentation files (the "Software"), to deal
+    in the Software without restriction, including without limitation the rights
+    to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+    copies of the Software, and to permit persons to whom the Software is
+    furnished to do so, subject to the following conditions:
+
+    The above copyright notice and this permission notice shall be included in all
+    copies or substantial portions of the Software.
+
+    THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+    IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+    FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+    AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+    LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+    OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+    SOFTWARE.
+    """
     def __init__(self, block, num_blocks, input_size, conv, maxpool, avgpool,  num_classes=10):
         super(PreActResNet, self).__init__()
         self.in_planes = 64
@@ -147,17 +181,17 @@ class PreActResNet(nn.Module):
 def build(block, cfg, input_size, output_size):
 
     if input_size == (1, 28, 28):
-        log.info('Using PreActResNet architecture for MNIST')
+        info('Using PreActResNet architecture for MNIST')
         conv = {'kernel_size': 3, 'stride': 1, 'padding': 1}
         avgpool = {'kernel_size': 4}
         maxpool = {}
     elif input_size == (3, 32, 32):
-        log.info('Using PreActResNet architecture for CIFAR10/100')
+        info('Using PreActResNet architecture for CIFAR10/100')
         conv = {'kernel_size': 3, 'stride': 1, 'padding': 1}
         avgpool = {'kernel_size': 4}
         maxpool = {}
     elif input_size == (3, 64, 64):
-        log.info('Using PreActResNet architecture for TinyImageNet')
+        info('Using PreActResNet architecture for TinyImageNet')
         conv = {'kernel_size': 7, 'stride': 2, 'padding': 3}
         avgpool = {'kernel_size': 2}
         maxpool = {'kernel_size': 3, 'stride': 2, 'padding': 1}

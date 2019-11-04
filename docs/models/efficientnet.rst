@@ -1,5 +1,5 @@
-olympus.models.efficientnet module
-==================================
+Efficientnet
+============
 
 .. automodule:: olympus.models.efficientnet
     :members:

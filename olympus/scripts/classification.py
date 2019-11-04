@@ -1,9 +1,4 @@
-import argparse
 import os
-
-import torch
-import torch.utils.data
-
 from orion.client import create_experiment
 
 from olympus.hpo import TrialIterator
@@ -11,15 +6,12 @@ from olympus.datasets import build_loaders, merge_data_loaders
 from olympus.datasets import factories as dataset_factories
 import olympus.distributed.multigpu as distributed
 from olympus.metrics import Accuracy
-from olympus.models import build_model
-from olympus.models import factories as model_factories
+from olympus.models import Model, known_models
 from olympus.models.inits import make_init
 from olympus.models.inits import factories as init_factories
 from olympus.tasks import Classification
-from olympus.optimizers import get_optimizer_builder
-from olympus.optimizers import factories as optimizer_factories
-from olympus.optimizers.schedules import get_schedule_builder
-from olympus.optimizers.schedules import factories as lr_scheduler_factories
+from olympus.optimizers import Optimizer, known_optimizers
+from olympus.optimizers.schedules import LRSchedule, known_schedule
 from olympus.utils import task_arguments, get_storage, show_dict, fetch_device, seed
 from olympus.utils.storage import StateStorage
 
@@ -34,18 +26,18 @@ def arguments(subparsers=None):
         '--experiment-name', type=str, default=DEFAULT_EXP_NAME,  metavar='EXP_NAME',
         help='Name of the experiment in Orion storage (default: {})'.format(DEFAULT_EXP_NAME))
     parser.add_argument(
-        '--model', type=str, metavar='MODEL_NAME', choices=model_factories.keys(), required=True,
+        '--model', type=str, metavar='MODEL_NAME', choices=known_models(), required=True,
         help='Name of the model')
     parser.add_argument(
         '--dataset', type=str, metavar='DATASET_NAME', choices=dataset_factories.keys(), required=True,
         help='Name of the dataset')
     parser.add_argument(
         '--optimizer', type=str, default='sgd',
-        metavar='OPTIMIZER_NAME', choices=optimizer_factories.keys(),
+        metavar='OPTIMIZER_NAME', choices=known_optimizers(),
         help='Name of the optimiser (default: sgd)')
     parser.add_argument(
         '--lr-scheduler', type=str, default='none',
-        metavar='LR_SCHEDULER_NAME', choices=lr_scheduler_factories.keys(),
+        metavar='LR_SCHEDULER_NAME', choices=known_schedule(),
         help='Name of the lr scheduler (default: none)')
     parser.add_argument(
         '--init', type=str, default='glorot_uniform',
@@ -65,8 +57,7 @@ def arguments(subparsers=None):
         help='random seed for sampler during iterations (default: 1)')
     parser.add_argument(
         '--half', action='store_true', default=False,
-        help='enable fp16 training'
-    )
+        help='enable fp16 training')
 
     # add the arguments related to distributed training
     return distributed.arguments(parser)
@@ -100,11 +91,12 @@ def train(dataset, model, optimizer, lr_scheduler, init, epochs,
         valid_loader = loaders['test']
 
     seed(model_seed)
-    model = build_model(
-        model,
+    model_name = model
+    model = Model(
+        model_name,
         half=kwargs.get('half', False),
         input_size=datasets.input_shape,
-        output_size=datasets.output_shape[0]
+        output_size=datasets.target_shape[0]
     ).to(device)
 
     make_init(model, name=init)
@@ -113,26 +105,29 @@ def train(dataset, model, optimizer, lr_scheduler, init, epochs,
     #       (i.e. large output layers) This may be better integrated in the model builder.
     model = distributed.data_parallel(model)
 
-    optimizer_builder = get_optimizer_builder(optimizer)
-
-    optimizer = optimizer_builder(
+    optimizer_name = optimizer
+    optimizer = Optimizer(optimizer_name, half=kwargs.get('half', False))
+    optimizer = optimizer.init_optimizer(
         model.parameters(),
         weight_decay=kwargs['weight_decay'],
-        half=kwargs.get('half', False),
-        **optimizer_builder.get_params(kwargs))
+        **optimizer.get_params(kwargs))
 
-    schedule_builder = get_schedule_builder(lr_scheduler)
-
-    lr_scheduler = schedule_builder(
-        optimizer, **schedule_builder.get_params(kwargs))
+    lr_scheduler_name = lr_scheduler
+    lr_schedule = LRSchedule(lr_scheduler_name)
+    lr_schedule.init_schedule(
+        optimizer,
+        **lr_schedule.get_params(kwargs)
+    )
 
     task = Classification(
         classifier=model,
         optimizer=optimizer,
-        lr_scheduler=lr_scheduler,
+        lr_scheduler=lr_schedule,
         dataloader=train_loader,
         device=device,
         storage=StateStorage(folder=folder))
+
+    task.summary()
 
     task.metrics.append(Accuracy(name='validation', loader=valid_loader))
 
@@ -173,13 +168,13 @@ def main(experiment_name, dataset, model, optimizer, lr_scheduler, init, epochs,
         'epochs': f'fidelity(1, {epochs}, base=4)'
     }
 
-    optimizer_builder = get_optimizer_builder(optimizer)
+    optimizer_name = optimizer
+    optimizer = Optimizer(optimizer_name)
+    space.update(optimizer.get_space())
 
-    space.update(optimizer_builder.get_space())
-
-    lr_scheduler_builder = get_schedule_builder(lr_scheduler)
-
-    space.update(lr_scheduler_builder.get_space())
+    lr_scheduler_name = lr_scheduler
+    lr_scheduler = LRSchedule(lr_scheduler_name)
+    space.update(lr_scheduler.get_space())
 
     experiment = create_experiment(
         name=experiment_name,
@@ -202,8 +197,14 @@ def main(experiment_name, dataset, model, optimizer, lr_scheduler, init, epochs,
         show_dict(trial.params)
         kwargs.update(trial.params)
 
-        validation_accuracy = train(dataset, model, optimizer, lr_scheduler, init,
-                                    folder=trial_folder, **kwargs)
+        validation_accuracy = train(
+            dataset,
+            model,
+            optimizer_name,
+            lr_scheduler_name,
+            init,
+            folder=trial_folder, **kwargs
+        )
 
         experiment.observe(
             trial,

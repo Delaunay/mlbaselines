@@ -1,5 +1,5 @@
-olympus.models.logreg module
-============================
+Logistic Regression
+===================
 
 .. automodule:: olympus.models.logreg
     :members:

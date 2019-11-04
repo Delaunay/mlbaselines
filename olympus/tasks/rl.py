@@ -65,7 +65,9 @@ class AbstractActorCritic(Module):
 class ActorCriticDistributional(AbstractActorCritic):
     """The actor returns the parameter of a distribution
 
-    see https://arxiv.org/abs/1707.06887
+    References
+    ----------
+    .. [1] https://arxiv.org/abs/1707.06887
     """
 
     def __init__(self, actor, critic, distribution=Normal):
@@ -181,10 +183,7 @@ class ReinforcementLearningA2C(Task):
         return returns
 
     def ppo(self, current_state, replay_vector, ppo_epoch=5, ppo_batch_size=32, ppo_clip_param=10, ppo_max_grad_norm=1000):
-        """
-        Abstract
-        --------
-        New policy gradient methods for reinforcement learning, which alternate  between  sampling  data
+        """New policy gradient methods for reinforcement learning, which alternate  between  sampling  data
         through  interaction  with  the  environment,  and  optimizing  a“surrogate” objective function
         using stochastic gradient ascent.
         Whereas standard policy gradient  methods  perform  one  gradient  update  per  data  sample,

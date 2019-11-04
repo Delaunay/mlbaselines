@@ -48,3 +48,8 @@ class Task:
         m = self.metrics
         if m:
             return self.metrics.finish(self)
+
+    def summary(self):
+        for name, value in self.__dict__.items():
+            print(name, type(value))
+

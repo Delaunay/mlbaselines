@@ -1,5 +1,5 @@
-olympus.models.mlp module
-=========================
+MultiLayer Perceptron
+=====================
 
 .. automodule:: olympus.models.mlp
     :members:
