@@ -1,13 +1,31 @@
 import os
 import torch
 
+from torch.utils.data import DataLoader as TorchDataLoader
+from olympus.utils import warning
 from olympus.utils.factory import fetch_factories
 from olympus.datasets.transform import TransformedSubset
 from olympus.datasets.sampling import generate_indices
 from olympus.datasets.sampling import RandomSampler
 
 
-factories = fetch_factories('olympus.datasets', __file__)
+registered_datasets = fetch_factories('olympus.datasets', __file__)
+
+
+def known_datasets():
+    return registered_datasets.keys()
+
+
+def register_dataset(name, factory, override=False):
+    global registered_datasets
+
+    if name in registered_datasets:
+        warning(f'{name} was already registered, use override=True to ignore')
+
+        if not override:
+            return
+
+    registered_datasets[name] = factory
 
 
 def set_data_path(config):
@@ -50,10 +68,30 @@ def merge_data_loaders(*data_loaders):
 
 def build_loaders(name, sampling_method, seed=1, batch_size=128, num_workers=0, **kwargs):
     set_data_path(kwargs)
-    datasets = factories[name](**kwargs)
+    datasets = registered_datasets[name](**kwargs)
 
     loaders = split_data(
         datasets, seed=seed, batch_size=batch_size, sampling_method=sampling_method,
         num_workers=num_workers)
 
     return datasets, loaders
+
+
+class DataLoader:
+    def __init__(self, name, sampling_method, seed=1, batch_size=128, num_workers=0, **kwargs):
+        self.datasets, self.loaders = build_loaders(
+            name,
+            sampling_method,
+            seed=seed,
+            batch_size=batch_size,
+            num_workers=num_workers, **kwargs
+        )
+
+    def train(self):
+        return self.loaders.get('train')
+
+    def valid(self):
+        return self.loaders.get('valid')
+
+    def test(self):
+        return self.loaders.get('test')

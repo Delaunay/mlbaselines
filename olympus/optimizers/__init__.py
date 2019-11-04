@@ -20,6 +20,18 @@ class UninitializedOptimizer(Exception):
     pass
 
 
+def register_optimizer(name, factory, override=False):
+    global registered_optimizers
+
+    if name in registered_optimizers:
+        warning(f'{name} was already registered, use override=True to ignore')
+
+        if not override:
+            return
+
+    registered_optimizers[name] = factory
+
+
 class Optimizer(TorchOptimizer):
     """Lazy Optimizer that allows you to first fetch the supported parameters using ``get_space`` and then
     initialize the underlying optimizer using ``init_optimizer``

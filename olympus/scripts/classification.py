@@ -2,13 +2,12 @@ import os
 from orion.client import create_experiment
 
 from olympus.hpo import TrialIterator
-from olympus.datasets import build_loaders, merge_data_loaders
-from olympus.datasets import factories as dataset_factories
+from olympus.datasets import known_datasets, merge_data_loaders
+from olympus.datasets import DataLoader
 import olympus.distributed.multigpu as distributed
-from olympus.metrics import Accuracy
+from olympus.metrics import Accuracy, ProgressView
 from olympus.models import Model, known_models
-from olympus.models.inits import make_init
-from olympus.models.inits import factories as init_factories
+from olympus.models.inits import initialize_weights, known_initialization
 from olympus.tasks import Classification
 from olympus.optimizers import Optimizer, known_optimizers
 from olympus.optimizers.schedules import LRSchedule, known_schedule
@@ -29,7 +28,7 @@ def arguments(subparsers=None):
         '--model', type=str, metavar='MODEL_NAME', choices=known_models(), required=True,
         help='Name of the model')
     parser.add_argument(
-        '--dataset', type=str, metavar='DATASET_NAME', choices=dataset_factories.keys(), required=True,
+        '--dataset', type=str, metavar='DATASET_NAME', choices=known_datasets(), required=True,
         help='Name of the dataset')
     parser.add_argument(
         '--optimizer', type=str, default='sgd',
@@ -41,7 +40,7 @@ def arguments(subparsers=None):
         help='Name of the lr scheduler (default: none)')
     parser.add_argument(
         '--init', type=str, default='glorot_uniform',
-        metavar='INIT_NAME', choices=init_factories.keys(),
+        metavar='INIT_NAME', choices=known_initialization(),
         help='Name of the initialization (default: glorot_uniform)')
     parser.add_argument(
         '--batch-size', type=int, default=128, metavar='N',
@@ -76,30 +75,31 @@ def train(dataset, model, optimizer, lr_scheduler, init, epochs,
 
     device = fetch_device()
 
-    datasets, loaders = build_loaders(
+    loader = DataLoader(
         dataset,
         seed=sampler_seed,
         sampling_method={'name': 'original'},
         batch_size=kwargs['batch_size']
     )
 
-    train_loader = loaders['train']
-    valid_loader = loaders['valid']
+    train_loader = loader.train()
+    valid_loader = loader.valid()
 
     if merge_train_val:
-        train_loader = merge_data_loaders(train_loader, valid_loader)
-        valid_loader = loaders['test']
+        train_loader = merge_data_loaders(loader.train(), loader.valid())
+        valid_loader = loader.test()
 
     seed(model_seed)
+
     model_name = model
     model = Model(
         model_name,
         half=kwargs.get('half', False),
-        input_size=datasets.input_shape,
-        output_size=datasets.target_shape[0]
+        input_size=loader.datasets.input_shape,
+        output_size=loader.datasets.target_shape[0]
     ).to(device)
 
-    make_init(model, name=init)
+    initialize_weights(model, name=init, seed=model_seed)
 
     # NOTE: Some model have specific way of building for distributed computing
     #       (i.e. large output layers) This may be better integrated in the model builder.
@@ -133,8 +133,7 @@ def train(dataset, model, optimizer, lr_scheduler, init, epochs,
 
     task.resume()
 
-    # TODO: What is supposed to be the context?
-    task.fit(epochs, {})
+    task.fit(epochs)
 
     # push the latest metrics
     task.finish()
@@ -219,7 +218,13 @@ def main(experiment_name, dataset, model, optimizer, lr_scheduler, init, epochs,
 
     print('Training with best hyper-parameters on train+valid.')
     show_dict(trial.params)
-    test_accuracy = train(dataset, model, optimizer, **kwargs)
+    test_accuracy = train(
+        dataset,
+        model,
+        optimizer_name,
+        lr_scheduler_name,
+        init,
+        **kwargs)
 
     # TODO: Find a way so register this
     print('Test accuracy: ', test_accuracy)
