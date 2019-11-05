@@ -11,6 +11,7 @@ from olympus.utils.stat import StatStream
 
 @dataclass
 class Metric:
+    """Metrics are observers that receives events periodically"""
     frequency_epoch: int = 0
     frequency_batch: int = 0
 
@@ -20,7 +21,10 @@ class Metric:
     def on_new_batch(self, step, task, input, context):
         pass
 
-    def finish(self, task):
+    def start(self, task=None):
+        pass
+
+    def finish(self, task=None):
         pass
 
     def value(self):
@@ -39,6 +43,7 @@ class Metric:
 
 
 class MetricList:
+    """MetricList relays the Event to the Metrics/Observers"""
     def __init__(self, *args):
         self._metrics_mapping = dict()
         self.metrics = list()
@@ -110,6 +115,10 @@ class MetricList:
         self.batch_id += 1
         self._previous_step = step
 
+    def start(self, task=None):
+        for m in self.metrics:
+            m.start(task)
+
     def finish(self, task=None):
         for m in self.metrics:
             m.finish(task)
@@ -128,6 +137,10 @@ class MetricList:
             print_fun(json.dumps(metrics, indent=2))
 
         return metrics
+
+
+def get_time_delta(start):
+    return (datetime.datetime.utcnow() - start).total_seconds()
 
 
 @dataclass
@@ -162,11 +175,14 @@ class Accuracy(Metric):
             loss_acc += loss.item()
 
         end = datetime.datetime.utcnow()
-        self.eval_time += (end - start).seconds
+        self.eval_time += (end - start).total_seconds()
         self.accuracies.append(acc / count)
         self.losses.append(loss_acc / count)
 
-    def finish(self, task):
+    def start(self, task=None):
+        self.on_new_epoch(None, task, None)
+
+    def finish(self, task=None):
         self.on_new_epoch(None, task, None)
 
     def value(self):
@@ -285,27 +301,90 @@ class ProgressView(Metric):
     step = 0
     max_epoch: int = 0
     max_step: int = 0
+    batch_size: int = 0
 
-    def show_progress(self):
-        self.print_fun(f'\rEpoch [{self.epoch:3d}/{self.max_epoch:3d}] '
-                       f'Step [{self.step:3d}/{self.max_step:3d}] ', end='')
+    step_time = StatStream(drop_first_obs=5)
+    epoch_time = StatStream(drop_first_obs=1)
+
+    step_start = datetime.datetime.utcnow()
+    epoch_start = datetime.datetime.utcnow()
+
+    def show_progress(self, epoch, step=None):
+        if step is None:
+            step = '              '
+        else:
+            step = f'Step [{step:3d}/{self.max_step:3d}]'
+
+        self.print_fun(f'\rEpoch [{epoch:3d}/{self.max_epoch:3d}] {step} {self.eta(epoch)}', end='')
+
+    def eta(self, epoch):
+        if self.step_time.count > 0:
+            total_steps = self.max_step * self.max_epoch
+            spent_steps = self.max_step * epoch + self.step
+            remaining_steps = total_steps - spent_steps
+
+            avg = self.step_time.avg
+            # if we spent enough epochs estimate using both duration
+            if self.epoch_time.count > 0:
+                avg = (avg + self.epoch_time.avg / float(self.max_step)) / 2
+
+            step_estimate = avg * remaining_steps
+            return f'ETA: {step_estimate / 60:9.4f} min'
+
+        return ''
 
     def on_new_epoch(self, epoch, task, context):
+        self.epoch_time += get_time_delta(self.epoch_start)
+        self.epoch_start = datetime.datetime.utcnow()
+
         self.epoch = epoch
-        self.max_epoch = max(self.epoch, self.max_epoch)
-        self.show_progress()
         self.step = 0
 
+        self.max_epoch = max(self.epoch, self.max_epoch)
+        self.show_progress(epoch)
+        print()
+
+    def guess_batch_size(self, input):
+        try:
+            return input[0].shape[0]
+        except Exception:
+            return 0
+
     def on_new_batch(self, step, task, input, context):
+        self.step_time += get_time_delta(self.step_start)
+        self.step_start = datetime.datetime.utcnow()
+        self.batch_size = self.guess_batch_size(input)
+
         self.step = step
         self.max_step = max(self.step, self.max_step)
-        self.show_progress()
 
-    def finish(self, task):
+        self.show_progress(self.epoch, step=self.step)
+
+    def start(self, task=None):
+        self.step_start = datetime.datetime.utcnow()
+        self.epoch_start = self.step_start
+
+    def finish(self, task=None):
         print()
 
     def value(self):
-        return {}
+        result = {}
+
+        if self.step_time.count > 0:
+            result['step_time'] = self.step_time.avg
+            if self.batch_size > 0:
+                result['batch_speed'] = self.batch_size / self.step_time.avg
+
+        if self.step_time.count > 2:
+            result['step_time_sd'] = self.step_time.sd
+
+        if self.epoch_time.count > 0:
+            result['epoch_time'] = self.epoch_time.avg
+
+        if self.epoch_time.count > 2:
+            result['epoch_time_sd'] = self.epoch_time.sd
+
+        return result
 
     def state_dict(self):
         return dict(
@@ -352,21 +431,27 @@ class SampleCount(Metric):
 
 @dataclass
 class ElapsedRealTime(Metric):
-    start: datetime.datetime = field(default_factory=datetime.datetime.utcnow)
-    end: datetime.datetime = field(default_factory=datetime.datetime.utcnow)
+    start_time: datetime.datetime = field(default_factory=datetime.datetime.utcnow)
+    end_time: datetime.datetime = field(default_factory=datetime.datetime.utcnow)
+
+    def start(self, task=None):
+        pass
 
     def state_dict(self):
         return self.value()
 
     def load_state_dict(self, state_dict):
-        self.start = self.end - datetime.timedelta(seconds=state_dict['elapsed_time'])
+        self.start_time = self.end_time - datetime.timedelta(seconds=state_dict['elapsed_time'])
 
     def on_new_batch(self, step, task, input, context):
-        self.end = datetime.datetime.utcnow()
+        self.end_time = datetime.datetime.utcnow()
+
+    def finish(self, task=None):
+        self.end_time = datetime.datetime.utcnow()
 
     @property
     def elapsed_time(self):
-        return (self.end - self.start).seconds
+        return (self.end_time - self.start_time).total_seconds()
 
     def value(self):
         return {

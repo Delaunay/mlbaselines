@@ -3,6 +3,7 @@ import torch
 from torch.nn import Module, CrossEntropyLoss
 from torch.optim import Optimizer
 
+from olympus.utils import info
 from olympus.tasks.task import Task
 from olympus.metrics import OnlineTrainAccuracy, ElapsedRealTime, SampleCount, ProgressView, MetricList
 
@@ -40,7 +41,7 @@ class Classification(Task):
         if criterion is None:
             criterion = CrossEntropyLoss()
 
-        self._first_epoch = 1
+        self._first_epoch = 0
         self.classifier = classifier
         self.optimizer = optimizer
         self.lr_scheduler = lr_scheduler
@@ -65,10 +66,10 @@ class Classification(Task):
                 raise KeyboardInterrupt('Job got scheduled on bad node.') from e
 
         except FileNotFoundError:
-            print('Starting from scratch')
+            info('Starting from scratch')
             return
 
-        print(f"Resuming from epoch {state_dict['epoch']}")
+        info(f"Resuming from epoch {state_dict['epoch']}")
         self._first_epoch = state_dict['epoch'] + 1
         self.model.load_state_dict(state_dict['model'])
         self.optimizer.load_state_dict(state_dict['optimizer'])
@@ -84,6 +85,7 @@ class Classification(Task):
         self.metrics.load_state_dict(state_dict['metrics'])
 
     def checkpoint(self, epoch):
+        info('Saving checkpoint')
         self.storage.save(
             'checkpoint',
             dict(
@@ -95,6 +97,7 @@ class Classification(Task):
                 metrics=self.metrics.state_dict()
             )
         )
+        info('Checkpoint saved')
 
     @property
     def metrics(self):
@@ -108,6 +111,9 @@ class Classification(Task):
     def model(self, model):
         self.classifier = model
 
+    def resumed(self):
+        return self._first_epoch > 0
+
     def fit(self, epochs, context=None):
         self.classifier.to(self.device)
         progress = self.metrics.get('ProgressView')
@@ -116,17 +122,16 @@ class Classification(Task):
             progress.max_epoch = epochs
             progress.max_step = len(self.dataloader)
 
-        if self._first_epoch == 1:
-            print('\rEpoch   0: ', end='')
-            self.metrics.epoch(0, self, context)
+        if not self.resumed():
+            self.metrics.start(self)
             self.report(pprint=True, print_fun=print)
 
-        for epoch in range(self._first_epoch, epochs + 1):
-            print(f'\rEpoch {epoch:3d}: ', end='')
-            self.epoch(epoch, context)
+        for epoch in range(self._first_epoch, epochs):
+            # Epochs starts from 1 but we iterate from 0 because we are not matlab!
+            self.epoch(epoch + 1, context)
             self.report(pprint=True, print_fun=print)
 
-        print()
+        self.metrics.finish(self)
 
     def epoch(self, epoch, context):
         for step, mini_batch in enumerate(self.dataloader):

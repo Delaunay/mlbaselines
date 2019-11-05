@@ -5,7 +5,7 @@ from olympus.models.inits import initialize_weights
 from olympus.optimizers.schedules import LRSchedule
 from olympus.optimizers import Optimizer
 from olympus.models import Model
-from olympus.metrics import MetricList, ProgressView, Accuracy
+from olympus.metrics import MetricList, ProgressView
 
 # Model
 model = Model(
@@ -67,7 +67,7 @@ for e in range(5):
 
         event_handler.step(step)
 
-    event_handler.epoch(e)
+    event_handler.epoch(e + 1)
     losses = [l.item() for l in losses]
     loss = sum(losses) / len(losses)
 
