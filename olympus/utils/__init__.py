@@ -201,7 +201,7 @@ def find_batch_size(model, shape, low, high, dtype=torch.float32):
 def seed(seed):
     if torch.cuda.is_available():
         torch.backends.cudnn.benchmark = False
-        torch.backends.cudnn.deterministic = True
+        # torch.backends.cudnn.deterministic = True
 
     random.seed(seed)
     numpy.random.seed(seed)

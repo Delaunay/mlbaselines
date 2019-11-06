@@ -1,8 +1,10 @@
 import torch.nn as nn
 
+from olympus.models.inits import initialize_weights
 from olympus.utils import MissingArgument, warning
 from olympus.utils.factory import fetch_factories
 from olympus.utils.fp16 import network_to_half
+
 
 registered_models = fetch_factories('olympus.models', __file__)
 
@@ -50,18 +52,21 @@ class Model(nn.Module):
         if name nor model were not set
     """
 
-    def __init__(self, name=None, half=False, model=None, input_size=None, output_size=None):
+    def __init__(self, name=None, half=False, model=None, input_size=None, output_size=None, initialization='glorot_uniform'):
         super(Model, self).__init__()
+        self._model = None
+        self.args = {}
 
         # Override the model with a custom model
         if model:
-            self.model = model
+            self.lazy_model = lambda x: model
 
         elif name:
             # load an olympus model
-            self.model = registered_models.get(name)(input_size=input_size, output_size=output_size)
+            self.lazy_model = registered_models.get(name)
+            self.args = dict(input_size=input_size, output_size=output_size)
 
-            if not self.model:
+            if not self.lazy_model:
                 raise RegisteredModelNotFound(name)
 
         else:
@@ -69,10 +74,29 @@ class Model(nn.Module):
 
         self.transform = lambda x: x
         self.half = half
+        self.initialization = initialization
 
-        if half:
-            self.model = network_to_half(model)
+    def get_space(self):
+        return {}
+
+    def init_model(self, override=False):
+        if self._model is None or override:
+            self._model = self.lazy_model(**self.args)
+
+        initialize_weights(self._model, name=self.initialization, seed=0)
+
+        if self.half:
+            self._model = network_to_half(self._model)
             self.transform = lambda x: x.half()
+
+        return self
+
+    @property
+    def model(self):
+        if not self._model:
+            self.init()
+
+        return self._model
 
     def forward(self, input):
         return self.model(self.transform(input))

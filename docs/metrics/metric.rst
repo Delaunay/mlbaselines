@@ -1,5 +1,5 @@
-olympus.metrics.metric module
-=============================
+Metric Interface
+================
 
 .. automodule:: olympus.metrics.metric
     :members:

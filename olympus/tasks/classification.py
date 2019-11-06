@@ -57,6 +57,31 @@ class Classification(Task):
             # ClassifierAdversary(epsilon=0.25).every(epoch=1, batch=1)
         )
 
+    def get_space(self):
+        return {
+            'task': {
+                'epochs': 'fidelity(1, 4, base=4)'
+            },
+            'optimizer': self.optimizer.get_space(),
+            'lr_schedule': self.lr_scheduler.get_space()
+        }
+
+    def init(self, optimizer, lr_schedule):
+        self.classifier.init_model()
+        self.optimizer.init_optimizer(
+            self.classifier.parameters(),
+            override=True, **optimizer
+        )
+        self.lr_scheduler.init_schedule(
+            self.optimizer,
+            override=True, **lr_schedule
+        )
+
+        self.device = self.device
+
+    def parameters(self):
+        return self.classifier.parameters()
+
     def resume(self):
         try:
             state_dict = self.storage.load('checkpoint')
@@ -138,7 +163,7 @@ class Classification(Task):
             self.step(step, mini_batch, context)
 
         self.metrics.epoch(epoch, self, context)
-        self.lr_scheduler.epoch(epoch, self.metrics.value()['validation_accuracy'])
+        self.lr_scheduler.epoch(epoch, lambda x: self.metrics.value()['validation_accuracy'])
         self.checkpoint(epoch)
 
     def step(self, step, input, context):

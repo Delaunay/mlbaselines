@@ -44,7 +44,8 @@ class Adam(OptimizerBuilder):
     def get_space(self):
         return {'lr': 'loguniform(1e-5, 1)',
                 'beta1': 'loguniform(0.9, 1)',
-                'beta2': 'loguniform(0.99, 1)'}
+                'beta2': 'loguniform(0.99, 1)',
+                'weight_decay': 'loguniform(1e-10, 1e-3)'}
 
 
 builders = {'adam': Adam}

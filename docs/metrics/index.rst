@@ -8,6 +8,9 @@ Submodules
 
    metric
    rl
+   accuracy
+   progress
+   adversary
 
 Module contents
 ---------------

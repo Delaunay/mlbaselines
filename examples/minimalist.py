@@ -21,22 +21,12 @@ initialize_weights(
     seed=1)
 
 # Optimizer
-optimizer = Optimizer(
-    'sgd'
-).init_optimizer(
-    model.parameters(),
-    weight_decay=0.001,
-    lr=1e-5,
-    momentum=1e-5
-)
+optimizer = (Optimizer('sgd', model.parameters())
+    .init_optimizer(weight_decay=0.001, lr=1e-5, momentum=1e-5))
 
 # Schedule
-lr_schedule = LRSchedule(
-    'exponential'
-).init_schedule(
-    optimizer,
-    gamma=0.99
-)
+lr_schedule = (LRSchedule('exponential'. optimizer)
+    .init_schedule(gamma=0.99))
 
 # Dataloader
 loader = DataLoader(

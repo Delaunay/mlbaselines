@@ -86,12 +86,13 @@ class Optimizer(TorchOptimizer):
     """
     half = False
     half_args = dict()
+    _optimizer = None
 
-    def __init__(self, name=None, optimizer=None, half=False, loss_scale=1,
+    def __init__(self, name=None, params=None, optimizer=None, half=False, loss_scale=1,
                  dynamic_loss_scale=False, scale_window=1000, scale_factor=2,
                  min_loss_scale=None, max_loss_scale=2.**24):
-
         self._optimizer = None
+        self._model_parameters = params
         self._half_parameters(
             half,  loss_scale, dynamic_loss_scale,
             scale_window, scale_factor, min_loss_scale, max_loss_scale
@@ -103,10 +104,12 @@ class Optimizer(TorchOptimizer):
 
         elif name:
             # load an olympus model
-            self.optimizer_builder = registered_optimizers.get(name.lower())()
+            self.optimizer_builder = registered_optimizers.get(name.lower())
 
             if not self.optimizer_builder:
                 raise RegisteredOptimizerNotFound(name)
+
+            self.optimizer_builder = self.optimizer_builder()
 
         else:
             raise MissingArgument('optimizer or name needs to be set')
@@ -163,15 +166,13 @@ class Optimizer(TorchOptimizer):
 
         return {}
 
-    def init_optimizer(self, model_parameters, weight_decay, override=False, **kwargs):
-        if self._optimizer:
+    def init_optimizer(self, model_parameters, override=False, **kwargs):
+        if self._optimizer and not override:
             warning('Optimizer is already set, use override=True to force re initialization')
-
-            if not override:
-                return self._optimizer
+            return self
 
         self._optimizer = self._wrap_optimizer(
-            self.optimizer_builder(model_parameters, weight_decay, **kwargs))
+            self.optimizer_builder(model_parameters, **kwargs))
 
         return self
 

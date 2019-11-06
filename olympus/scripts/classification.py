@@ -5,7 +5,7 @@ from olympus.hpo import TrialIterator
 from olympus.datasets import known_datasets, merge_data_loaders
 from olympus.datasets import DataLoader
 import olympus.distributed.multigpu as distributed
-from olympus.metrics import Accuracy, ProgressView
+from olympus.metrics import Accuracy
 from olympus.models import Model, known_models
 from olympus.models.inits import initialize_weights, known_initialization
 from olympus.tasks import Classification
@@ -104,15 +104,13 @@ def train(dataset, model, optimizer, lr_scheduler, init, epochs,
     #       (i.e. large output layers) This may be better integrated in the model builder.
     model = distributed.data_parallel(model)
 
-    optimizer = Optimizer(optimizer, half=kwargs.get('half', False))
+    optimizer = Optimizer(optimizer, model.parameters(), half=kwargs.get('half', False))
     optimizer = optimizer.init_optimizer(
-        model.parameters(),
         weight_decay=kwargs['weight_decay'],
         **optimizer.get_params(kwargs))
 
-    lr_schedule = LRSchedule(lr_scheduler)
+    lr_schedule = LRSchedule(lr_scheduler, optimizer)
     lr_schedule.init_schedule(
-        optimizer,
         **lr_schedule.get_params(kwargs)
     )
 

@@ -1,6 +1,25 @@
 Olympus
 =======
 
+Decades of machine learning research at your fingertips.
+
+Features
+~~~~~~~~
+
+- Deterministic Blocks
+- Reproducible baselines for a variety of tasks
+- Integrated Hyperparameter Optimizer (Orion)
+- Experiment Tracking
+- Model Zoo
+- Pretrained Models
+- Multi GPU training
+
+
+Baselines
+~~~~~~~~~
+
+Run any baselines in a few lines of code
+
 .. code-block:: bash
 
     $ pip install olympus
@@ -26,3 +45,16 @@ Olympus
       "memory.free": 31672.833333333332,
       "memory.used": 807.1666666666666
     }
+
+
+Deterministic Blocks
+~~~~~~~~~~~~~~~~~~~~
+
+Writing a full pipeline has never been easier,
+even when optimizing over hyper parameters !
+
+.. literalinclude:: ../examples/hpo_simple.py
+   :language: python
+   :linenos:
+
+

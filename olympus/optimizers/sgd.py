@@ -17,7 +17,8 @@ class SGD(OptimizerBuilder):
 
     def get_space(self):
         return {'lr': 'loguniform(1e-5, 1)',
-                'momentum': 'uniform(0, 1)'}
+                'momentum': 'uniform(0, 1)',
+                'weight_decay': 'loguniform(1e-10, 1e-3)'}
 
 
 builders = {'sgd': SGD}

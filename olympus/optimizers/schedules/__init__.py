@@ -66,10 +66,12 @@ class LRSchedule:
 
         elif name:
             # load an olympus model
-            self._schedule_builder = registered_schedules.get(name)()
+            self._schedule_builder = registered_schedules.get(name)
 
             if not self._schedule_builder:
                 raise RegisteredLRSchedulerNotFound(name)
+
+            self._schedule_builder = self._schedule_builder()
 
         else:
             raise MissingArgument('None or name needs to be set')

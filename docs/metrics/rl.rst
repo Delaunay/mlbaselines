@@ -1,5 +1,5 @@
-olympus.metrics.rl module
-=========================
+Reinforcement Learning
+======================
 
 .. automodule:: olympus.metrics.rl
     :members:
