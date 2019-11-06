@@ -135,10 +135,13 @@ class StatStream(object):
     @property
     def count(self) -> int:
         # is count is 0 then self.sum is 0 so everything should workout
-        return max(self.current_count - self.drop_obs, 1)
+        return max(self.current_count - self.drop_obs, 0)
 
     @property
     def avg(self) -> float:
+        if self.count == 0:
+            return float('NaN')
+
         return self.sum / float(self.count) + self.first_obs
 
     @property
