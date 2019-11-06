@@ -1,3 +1,5 @@
+import json
+
 from .metric import *
 from .adversary import ClassifierAdversary
 from .accuracy import OnlineTrainAccuracy, Accuracy
@@ -18,9 +20,11 @@ class MetricList:
         self._previous_step = 0
 
     def state_dict(self):
+        """Save all the children states"""
         return [m.state_dict() for m in self.metrics]
 
     def load_state_dict(self, state_dict):
+        """Resume all children metrics using a state_dict"""
         for m, m_state_dict in zip(self.metrics, state_dict):
             m.load_state_dict(m_state_dict)
 
@@ -34,6 +38,15 @@ class MetricList:
         self.append(m=value, key=key)
 
     def get(self, key, default=None):
+        """Retrieve a metric from its key
+
+        Parameters
+        ----------
+        key: Union[str, int]
+
+        default: any
+            default object returned if not found
+        """
         if isinstance(key, int):
             return self.metrics[key]
 
@@ -43,6 +56,17 @@ class MetricList:
         return default
 
     def append(self, m: Metric, key=None):
+        """Insert a new metric to compute
+
+        Parameters
+        ----------
+        m: Metric
+            new metric to insert
+
+        key: Optional[str]
+            optional key used to retrieve the metric
+            by default the type name will be used as key
+        """
         # Use name attribute as key
         if hasattr(m, 'name') and not key:
             key = m.name
@@ -58,6 +82,7 @@ class MetricList:
         self.metrics.append(m)
 
     def epoch(self, epoch, task=None, context=None):
+        """Broadcast a `new_epoch` event to all metrics"""
         for m in self.metrics:
             if m.frequency_epoch > 0 and epoch % m.frequency_epoch == 0:
                 m.on_new_epoch(epoch, task, context)
@@ -66,6 +91,7 @@ class MetricList:
         self.batch_id = 0
 
     def step(self, step, task=None, input=None, context=None):
+        """Broadcast a `new_batch` event to all metrics"""
         # Step back to 0, means it is a new epoch
         if self._previous_step > step:
             assert self.batch_id == 0
@@ -78,14 +104,17 @@ class MetricList:
         self._previous_step = step
 
     def start(self, task=None):
+        """Broadcast a `start` event to all metrics"""
         for m in self.metrics:
             m.start(task)
 
     def finish(self, task=None):
+        """Broadcast a `finish` event to all metrics"""
         for m in self.metrics:
             m.finish(task)
 
     def value(self):
+        """Returns a dictionary of all computed metrics"""
         metrics = {}
         for metric in self.metrics:
             metrics.update(metric.value())
@@ -93,6 +122,7 @@ class MetricList:
         return metrics
 
     def report(self, pprint=True, print_fun=print):
+        """Pretty prints all the metrics"""
         metrics = self.value()
 
         if pprint:
