@@ -17,6 +17,9 @@ def logistic_regression(input_size, output_size):
     if not isinstance(input_size, int):
         input_size = numpy.product(input_size)
 
+    if not isinstance(output_size, int):
+        output_size = numpy.product(output_size)
+
     return MLP(input_size, output_size, layers=[], bias=True)
 
 

@@ -13,6 +13,8 @@ Features
 - Model Zoo
 - Pretrained Models
 - Multi GPU training
+- Automatic Checkpointing
+- Mixed precision Available
 
 
 Baselines

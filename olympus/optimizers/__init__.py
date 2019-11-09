@@ -1,7 +1,7 @@
 from typing import Dict
 
 from torch.optim.optimizer import Optimizer as TorchOptimizer
-from olympus.utils import MissingArgument, warning
+from olympus.utils import MissingArgument, warning, HyperParameters
 from olympus.utils.factory import fetch_factories
 
 
@@ -67,6 +67,16 @@ class Optimizer(TorchOptimizer):
     Examples
     --------
 
+    Follows standard Pytorch Optimizer
+
+    >>> optimizer = Optimizer('SGD', model.parameters(),  weight_decay, lr=0.001, momentum=0.8)
+    >>> optimizer.zero_grad()
+    >>> loss = model(x)
+    >>> optimizer.backward(loss)
+    >>> optimizer.step()
+
+    Can be lazily initialized for hyper parameter search
+
     >>> optimizer = Optimizer('SGD')
     >>> optimizer.get_space()
     {'lr': 'loguniform(1e-5, 1)', 'momentum': 'uniform(0, 1)'}
@@ -76,6 +86,10 @@ class Optimizer(TorchOptimizer):
     >>> optimizer.backward(loss)
     >>> optimizer.step()
 
+    Switch to a mixed precision optimizer if needed
+
+    >>> optimizer = Optimizer('SGD', half=True)
+
     Raises
     ------
     RegisteredOptimizerNotFound
@@ -83,6 +97,9 @@ class Optimizer(TorchOptimizer):
 
     MissingArgument:
         if name nor optimizer were not set
+
+    WrongParameter
+        if a wrong hyper parameter is passed in kwargs
     """
     half = False
     half_args = dict()
@@ -90,7 +107,7 @@ class Optimizer(TorchOptimizer):
 
     def __init__(self, name=None, params=None, optimizer=None, half=False, loss_scale=1,
                  dynamic_loss_scale=False, scale_window=1000, scale_factor=2,
-                 min_loss_scale=None, max_loss_scale=2.**24):
+                 min_loss_scale=None, max_loss_scale=2.**24, **kwargs):
         self._optimizer = None
         self._model_parameters = params
         self._half_parameters(
@@ -98,9 +115,15 @@ class Optimizer(TorchOptimizer):
             scale_window, scale_factor, min_loss_scale, max_loss_scale
         )
 
+        # Track defined hyper parameters
+        self.hyper_parameters = HyperParameters(space={})
+
         if optimizer:
             warning('Using custom optimizer')
             self._optimizer = self._wrap_optimizer(optimizer)
+
+            if hasattr(self._optimizer, 'get_space'):
+                self.hyper_parameters.space = self._optimizer.get_space()
 
         elif name:
             # load an olympus model
@@ -111,8 +134,14 @@ class Optimizer(TorchOptimizer):
 
             self.optimizer_builder = self.optimizer_builder()
 
+            if hasattr(self.optimizer_builder, 'get_space'):
+                self.hyper_parameters.space = self.optimizer_builder.get_space()
+
         else:
             raise MissingArgument('optimizer or name needs to be set')
+
+        # All additional args are hyper parameters
+        self.hyper_parameters.add_parameters(**kwargs)
 
     def _half_parameters(self, half=False, loss_scale=1,
                          dynamic_loss_scale=False, scale_window=1000, scale_factor=2,
@@ -149,10 +178,7 @@ class Optimizer(TorchOptimizer):
         if self._optimizer:
             warning('Optimizer is already set')
 
-        if self.optimizer_builder:
-            return self.optimizer_builder.get_space()
-
-        return {}
+        return self.hyper_parameters.missing_parameters()
 
     def get_params(self, params: Dict[str, any]) -> Dict[str, any]:
         """Extract optimizer parameters from the dictionary, the resulting dictionary can be
@@ -166,20 +192,36 @@ class Optimizer(TorchOptimizer):
 
         return {}
 
-    def init_optimizer(self, model_parameters, override=False, **kwargs):
+    def init(self, model_parameters=None, override=False, **kwargs):
+        """instantiate the underlying optimizer
+
+        Raises
+        ------
+        MissingParameters
+            if an hyper parameter is missing
+        """
         if self._optimizer and not override:
             warning('Optimizer is already set, use override=True to force re initialization')
             return self
 
+        # add missing hyper parameters
+        self.hyper_parameters.add_parameters(**kwargs)
+
+        if model_parameters is None:
+            model_parameters = self._model_parameters
+
+        if model_parameters is None:
+            raise MissingArgument('Missing Model parameters!')
+
         self._optimizer = self._wrap_optimizer(
-            self.optimizer_builder(model_parameters, **kwargs))
+            self.optimizer_builder(model_parameters, **self.hyper_parameters.parameters(strict=True)))
 
         return self
 
     @property
     def optimizer(self):
         if not self._optimizer:
-            raise UninitializedOptimizer('Call `init_optimizer` first')
+            self.init()
 
         return self._optimizer
 

@@ -1,6 +1,5 @@
 import torch.nn.functional as F
 from olympus.datasets import DataLoader
-from olympus.models.inits import initialize_weights
 
 from olympus.optimizers.schedules import LRSchedule
 from olympus.optimizers import Optimizer
@@ -11,22 +10,16 @@ from olympus.metrics import MetricList, ProgressView
 model = Model(
     'resnet18',
     input_size=(1, 28, 28),
-    output_size=(10,)
-).cuda()
-
-
-initialize_weights(
-    model,
-    name='glorot_uniform',
-    seed=1)
+    output_size=(10,),
+    weight_init='glorot_uniform',
+    seed=1
+)
 
 # Optimizer
-optimizer = (Optimizer('sgd', model.parameters())
-    .init_optimizer(weight_decay=0.001, lr=1e-5, momentum=1e-5))
+optimizer = Optimizer('sgd', model.parameters(), weight_decay=0.001, lr=1e-5, momentum=1e-5)
 
 # Schedule
-lr_schedule = (LRSchedule('exponential'. optimizer)
-    .init_schedule(gamma=0.99))
+lr_schedule = LRSchedule('exponential', optimizer, gamma=0.99)
 
 # Dataloader
 loader = DataLoader(

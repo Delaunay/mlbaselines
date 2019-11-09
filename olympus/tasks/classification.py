@@ -57,34 +57,47 @@ class Classification(Task):
             # ClassifierAdversary(epsilon=0.25).every(epoch=1, batch=1)
         )
 
-    def get_space(self):
+    def get_space(self, **fidelities):
+        """Return hyper parameter space"""
         return {
-            'task': {
-                'epochs': 'fidelity(1, 4, base=4)'
+            'task': {       # fidelity(min, max, base logarithm)
+                'epochs': fidelities.get('epochs')
             },
             'optimizer': self.optimizer.get_space(),
-            'lr_schedule': self.lr_scheduler.get_space()
+            'lr_schedule': self.lr_scheduler.get_space(),
+            'model': self.model.get_space()
         }
 
-    def init(self, optimizer, lr_schedule):
-        self.classifier.init_model()
-        self.optimizer.init_optimizer(
+    def init(self, optimizer=None, lr_schedule=None, model=None):
+        if optimizer is None:
+            optimizer = {}
+
+        if lr_schedule is None:
+            lr_schedule = {}
+
+        if model is None:
+            model = {}
+
+        self.classifier.init(
+            **model
+        )
+        self.optimizer.init(
             self.classifier.parameters(),
             override=True, **optimizer
         )
-        self.lr_scheduler.init_schedule(
+        self.lr_scheduler.init(
             self.optimizer,
             override=True, **lr_schedule
         )
 
-        self.device = self.device
+        self.set_device(self.device)
 
     def parameters(self):
         return self.classifier.parameters()
 
     def resume(self):
         try:
-            state_dict = self.storage.load('checkpoint')
+            state_dict = self.storage.load('checkpoint', device=self.device)
 
         except RuntimeError as e:
             if 'CPU-only machine' in str(e):
@@ -94,23 +107,28 @@ class Classification(Task):
             info('Starting from scratch')
             return
 
-        info(f"Resuming from epoch {state_dict['epoch']}")
-        self._first_epoch = state_dict['epoch'] + 1
-        self.model.load_state_dict(state_dict['model'])
-        self.optimizer.load_state_dict(state_dict['optimizer'])
-        # Dirty fix found here:
-        # https://github.com/pytorch/pytorch/issues/2830#issuecomment-336194949
-        for state in self.optimizer.state.values():
-            for k, v in state.items():
-                if torch.is_tensor(v):
-                    state[k] = v.cuda()
+        try:
+            self._first_epoch = state_dict['epoch']
+            info(f"Resuming from (epoch: {self._first_epoch})")
 
-        self.lr_scheduler.load_state_dict(state_dict['lr_scheduler'])
-        self.dataloader.sampler.load_state_dict(state_dict['sampler'])
-        self.metrics.load_state_dict(state_dict['metrics'])
+            self.model.load_state_dict(state_dict['model'])
+            self.optimizer.load_state_dict(state_dict['optimizer'])
+            # Dirty fix found here:
+            # https://github.com/pytorch/pytorch/issues/2830#issuecomment-336194949
+            for state in self.optimizer.state.values():
+                for k, v in state.items():
+                    if torch.is_tensor(v):
+                        state[k] = v.to(device=self.device)
+
+            self.lr_scheduler.load_state_dict(state_dict['lr_scheduler'])
+            self.dataloader.sampler.load_state_dict(state_dict['sampler'])
+            self.metrics.load_state_dict(state_dict['metrics'])
+
+        except KeyError as e:
+            raise KeyError(f'Bad state dictionary!, missing (key: {e.args})') from e
 
     def checkpoint(self, epoch):
-        info('Saving checkpoint')
+        info(f'Saving checkpoint (epoch: {epoch})')
         self.storage.save(
             'checkpoint',
             dict(
@@ -144,6 +162,8 @@ class Classification(Task):
         progress = self.metrics.get('ProgressView')
 
         if progress:
+            # in case of a resume
+            progress.epoch = self._first_epoch
             progress.max_epoch = epochs
             progress.max_step = len(self.dataloader)
 
@@ -162,7 +182,7 @@ class Classification(Task):
         for step, mini_batch in enumerate(self.dataloader):
             self.step(step, mini_batch, context)
 
-        self.metrics.epoch(epoch, self, context)
+        self.metrics.on_new_epoch(epoch, self, context)
         self.lr_scheduler.epoch(epoch, lambda x: self.metrics.value()['validation_accuracy'])
         self.checkpoint(epoch)
 
@@ -183,7 +203,7 @@ class Classification(Task):
         }
 
         # Metrics
-        self.metrics.step(step, self, input, results)
+        self.metrics.on_new_batch(step, self, input, results)
         self.lr_scheduler.step(step)
         return results
 

@@ -77,6 +77,7 @@ class RandomSampler(Sampler):
     """Pytorch like Sampler"""
     def __init__(self, data_source, seed=None, replacement=False, num_samples=None):
         self.sampler = None
+        self.seed = seed
 
         if num_samples is None:
             num_samples = len(data_source)

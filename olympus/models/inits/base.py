@@ -1,3 +1,4 @@
+import torch
 import torch.nn
 
 
@@ -23,8 +24,15 @@ class Uniform(Initialization):
     def __init__(self, a=0.0, b=1.0):
         self.a = a
         self.b = b
+        # self.gen = torch.Generator()
+        # self.gen.manual_seed(seed)
 
     def layer_init(self, weight):
+        # jit does not support context managers!
+        # if we start using this it will break JIT
+        # but we already fork the PRNG with a context manager so probably already breaking jit anyway?
+        # with torch.no_grad():
+        #   weight.uniform_(self.a, self.b, generator=self.gen)
         torch.nn.init.uniform_(weight, self.a, self.b)
 
 

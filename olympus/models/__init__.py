@@ -1,10 +1,10 @@
+import torch
 import torch.nn as nn
 
-from olympus.models.inits import initialize_weights
-from olympus.utils import MissingArgument, warning
+from olympus.models.inits import initialize_weights, known_initialization
+from olympus.utils import MissingArgument, warning, LazyCall, HyperParameters
 from olympus.utils.factory import fetch_factories
 from olympus.utils.fp16 import network_to_half
-
 
 registered_models = fetch_factories('olympus.models', __file__)
 
@@ -29,6 +29,17 @@ class RegisteredModelNotFound(Exception):
     pass
 
 
+class Module(nn.Module):
+    """Olympus Module interface to guide new users when doing NAS"""
+    def __init__(self, input_size=None, output_size=None):
+        super(Module, self).__init__()
+
+    @staticmethod
+    def get_space():
+        raise NotImplemented
+
+
+# TODO: Make Model distributed here
 class Model(nn.Module):
     """Olympus standardized Model interface
 
@@ -43,6 +54,34 @@ class Model(nn.Module):
     model: Model
         Custom model to use, mutually exclusive with :param name
 
+    Examples
+    --------
+
+    Model wrappers that provide a wide range of utility built-in.
+
+    Can instantiate common model directly
+
+    >>> model = Model('resnet18', input_size=(1, 28, 28), output_size=(10,))
+
+    Handles mixed precision conversion for you
+
+    >>> model = Model('resnet18', input_size=(1, 28, 28), output_size=(10,), half=True)
+
+    Handles weight initialization
+
+    >>> model = Model('resnet18', input_size=(1, 28, 28), output_size=(10,), weight_init='glorot_uniform')
+
+    Supports your custom model
+
+    >>> class MyModel(nn.Module):
+    >>>     def __init__(self, input_size, output_size):
+    >>>         self.main = nn.Linear(input_size[0], output_size[0])
+    >>>
+    >>>     def forward(self, x):
+    >>>         return self.main(x)
+    >>>
+    >>> model = Model(MyModel, input_size=(1, 28, 28), output_size=(10,))
+
     Raises
     ------
     RegisteredModelNotFound
@@ -51,44 +90,73 @@ class Model(nn.Module):
     MissingArgument:
         if name nor model were not set
     """
+    MODEL_BASE_SPACE = {
+        'weight_init': 'choices({})'.format(list(known_initialization()))
+    }
+    _dtype = torch.float32
+    _device = torch.device('cpu')
 
-    def __init__(self, name=None, half=False, model=None, input_size=None, output_size=None, initialization='glorot_uniform'):
+    def __init__(self, name=None, half=False, model=None, input_size=None, output_size=None, weight_init=None, seed=0):
         super(Model, self).__init__()
+        self.transform = lambda x: x.to(device=self.device, dtype=self.dtype)
+        self.half = half
+        self.seed = seed
         self._model = None
-        self.args = {}
 
-        # Override the model with a custom model
+        # Track defined hyper parameters
+        self.hyper_parameters = HyperParameters(space=Model.MODEL_BASE_SPACE)
+        if weight_init:
+            self.hyper_parameters.add_parameters(weight_init=weight_init)
+
+        # Make a Lazy Model that will be initialized once all the hyper parameters are set
         if model:
-            self.lazy_model = lambda x: model
+            if hasattr(model, 'get_space'):
+                self.hyper_parameters.space.update(model.get_space())
+
+            self.model_builder = LazyCall(lambda x: model)
 
         elif name:
             # load an olympus model
-            self.lazy_model = registered_models.get(name)
-            self.args = dict(input_size=input_size, output_size=output_size)
+            model_fun = registered_models.get(name)
 
-            if not self.lazy_model:
+            if not model_fun:
                 raise RegisteredModelNotFound(name)
 
+            self.model_builder = LazyCall(model_fun, input_size=input_size, output_size=output_size)
+
+            if hasattr(model_fun, 'get_space'):
+                self.hyper_parameters.space.update(model.get_space())
         else:
             raise MissingArgument('Model or Name needs to be set')
 
-        self.transform = lambda x: x
-        self.half = half
-        self.initialization = initialization
+    @property
+    def dtype(self):
+        return self._dtype
+
+    @property
+    def device(self):
+        return self._device
 
     def get_space(self):
-        return {}
+        """Return hyper parameter space"""
+        return self.hyper_parameters.missing_parameters()
 
-    def init_model(self, override=False):
-        if self._model is None or override:
-            self._model = self.lazy_model(**self.args)
+    def init(self, override=False, weight_init=None):
+        self.model_builder.invoke()
+        self._model = self.model_builder.obj
 
-        initialize_weights(self._model, name=self.initialization, seed=0)
+        parameters = self.hyper_parameters.parameters(strict=False)
+        if weight_init is not None:
+            parameters['weight_init'] = weight_init
+
+        init_name = parameters['weight_init']
+        initialize_weights(self._model, name=init_name, seed=self.seed)
 
         if self.half:
             self._model = network_to_half(self._model)
-            self.transform = lambda x: x.half()
 
+        # Register module so we can use all the parent methods
+        self.add_module('main_model', self._model)
         return self
 
     @property
@@ -110,10 +178,12 @@ class Model(nn.Module):
 
     def load_state_dict(self, state_dict, strict=True):
         self.half = state_dict['half']
-        if self.half:
-            self.transform = lambda x: x.half()
         self.model.load_state_dict(state_dict['model'], strict=strict)
 
     def parameters(self, recurse: bool = True):
         return self.model.parameters(recurse)
 
+    def to(self, *args, **kwargs):
+        self._device, self._dtype, non_blocking = torch._C._nn._parse_to(*args, **kwargs)
+        super().to(*args, **kwargs)
+        return self

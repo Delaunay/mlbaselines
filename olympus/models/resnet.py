@@ -1,6 +1,9 @@
 import functools
-from olympus.utils import info
+
+import numpy
 import torch.nn as nn
+
+from olympus.utils import info
 
 
 # All models here are assumed to accept RGB input, thus 3 input channels.
@@ -221,8 +224,8 @@ class ResNet(nn.Module):
 
 
 def build(block, cfg, input_size, output_size):
-    if isinstance(output_size, tuple):
-        output_size = output_size[0]
+    if not isinstance(output_size, int):
+        output_size = numpy.product(output_size)
 
     if input_size == (1, 28, 28):
         info('Using PreActResNet architecture for MNIST')

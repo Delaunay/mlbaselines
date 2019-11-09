@@ -3,11 +3,11 @@ import os
 from orion.client import create_experiment
 
 from olympus.datasets import DataLoader, merge_data_loaders
-from olympus.metrics import Accuracy, ProgressView
-from olympus.models import Model, known_models
+from olympus.metrics import Accuracy
+from olympus.models import Model
 from olympus.optimizers import Optimizer
 from olympus.optimizers.schedules import LRSchedule
-from olympus.tasks import Classification
+from olympus.tasks import Classification, HPO
 from olympus.utils import fetch_device
 from olympus.utils.storage import StateStorage
 

@@ -1,5 +1,30 @@
 .. include:: ../README.rst
 
+
+.. toctree::
+   :caption: Getting Started
+
+   start/start.rst
+
+.. toctree::
+   :caption: Examples
+
+   examples/minimalist
+   examples/hpo_simple
+
+
+.. toctree::
+   :caption: Extending
+
+   extending/index
+
+
+.. toctree::
+   :caption: Contributing
+
+   contributing/index
+
+
 .. toctree::
    :caption: API
    :maxdepth: 1

@@ -153,11 +153,6 @@ class StatStream(object):
     def sd(self) -> float:
         return math.sqrt(self.var)
 
-    def to_array(self, transform=None):
-        if transform is not None:
-            return [transform(self.avg), 'NA', transform(self.min), transform(self.max), self.count]
-        return [self.avg, self.sd, self.min, self.max, self.count]
-
     def to_json(self):
         data = {
             'avg': self.avg,

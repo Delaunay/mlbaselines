@@ -1,5 +1,6 @@
 import datetime
 import os
+from typing import Callable
 
 import torch
 
@@ -30,11 +31,28 @@ class StateStorage:
 
     def save(self, filename, state):
         if (datetime.datetime.utcnow() - self.last_save).total_seconds() > self.time_buffer:
-            torch.save(state, self._file(filename))
+
+            path = self._file(filename)
+
+            dirname = os.path.dirname(path)
+            if dirname:
+                os.makedirs(dirname, exist_ok=True)
+
+            torch.save(state, path)
             self.last_save = datetime.datetime.utcnow()
 
-    def load(self, filename):
-        return torch.load(self._file(filename))
+    def load(self, filename, device=None):
+        """
+
+        Parameters
+        ----------
+        filename: str
+            file to load the state from
+
+        device: torch.device
+            it indicates the location where all tensors should be loaded.
+        """
+        return torch.load(self._file(filename), map_location=device)
 
 
 if __name__ == '__main__':

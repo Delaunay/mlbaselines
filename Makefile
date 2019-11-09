@@ -1,4 +1,4 @@
-
+export OLYMPUS_DATA_PATH=/tmp
 
 rm-doc:
 	rm -rf docs/api
@@ -20,8 +20,17 @@ run-examples:
 
 check:
 	rm test.pkl test.pkl.lock | echo ''
-	olympus classification --batch-size 32 --epochs 10 --dataset mnist --model resnet18
+	olympus classification --batch-size 32 --epochs 10 --dataset mnist --model logreg
 
 run-hpo:
 	rm test.pkl test.pkl.lock | echo ''
-	python examples/hpo_example.py
+	python examples/hpo_simple.py
+
+run-hpo-complete:
+	rm test.pkl test.pkl.lock | echo ''
+	python examples/hpo_complete.py  --dataset mnist --model logreg --batch-size 32 --epochs 10
+
+run-hpo-long:
+	rm -rf /tmp/classification
+	rm test.pkl test.pkl.lock | echo ''
+	python examples/hpo_simple.py --epochs 100

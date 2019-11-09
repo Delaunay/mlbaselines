@@ -1,22 +1,29 @@
-from olympus.tasks.hpo import HPO
-from olympus.tasks import Classification
-from olympus.optimizers import Optimizer
-from olympus.models import Model
-from olympus.optimizers.schedules import LRSchedule
+from argparse import ArgumentParser
+import json
+
 from olympus.datasets import DataLoader
+from olympus.metrics import Accuracy
+from olympus.models import Model
+from olympus.optimizers import Optimizer
+from olympus.optimizers.schedules import LRSchedule
+from olympus.tasks.hpo import HPO, fidelity
+from olympus.tasks import Classification
 from olympus.utils.storage import StateStorage
 from olympus.utils import fetch_device
-from olympus.metrics import Accuracy
 
+
+parser = ArgumentParser()
+parser.add_argument('--epochs', type=int, default=5)
+args = parser.parse_args()
 device = fetch_device()
 
 
 def make_task():
     model = Model(
-        'resnet18',
+        'logreg',
         input_size=(1, 28, 28),
         output_size=(10,)
-    ).to(device=device)
+    )
 
     optimizer = Optimizer('sgd')
 
@@ -30,7 +37,7 @@ def make_task():
         lr_scheduler=lr_schedule,
         dataloader=dataset.train(),
         device=device,
-        storage=StateStorage(folder='/tmp'))
+        storage=StateStorage(folder='/tmp', time_buffer=0))
 
     main_task.metrics.append(
         Accuracy(name='validation', loader=dataset.valid())
@@ -39,5 +46,18 @@ def make_task():
     return main_task
 
 
-hpo = HPO(make_task)
-hpo.run()
+hpo = HPO(
+    'minimalist_hpo',
+    task=make_task,
+    algo='ASHA',
+    seed=1,
+    num_rungs=5,
+    num_brackets=1,
+    max_trials=500
+)
+
+hpo.fit(epochs=fidelity(args.epochs))
+
+print('Best Params:')
+print('-' * 40)
+print(json.dumps(hpo.best_trial.params, indent=2))

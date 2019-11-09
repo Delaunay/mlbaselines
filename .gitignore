@@ -75,6 +75,7 @@ docs/src/reference
 target/
 olympus.egg-info/
 
+full_test.pkl
 test.pkl
 MNIST/
 _build/

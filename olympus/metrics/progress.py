@@ -19,6 +19,7 @@ class ProgressView(Metric):
     max_epoch: int = 0
     max_step: int = 0
     batch_size: int = 0
+    step_length: int = 0
 
     step_time: StatStream = field(default_factory=lambda: StatStream(drop_first_obs=5))
     epoch_time: StatStream = field(default_factory=lambda: StatStream(drop_first_obs=1))
@@ -28,9 +29,10 @@ class ProgressView(Metric):
 
     def show_progress(self, epoch, step=None):
         if step is None:
-            step = '              '
+            step = ' ' * self.step_length
         else:
             step = f'Step [{step:3d}/{self.max_step:3d}]'
+            self.step_length = len(step)
 
         self.print_fun(f'\rEpoch [{epoch:3d}/{self.max_epoch:3d}] {step} {self.eta(epoch)}', end='')
 

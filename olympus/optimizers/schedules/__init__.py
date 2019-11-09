@@ -1,4 +1,4 @@
-from olympus.utils import MissingArgument, warning
+from olympus.utils import MissingArgument, warning, HyperParameters
 from olympus.utils.factory import fetch_factories
 
 
@@ -47,7 +47,7 @@ class LRSchedule:
     >>> schedule = LRSchedule('cyclic')
     >>> schedule.get_space()
     {'base_lr': 'loguniform(1e-5, 1e-2)', 'max_lr': 'loguniform(1e-2, 1)', ... }
-    >>> schedule.init_schedule(optimizer, base_lr=1e-2, ...)
+    >>> schedule.init(optimizer, base_lr=1e-2, ...)
 
     Raises
     ------
@@ -58,30 +58,46 @@ class LRSchedule:
         if name nor schedule were not set
     """
 
-    def __init__(self, name=None, schedule=None):
+    def __init__(self, name=None, schedule=None, optimizer=None):
         self._schedule = None
+        self._schedule_builder = None
+        self._optimizer = optimizer
+
+        self.hyper_parameters = HyperParameters(space={})
 
         if schedule:
             self._schedule = schedule
 
+            if hasattr(self._schedule, 'get_space'):
+                self.hyper_parameters.space = self._schedule.get_space()
+
         elif name:
             # load an olympus model
-            self._schedule_builder = registered_schedules.get(name)
+            builder = registered_schedules.get(name)
 
-            if not self._schedule_builder:
+            if not builder:
                 raise RegisteredLRSchedulerNotFound(name)
 
-            self._schedule_builder = self._schedule_builder()
+            self._schedule_builder = builder()
+
+            if hasattr(self._schedule_builder, 'get_space'):
+                self.hyper_parameters.space = self._schedule_builder.get_space()
 
         else:
             raise MissingArgument('None or name needs to be set')
 
-    def init_schedule(self, optimizer, override=False, **kwargs):
+    def init(self, optimizer=None, override=False, **kwargs):
         if self._schedule:
             warning('LRSchedule is already set, use override=True to force re initialization')
 
             if not override:
                 return self._schedule
+
+        if optimizer is None:
+            optimizer = self._optimizer
+
+        if optimizer is None:
+            raise MissingArgument('Missing optimizer argument!')
 
         self._schedule = self._schedule_builder(optimizer, **kwargs)
 
@@ -91,10 +107,7 @@ class LRSchedule:
         if self._schedule:
             warning('LRSchedule is already set')
 
-        if self._schedule_builder:
-            return self._schedule_builder.get_space()
-
-        return {}
+        return self.hyper_parameters.missing_parameters()
 
     def get_params(self, params):
         if self._schedule:
@@ -108,7 +121,7 @@ class LRSchedule:
     @property
     def lr_scheduler(self):
         if not self._schedule:
-            raise UninitializedLRScheduler('Call `init_schedule` first')
+            self.init()
 
         return self._schedule
 

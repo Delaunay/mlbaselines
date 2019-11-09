@@ -1,0 +1,119 @@
+
+.pydict {
+
+}
+
+.pydict_key {
+    margin-right:10px
+}
+
+.pydict_value {
+}
+
+.pydict_item {
+
+}
+
+
+.pylist {
+
+}
+
+.pylist_value {
+
+}
+
+
+body{
+    margin-left:auto;
+    margin-right:auto;
+    font-family: monospace;
+    font-size: 12px;
+}
+
+
+h3 {
+    font-size: 14px;
+}
+
+h4 {
+    font-size: 14px;
+    text-decoration: underline;
+    font-weight: bold;
+}
+
+button {
+    height: 100%,
+    width: 100%
+}
+
+.container {
+    border-style: dotted;
+    max-width: none;
+}
+
+.workspace{
+    height: calc(100% - 250px);
+    border-style: dotted;
+    margin:5px;
+    padding:5px;
+}
+
+.small-col {
+  float: left;
+  width: 14%;
+  display:inline-block;
+  border-style: dotted;
+  padding:5px;
+  margin:5px;
+  height: 250px;
+  overflow-y: scroll
+}
+
+.bigger-col {
+    width: 34%;
+    float: left;
+    display:inline-block;
+    border-style: dotted;
+    padding:5px;
+    height: 250px;
+    margin:5px;
+    overflow-y: scroll
+}
+
+.big-col {
+  float: left;
+  width: 70%;
+  display:inline-block;
+  border-style: dotted;
+  padding:5px;
+  margin:5px;
+  height: 100%;
+}
+
+/* Clear floats after the columns */
+.row {
+}
+
+
+input[type="radio"]{
+    visibility:hidden;
+    font-weight: normal;
+}
+
+
+input[type="radio"]:checked{
+    visibility:visible;
+    font-weight: bold;
+}
+
+.details {
+    text-align: left;
+}
+
+.toolbox {
+    height:50px;
+    border-style: dotted;
+    padding:5px;
+    margin:5px;
+}

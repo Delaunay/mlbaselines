@@ -16,6 +16,7 @@ class MetricList:
             self.append(arg)
 
         self.batch_id: int = 0
+        self.trial_id: int = 0
         self._epoch: int = 0
         self._previous_step = 0
 
@@ -81,7 +82,7 @@ class MetricList:
 
         self.metrics.append(m)
 
-    def epoch(self, epoch, task=None, context=None):
+    def on_new_epoch(self, epoch, task=None, context=None):
         """Broadcast a `new_epoch` event to all metrics"""
         for m in self.metrics:
             if m.frequency_epoch > 0 and epoch % m.frequency_epoch == 0:
@@ -90,7 +91,7 @@ class MetricList:
         self._epoch = epoch
         self.batch_id = 0
 
-    def step(self, step, task=None, input=None, context=None):
+    def on_new_batch(self, step, task=None, input=None, context=None):
         """Broadcast a `new_batch` event to all metrics"""
         # Step back to 0, means it is a new epoch
         if self._previous_step > step:
@@ -102,6 +103,15 @@ class MetricList:
 
         self.batch_id += 1
         self._previous_step = step
+
+    def on_new_trial(self, task):
+        """Broadcast a `new_trial` event"""
+
+        for m in self.metrics:
+            if m.frequency_trial > 0 and self.trial_id % m.frequency_trial == 0:
+                m.on_new_trial(task)
+
+        self.trial_id += 1
 
     def start(self, task=None):
         """Broadcast a `start` event to all metrics"""

@@ -13,9 +13,13 @@ class Metric:
 
     frequency_batch: int
         Controls how often `on_new_batch` is called, 0 disables it
+
+    frequency_trial: int
+        Controls how often `on_new_trial` is called, 0 disables it
     """
     frequency_epoch: int = 0
     frequency_batch: int = 0
+    frequency_trial: int = 0
 
     def on_new_epoch(self, epoch, task, context):
         """Called at the end of an epoch, before a new epoch starts"""
@@ -23,6 +27,10 @@ class Metric:
 
     def on_new_batch(self, step, task, input, context):
         """Called after a batch has been processed"""
+        pass
+
+    def on_new_trial(self, task):
+        """Called after a trial has been processed"""
         pass
 
     def start(self, task=None):

@@ -36,14 +36,17 @@ def set_data_path(config):
     config['data_path'] = os.environ.get('OLYMPUS_DATA_PATH', os.getcwd())
 
 
+# TODO refactor this into something readable
 def split_data(datasets, seed, batch_size, sampling_method, num_workers=0):
 
     indices = generate_indices(datasets, sampling_method.pop('name'), **sampling_method)
 
     data_loaders = dict()
+
     for split_name, split_indices in indices.items():
         dataset = TransformedSubset(datasets, split_indices, datasets.transforms[split_name])
         sampler = RandomSampler(dataset, seed)
+
         data_loaders[split_name] = torch.utils.data.DataLoader(
             dataset=dataset, batch_size=batch_size, sampler=sampler, num_workers=num_workers)
 
@@ -51,10 +54,19 @@ def split_data(datasets, seed, batch_size, sampling_method, num_workers=0):
 
 
 def merge_data_loaders(*data_loaders):
-    data_source = data_loaders[0].datasets.datasets
-    seed = data_loaders[0].sampler.seed
-    indices = sum((list(data_loader.datasets.indices) for data_loader in data_loaders), [])
-    transform = data_loaders[0].datasets.transform
+    # data_loaders are torch loaders
+    for loader in data_loaders:
+        assert isinstance(loader, TorchDataLoader)
+
+    # torch loaders have a dataset of TransformedSubset and a sampler of RandomSampler
+    data_source = data_loaders[0].dataset.dataset
+
+    # RandomSampler does not have the need the sampler backend have
+    seed = data_loaders[0].sampler.sampler.seed
+
+    indices = sum((list(data_loader.dataset.indices) for data_loader in data_loaders), [])
+
+    transform = data_loaders[0].dataset.transform
     batch_size = data_loaders[0].batch_size
     num_workers = data_loaders[0].num_workers
 
@@ -84,7 +96,8 @@ class DataLoader:
             sampling_method,
             seed=seed,
             batch_size=batch_size,
-            num_workers=num_workers, **kwargs
+            num_workers=num_workers,
+            **kwargs
         )
 
     def train(self):
@@ -95,3 +108,18 @@ class DataLoader:
 
     def test(self):
         return self.loaders.get('test')
+
+    def get_shapes(self):
+        ishape = self.datasets.input_shape
+        oshape = self.datasets.target_shape
+        return ishape, oshape
+
+    def get_train_valid_loaders(self, hpo_done=False):
+        train_loader = self.train()
+        valid_loader = self.valid()
+
+        if hpo_done:
+            train_loader = merge_data_loaders(train_loader, valid_loader)
+            valid_loader = self.test()
+
+        return train_loader, valid_loader

@@ -43,6 +43,7 @@ if __name__ == '__main__':
         extras_require={
             'geffnet': ['geffnet==0.9.3'],
             'rl': ['gym'],
+            'dash': ['plotly-express', 'dash']
             # NVIDIA Apex would go there if there was a pip to give
             # note that this does not work you need to install it manually
             # > pip install git+git://github.com/NVIDIA/apex.git@606c3dcccd6ca70

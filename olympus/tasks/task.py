@@ -11,8 +11,12 @@ class Task:
 
     @device.setter
     def device(self, device):
+        self.set_device(device)
+
+    def set_device(self, device):
         for name in dir(self):
             attr = getattr(self, name)
+
             if hasattr(attr, 'to'):
                 setattr(self, name, attr.to(device=device))
 

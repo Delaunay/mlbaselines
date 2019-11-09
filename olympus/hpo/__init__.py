@@ -1,6 +1,9 @@
+from datetime import datetime
 
-from .orion import OrionClient
+# from .orion import OrionClient
 from orion.client.experiment import ExperimentClient
+
+from olympus.utils.stat import StatStream
 
 
 class TrialIterator:
@@ -13,6 +16,7 @@ class TrialIterator:
     """
     def __init__(self, experiment):
         self.experiment = experiment
+        self.time = StatStream(drop_first_obs=1)
 
     def __iter__(self):
         return self
@@ -21,7 +25,9 @@ class TrialIterator:
         if self.experiment.is_done or self.experiment.is_broken:
             raise StopIteration
 
+        start = datetime.utcnow()
         trial = self.experiment.suggest()
+        self.time += (datetime.utcnow() - start).total_seconds()
 
         if trial is None:
             raise StopIteration

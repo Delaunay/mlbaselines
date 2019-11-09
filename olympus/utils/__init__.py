@@ -30,11 +30,11 @@ def fetch_device():
     return torch.device(os.environ.get('DEVICE_TYPE', default))
 
 
-def show_dict(dictionary):
-    print('-' * 80)
+def show_dict(dictionary, indent=0):
+    print(' ' * indent + '-' * 80)
     for k, v in dictionary.items():
         print(f'{k:>30}: {v}')
-    print('-' * 80)
+    print(' ' * indent + '-' * 80)
 
 
 class TimeThrottler:
@@ -138,6 +138,7 @@ def get_storage(uri):
     database = arguments.get('scheme', 'pickleddb')
     database_resource = arguments.get('path', arguments.get('address'))
 
+    # TODO: make it work for mongodb
     return {
         'type': storage_type,
         'database': {
@@ -201,9 +202,96 @@ def find_batch_size(model, shape, low, high, dtype=torch.float32):
 def seed(seed):
     if torch.cuda.is_available():
         torch.backends.cudnn.benchmark = False
+        torch.cuda.manual_seed_all(seed)
         # torch.backends.cudnn.deterministic = True
 
     random.seed(seed)
     numpy.random.seed(seed)
     torch.manual_seed(seed)
-    torch.cuda.manual_seed_all(seed)
+
+
+class CircularDependencies(Exception):
+    pass
+
+
+class LazyCall:
+    """Save the call parameters of a function for it can be invoked at a later date"""
+    def __init__(self, fun, *args, **kwargs):
+        self.fun = fun
+        self.args = args
+        self.kwargs = kwargs
+        self.obj = None
+        self.is_processing = False
+
+    def __call__(self, *args, **kwargs):
+        self.invoke()
+        return self.obj(*args, **kwargs)
+
+    def add_arguments(self, *args, **kwargs):
+        self.args = self.args + args
+        self.kwargs.update(kwargs)
+
+    def invoke(self):
+        if self.obj is None:
+            self.is_processing = True
+            self.obj = self.fun(*self.args, **self.kwargs)
+            self.is_processing = False
+
+    def __getattr__(self, item):
+        if self.obj is None and self.is_processing:
+            raise CircularDependencies('Circular dependencies')
+
+        self.invoke()
+        return getattr(self.obj, item)
+
+    def was_invoked(self):
+        return self.obj is not None
+
+class MissingParameters(Exception):
+    pass
+
+
+class WrongParameter(Exception):
+    pass
+
+
+class HyperParameters:
+    """Keeps track of mandatory hyper parameters
+
+    Parameters
+    ----------
+    space: Dict[str, Space]
+        A dictionary defining each parameters and their respective space/dim
+
+    kwargs:
+        A dictionary of defined hyper parameters
+    """
+    def __init__(self, space, **kwargs):
+        self.space = space
+        self.check_correct_parameters(kwargs)
+        self.current_parameters = kwargs
+
+    def check_correct_parameters(self, kwargs):
+        for k, v in kwargs.items():
+            if k not in self.space:
+                raise WrongParameter(f'{k} is not a valid parameter!')
+
+    def missing_parameters(self):
+        missing = {}
+        for k, v in self.space.items():
+            if k not in self.current_parameters:
+                missing[k] = v
+
+        return  missing
+
+    def add_parameters(self, **kwargs):
+        self.check_correct_parameters(kwargs)
+        self.current_parameters.update(kwargs)
+
+    def parameters(self, strict=False):
+        if strict:
+            missing = self.missing_parameters()
+            if missing:
+                raise MissingParameters('Parameters are missing: {}'.format(', '.join(missing.keys())))
+
+        return self.current_parameters
