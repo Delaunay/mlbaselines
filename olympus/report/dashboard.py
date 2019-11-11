@@ -1,5 +1,4 @@
-
-import json
+from argparse import ArgumentParser
 import os
 
 import dash
@@ -7,14 +6,17 @@ import dash_core_components as dcc
 import dash_html_components as html
 from dash.dependencies import Input, Output
 import plotly.express as px
+import plotly.graph_objs as go
 
-import numpy as np
 import pandas as pd
 
 from orion.storage.base import Storage
 from orion.core.utils import flatten
 
 from olympus.utils import get_storage as resolve_storage
+
+
+state: None
 
 
 def trials_as_dataframe(trials):
@@ -69,6 +71,9 @@ class ApplicationState:
         self.trials = []
         self.trial_objective_name = ''
         self.current_exp = None
+        self.extracted_data = None
+        self.columns = []
+        self.args = None
 
     def connect(self, storage_uri):
         storage_config = resolve_storage(storage_uri)
@@ -84,12 +89,33 @@ class ApplicationState:
     def fetch_trials(self, exp_name):
         self.current_exp = exp_name
         self.trials = self.storage.fetch_trials(uid=self.experiments[exp_name]['_id'])
+        self.extract_data()
 
     def get_trial(self, id):
         return self.storage.get_trial(uid=id).to_dict()
 
+    def extract_data(self):
+        results = []
 
-state = ApplicationState()
+        for trial in self.trials:
+            trial_info = {'id': trial.id}
+
+            for k, v in trial.params.items():
+                if k in trial_info:
+                    print(f'warning, overriding {k}')
+
+                trial_info[k] = v
+
+            for result in trial.results:
+                if result.name in trial_info:
+                    print(f'warning, overriding {result.name}')
+
+                trial_info[result.name] = result.value
+
+            results.append(trial_info)
+
+        self.extracted_data = pd.DataFrame(results)
+        self.columns = list(self.extracted_data.columns)
 
 
 def experiment_side_panel():
@@ -123,14 +149,50 @@ def trials_side_panel():
     ]
 
 
-def plot_button():
-    return html.Div([
-        html.Button('plot stuff', id='plot_button'),
-    ])
+def graph_dials():
+    return html.Div(id='graph_dials', style={'display': 'inline'})
 
 
-def main(storage_uri):
-    state.connect(storage_uri)
+def prettify_name(name):
+    return name.replace('_', ' ').capitalize()
+
+
+def make_dials():
+    choices = [{'label': prettify_name(i), 'value': i} for i in state.columns]
+
+    return [
+        dcc.Dropdown(
+            id='xaxis-column',
+            options=choices
+        ),
+        dcc.RadioItems(
+            id='xaxis-type',
+            options=[{'label': i, 'value': i} for i in ['linear', 'log']],
+            value='linear',
+        ),
+        dcc.Dropdown(
+            id='yaxis-column',
+            options=choices
+        ),
+        dcc.RadioItems(
+            id='yaxis-type',
+            options=[{'label': i, 'value': i} for i in ['linear', 'log']],
+            value='linear',
+        ),
+    ]
+
+
+def main(args=None):
+    global state
+
+    parser = ArgumentParser()
+    parser.add_argument('--storage-uri', type=str, default='legacy:pickleddb:full_test.pkl')
+
+    args = parser.parse_args(args)
+
+    state = ApplicationState()
+    state.args = args
+    state.connect(args.storage_uri)
 
     app = dash.Dash(
         __name__,
@@ -156,13 +218,16 @@ def main(storage_uri):
     toolbox = html.Div(
         className='toolbox',
         children=[
-            plot_button()
+            graph_dials()
         ]
     )
 
     workspace = html.Div(
         id='workspace',
-        children=[]
+        className='workspace_class',
+        children=[
+            dcc.Graph(id='main-graph')
+        ]
     )
 
     app.layout = html.Div(
@@ -173,14 +238,7 @@ def main(storage_uri):
         ]
     )
 
-    @app.callback(
-        Output(component_id='trials_side_panel', component_property='children'),
-        [Input(component_id='experiment_name', component_property='value')])
-    def show_trials(exp_name):
-        if exp_name is not None:
-            state.fetch_trials(exp_name)
-            return trials_side_panel()
-
+    # Fetch the details of a specific experiment
     @app.callback(
         Output(component_id='exp-details', component_property='children'),
         [Input(component_id='experiment_name', component_property='value')])
@@ -191,6 +249,20 @@ def main(storage_uri):
 
         return None
 
+    # show all the trials of a given experiment
+    @app.callback(
+        [Output(component_id='trials_side_panel', component_property='children'),
+         Output(component_id='graph_dials', component_property='children')],
+        [Input(component_id='experiment_name', component_property='value')])
+    def show_trials(exp_name):
+        if exp_name is not None:
+            state.fetch_trials(exp_name)
+
+            return trials_side_panel(), make_dials()
+
+        return None, None
+
+    # Get the details of a specific trial
     @app.callback(
         Output(component_id='trial-details', component_property='children'),
         [Input(component_id='trials_id', component_property='value')])
@@ -212,6 +284,48 @@ def main(storage_uri):
             return [html.H4('Trial: {}'.format(trial_id)), to_html(data)]
 
         return None
+
+    @app.callback(
+        Output('main-graph', 'figure'),
+        [Input('xaxis-column', 'value'),
+         Input('yaxis-column', 'value'),
+         Input('xaxis-type', 'value'),
+         Input('yaxis-type', 'value')])
+    def update_graph(xaxis_col, yaxis_col, xaxis_type, yaxis_type):
+        if xaxis_col is None or yaxis_col is None:
+            return {}
+
+        xaxis_type = xaxis_type.lower()
+        yaxis_type = yaxis_type.lower()
+
+        x_data = state.extracted_data[xaxis_col]
+        y_data = state.extracted_data[yaxis_col]
+
+        return {
+            'data': [go.Scatter(
+                x=x_data,
+                y=y_data,
+                mode='markers',
+                marker={
+                    'size': 15,
+                    'opacity': 0.5,
+                    'line': {'width': 0.5, 'color': 'white'}
+                }
+            )],
+            'layout': go.Layout(
+                xaxis={
+                    'title': prettify_name(xaxis_col),
+                    'type': 'linear' if xaxis_type == 'linear' else 'log'
+                },
+                yaxis={
+                    'title': prettify_name(yaxis_col),
+                    'type': 'linear' if yaxis_type == 'linear' else 'log'
+                },
+                margin={'l': 40, 'b': 30, 't': 10, 'r': 0},
+                height=450,
+                hovermode='closest'
+            )
+        }
 
     @app.callback(
         Output('workspace', component_property='children'),
@@ -237,4 +351,5 @@ def main(storage_uri):
 
 # minimalist_hpo
 if __name__ == '__main__':
-    main('legacy:pickleddb:full_test.pkl')
+    main()
+

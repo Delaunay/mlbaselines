@@ -38,6 +38,7 @@ if __name__ == '__main__':
         entry_points={
             'console_scripts': [
                 'olympus = olympus.scripts.launch:main',
+                'olympus-dash = olympus.report.dashboard:main',
             ]
         },
         extras_require={

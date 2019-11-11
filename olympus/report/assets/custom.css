@@ -50,6 +50,8 @@ button {
 .container {
     border-style: dotted;
     max-width: none;
+    margin:none;
+    padding:none;
 }
 
 .workspace{
@@ -64,8 +66,8 @@ button {
   width: 14%;
   display:inline-block;
   border-style: dotted;
-  padding:5px;
-  margin:5px;
+  padding:4px;
+  margin:2px;
   height: 250px;
   overflow-y: scroll
 }
@@ -75,9 +77,9 @@ button {
     float: left;
     display:inline-block;
     border-style: dotted;
-    padding:5px;
+    padding:4px;
     height: 250px;
-    margin:5px;
+    margin:2px;
     overflow-y: scroll
 }
 
@@ -93,6 +95,8 @@ button {
 
 /* Clear floats after the columns */
 .row {
+    margin:none;
+    padding:none;
 }
 
 
@@ -112,7 +116,32 @@ input[type="radio"]:checked{
 }
 
 .toolbox {
-    height:50px;
+    border-style: dotted;
+    padding:5px;
+    margin:5px;
+    display: inline-block;
+    overflow-y: scroll;
+    width: 100%;
+    min-height:50px;
+}
+
+.xaxis-column {
+    display: inline-block;
+}
+
+.yaxis-column {
+    display: inline;
+}
+
+.xaxis-type {
+    display: inline-block;
+}
+
+.yaxis-type {
+    display: inline;
+}
+
+#workspace {
     border-style: dotted;
     padding:5px;
     margin:5px;
