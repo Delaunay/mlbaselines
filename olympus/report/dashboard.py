@@ -120,7 +120,7 @@ class ApplicationState:
 
 def experiment_side_panel():
     return html.Div(
-        className='small-col',
+        className='col-2',
         children=[
             html.H4('Experiments'),
             dcc.RadioItems(
@@ -159,27 +159,47 @@ def prettify_name(name):
 
 def make_dials():
     choices = [{'label': prettify_name(i), 'value': i} for i in state.columns]
+    options = [{'label': i, 'value': i} for i in ['linear', 'log']]
+    return html.Div(
+        className='form-group row',
+        children=[
+            html.Div(
+                className='col-sm-4',
+                children=[
+                    html.Div(
+                        dcc.Dropdown(
+                            className='dropdown',
+                            placeholder='x axis',
+                            id='xaxis-column',
+                            options=choices,
 
-    return [
-        dcc.Dropdown(
-            id='xaxis-column',
-            options=choices
-        ),
-        dcc.RadioItems(
-            id='xaxis-type',
-            options=[{'label': i, 'value': i} for i in ['linear', 'log']],
-            value='linear',
-        ),
-        dcc.Dropdown(
-            id='yaxis-column',
-            options=choices
-        ),
-        dcc.RadioItems(
-            id='yaxis-type',
-            options=[{'label': i, 'value': i} for i in ['linear', 'log']],
-            value='linear',
-        ),
-    ]
+                        ),
+                        style={'display': 'inline-block', 'width': '50%', 'vertical-align': 'middle'}),
+                    dcc.RadioItems(
+                        id='xaxis-type',
+                        options=options,
+                        value='linear',
+                        style={'display': 'inline-block', 'padding': '5px'}
+                    )]),
+            html.Div(
+                className='col-sm-4',
+                children=[
+                    html.Div(
+                        dcc.Dropdown(
+                            className='dropdown',
+                            placeholder='y axis',
+                            id='yaxis-column',
+                            options=choices,
+                            style={'vertical-align': 'middle'}
+                        ),
+                        style={'display': 'inline-block', 'width': '50%', 'vertical-align': 'middle'}),
+                    dcc.RadioItems(
+                        id='yaxis-type',
+                        options=options,
+                        value='linear',
+                        style={'display': 'inline-block', 'padding': '5px'}
+                    )]),
+        ])
 
 
 def main(args=None):
@@ -204,16 +224,17 @@ def main(args=None):
 
     app.config['suppress_callback_exceptions'] = True
 
-    explorer = html.Div([
-        # html.H3('Explorer'),
-        html.Div(
-            className='row container',
-            children=[
-                experiment_side_panel(),
-                html.Div(id='trials_side_panel', className='small-col'),
-                html.Div(id='exp-details', className='bigger-col'),
-                html.Div(id='trial-details', className='bigger-col')
-            ])])
+    explorer = html.Div(
+        children=[
+            # html.H3('Explorer'),
+            html.Div(
+                className='row',
+                children=[
+                    experiment_side_panel(),
+                    html.Div(id='trials_side_panel', className='col-2'),
+                    html.Div(id='exp-details', className='col-4'),
+                    html.Div(id='trial-details', className='col-4')
+                ])])
 
     toolbox = html.Div(
         className='toolbox',
@@ -231,6 +252,7 @@ def main(args=None):
     )
 
     app.layout = html.Div(
+        className='container-fluid',
         children=[
             toolbox,
             workspace,

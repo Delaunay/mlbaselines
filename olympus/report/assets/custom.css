@@ -93,23 +93,16 @@ button {
   height: 100%;
 }
 
-/* Clear floats after the columns */
-.row {
-    margin:none;
-    padding:none;
-}
-
 
 input[type="radio"]{
-    visibility:hidden;
-    font-weight: normal;
+    padding:5px;
+    margin:5px
 }
 
-
-input[type="radio"]:checked{
-    visibility:visible;
-    font-weight: bold;
+.form-group {
+    margin-bottom: 0;
 }
+
 
 .details {
     text-align: left;
@@ -120,29 +113,19 @@ input[type="radio"]:checked{
     padding:5px;
     margin:5px;
     display: inline-block;
-    overflow-y: scroll;
     width: 100%;
-    min-height:50px;
+    min-height:25px;
 }
 
-.xaxis-column {
-    display: inline-block;
+#graph_dials {
+    vertical-align: middle;
+    margin: none;
 }
 
-.yaxis-column {
-    display: inline;
-}
-
-.xaxis-type {
-    display: inline-block;
-}
-
-.yaxis-type {
-    display: inline;
-}
 
 #workspace {
     border-style: dotted;
     padding:5px;
     margin:5px;
+    margin-bottom: 1rem;
 }
