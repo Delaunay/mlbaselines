@@ -27,7 +27,8 @@ run-hpo:
 	python examples/hpo_simple.py
 
 run-hpo-complete:
-	rm test.pkl test.pkl.lock | echo ''
+	rm -rf /tmp/classification
+	rm test.pkl test.pkl.lock track_test.json track_test.json.lock | echo ''
 	python examples/hpo_complete.py  --dataset mnist --model logreg --batch-size 32 --epochs 10
 
 run-hpo-long:

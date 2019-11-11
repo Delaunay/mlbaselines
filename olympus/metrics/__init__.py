@@ -81,6 +81,7 @@ class MetricList:
             self._metrics_mapping[key] = m
 
         self.metrics.append(m)
+        self.metrics.sort(key=lambda met: met.priority)
 
     def on_new_epoch(self, epoch, task=None, context=None):
         """Broadcast a `new_epoch` event to all metrics"""

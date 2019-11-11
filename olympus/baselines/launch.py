@@ -68,7 +68,7 @@ def multigpu_launch(task_name, script_args, job_env, device_id, rank, world_size
 
 def simple_launch(task_name, script_args, job_env, device_id, rank, world_size, port):
     """Launch the task without creating another python interpreter"""
-    module = __import__("olympus.scripts.{}".format(task_name), fromlist=[''])
+    module = __import__("olympus.baselines.{}".format(task_name), fromlist=[''])
     parser = module.arguments()
     args = parser.parse_args(script_args)
     module.main(**vars(args))

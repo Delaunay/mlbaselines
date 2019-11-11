@@ -2,6 +2,7 @@ from dataclasses import dataclass, field
 from olympus.utils import warning
 
 
+
 @dataclass
 class Metric:
     """Metrics are observers that receives events periodically
@@ -16,10 +17,14 @@ class Metric:
 
     frequency_trial: int
         Controls how often `on_new_trial` is called, 0 disables it
+
+    priority: int
+        Controls which metric is called first
     """
     frequency_epoch: int = 0
     frequency_batch: int = 0
     frequency_trial: int = 0
+    priority: int = 0
 
     def on_new_epoch(self, epoch, task, context):
         """Called at the end of an epoch, before a new epoch starts"""

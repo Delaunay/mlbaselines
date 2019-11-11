@@ -9,7 +9,9 @@ from olympus.optimizers.schedules import LRSchedule, known_schedule
 from olympus.tasks import Classification
 from olympus.tasks.hpo import HPO, fidelity
 from olympus.utils import fetch_device
+from olympus.utils.options import options
 from olympus.utils.storage import StateStorage
+from olympus.utils.tracker import TrackLogger
 
 
 DEFAULT_EXP_NAME = 'classification_{dataset}_{model}_{optimizer}_{lr_scheduler}_{weight_init}'
@@ -61,7 +63,7 @@ def arguments():
 def classification_baseline(model, weight_init,
                             optimizer, lr_scheduler,
                             dataset, batch_size, device,
-                            sampler_seed=0, model_seed=0, half=False, folder='/tmp', hpo_done=False, **config):
+                            sampler_seed=0, model_seed=0, half=False, hpo_done=False, logger=None, **config):
     dataset = DataLoader(
         dataset,
         seed=sampler_seed,
@@ -90,7 +92,9 @@ def classification_baseline(model, weight_init,
         lr_scheduler=lr_schedule,
         dataloader=train,
         device=device,
-        storage=StateStorage(folder=folder))
+        storage=StateStorage(folder=options('state.storage', '/tmp'), time_buffer=5),
+        logger=logger
+    )
 
     main_task.metrics.append(
         Accuracy(name='validation', loader=valid)
@@ -103,10 +107,15 @@ def main(**kwargs):
     args = Namespace(**kwargs)
     device = fetch_device()
 
-    def main_task():
-        return classification_baseline(device=device, **kwargs)
-
     experiment_name = args.experiment_name.format(**kwargs)
+
+    client = TrackLogger(
+        'classification',
+        experiment_name,
+        'file://track_test.json')
+
+    def main_task():
+        return classification_baseline(device=device, logger=client, **kwargs)
 
     hpo = HPO(
         experiment_name,
@@ -114,13 +123,14 @@ def main(**kwargs):
         algo='ASHA',
         seed=1,
         num_rungs=5,
-        num_brackets=1
+        num_brackets=1,
+        max_trials=50
     )
 
     hpo.fit(epochs=fidelity(args.epochs))
 
     # Train using train+valid for the final result
-    final_task = classification_baseline(device=device, **kwargs, hpo_done=True)
+    final_task = classification_baseline(device=device, logger=client, **kwargs, hpo_done=True)
 
     params = hpo.best_trial.params
     task_args = params.pop('task')

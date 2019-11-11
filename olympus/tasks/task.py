@@ -1,9 +1,12 @@
 import torch
+from olympus.metrics import MetricList
 
 
 class Task:
-    def __init__(self, device=None):
+    def __init__(self, device=None, logger=None):
         self._device = device if device else torch.device('cpu')
+        self._logger = logger
+        self._metrics = MetricList()
 
     @property
     def device(self):
@@ -12,6 +15,14 @@ class Task:
     @device.setter
     def device(self, device):
         self.set_device(device)
+
+    @property
+    def logger(self):
+        return self._logger
+
+    @logger.setter
+    def logger(self, logger):
+        self._logger = logger
 
     def set_device(self, device):
         for name in dir(self):
@@ -41,7 +52,7 @@ class Task:
 
     @property
     def metrics(self):
-        pass
+        return self._metrics
 
     def report(self, pprint=True, print_fun=print):
         m = self.metrics

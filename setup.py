@@ -19,7 +19,7 @@ if __name__ == '__main__':
             'olympus.models',
             'olympus.optimizers',
             'olympus.reinforcement',
-            'olympus.scripts',
+            'olympus.baselines',
             'olympus.tasks',
             'olympus.transforms',
             'olympus.utils',
@@ -37,14 +37,16 @@ if __name__ == '__main__':
         tests_require=['pytest', 'flake8', 'codecov', 'pytest-cov'],
         entry_points={
             'console_scripts': [
-                'olympus = olympus.scripts.launch:main',
+                'olympus = olympus.baselines.launch:main',
                 'olympus-dash = olympus.report.dashboard:main',
             ]
         },
         extras_require={
             'geffnet': ['geffnet==0.9.3'],
             'rl': ['gym'],
-            'dash': ['plotly-express', 'dash']
+            'dash': ['plotly-express', 'dash'],
+            # > pip install git+git://github.com/Delaunay/track
+            # 'track': ['']
             # NVIDIA Apex would go there if there was a pip to give
             # note that this does not work you need to install it manually
             # > pip install git+git://github.com/NVIDIA/apex.git@606c3dcccd6ca70

@@ -6,6 +6,7 @@ from olympus.tasks.task import Task
 from olympus.utils import warning
 from orion.client import create_experiment
 from olympus.utils import get_storage, show_dict
+from olympus.utils.options import options
 from olympus.hpo import TrialIterator
 
 from orion.core.utils import flatten
@@ -37,7 +38,7 @@ class HPO(Task):
     task: Task
         task to do hyper parameter optimization on
     """
-    def __init__(self, experiment_name, task, algo, max_trials=50, folder='/tmp', **kwargs):
+    def __init__(self, experiment_name, task, algo, max_trials=50, folder=options('state.storage', '/tmp'), **kwargs):
         self.experiment_name = experiment_name
         self.task_maker = task
         self.experiment = None
@@ -107,7 +108,7 @@ class HPO(Task):
             max_trials=self.max_trials,
             space=space,
             algorithms=self.hpo_config,
-            storage=get_storage('legacy:pickleddb:full_test.pkl')
+            storage=get_storage('legacy:pickleddb:test.pkl')
         )
 
         iterator = TrialIterator(self.experiment)
@@ -124,7 +125,6 @@ class HPO(Task):
             task_arguments = params.pop('task')
 
             new_task.init(**params)
-            new_task.resume()
             new_task.fit(**task_arguments)
 
             metrics = new_task.metrics.value()
