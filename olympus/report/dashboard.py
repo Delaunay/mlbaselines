@@ -134,6 +134,9 @@ def experiment_side_panel():
 
 def trials_side_panel():
     def format_objective(i, obj):
+        if obj is None:
+            return str(i)
+
         state.trial_objective_name = obj.name
         return f'{i} ({obj.value:.4f})'
 

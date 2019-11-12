@@ -27,7 +27,7 @@ if __name__ == '__main__':
         install_requires=[
             'torch',
             'torchvision',
-            'orion',
+            # 'orion',
             'h5py',
             'psycopg2-binary',
             'gym',

@@ -13,7 +13,7 @@ from olympus.utils import fetch_device
 
 
 parser = ArgumentParser()
-parser.add_argument('--epochs', type=int, default=5)
+parser.add_argument('--epochs', type=int, default=3)
 args = parser.parse_args()
 device = fetch_device()
 
@@ -29,7 +29,7 @@ def make_task():
 
     lr_schedule = LRSchedule('exponential')
 
-    dataset = DataLoader('mnist', {'name': 'original'})
+    dataset = DataLoader('test-mnist', {'name': 'original'})
 
     main_task = Classification(
         classifier=model,
@@ -51,7 +51,7 @@ hpo = HPO(
     task=make_task,
     algo='ASHA',
     seed=1,
-    num_rungs=5,
+    num_rungs=3,
     num_brackets=1,
     max_trials=500
 )

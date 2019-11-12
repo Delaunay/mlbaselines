@@ -1,13 +1,6 @@
 Hyper parameter Optimization
 ============================
 
-Submodules
-----------
-
-.. toctree::
-
-   orion
-
 Module contents
 ---------------
 

@@ -105,7 +105,7 @@ class Optimizer(TorchOptimizer):
     half_args = dict()
     _optimizer = None
 
-    def __init__(self, name=None, params=None, optimizer=None, half=False, loss_scale=1,
+    def __init__(self, name=None, *, params=None, optimizer=None, half=False, loss_scale=1,
                  dynamic_loss_scale=False, scale_window=1000, scale_factor=2,
                  min_loss_scale=None, max_loss_scale=2.**24, **kwargs):
         self._optimizer = None

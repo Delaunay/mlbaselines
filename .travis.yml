@@ -4,13 +4,21 @@ python:
   - "3.7"
 
 install:
+  - pip install -r requirements.txt
   - pip install -e .
 
 jobs:
   include:
-    - stage: demo-test
+    - stage: doc
       script:
-        - make check
-        - make hpo
-        - make run-examples
-        - make build-doc
+        - pip install -r docs/requirements.txt
+        - make travis-doc
+    - stage: minimalist
+      script:
+        - make travis-minimalist
+    - stage: hpo
+      script:
+        - make travis-hpo_simple
+    - stage: classification
+      script:
+        - make travis-classification

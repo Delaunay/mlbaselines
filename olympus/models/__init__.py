@@ -96,7 +96,7 @@ class Model(nn.Module):
     _dtype = torch.float32
     _device = torch.device('cpu')
 
-    def __init__(self, name=None, half=False, model=None, input_size=None, output_size=None, weight_init=None, seed=0):
+    def __init__(self, name=None, *, half=False, model=None, input_size=None, output_size=None, weight_init=None, seed=0):
         super(Model, self).__init__()
         self.transform = lambda x: x.to(device=self.device, dtype=self.dtype)
         self.half = half

@@ -12,7 +12,7 @@ from olympus.utils.options import options
 
 
 class BaseTrackLogger:
-    def __init__(self, project, group, storage_uri=options('metric.storage', 'file://track_test.json')):
+    def __init__(self, project=None, group=None, storage_uri=options('metric.storage', 'file://track_test.json')):
         pass
 
     def upsert_trial(self, parameters):

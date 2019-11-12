@@ -3,6 +3,7 @@ from dataclasses import dataclass, field
 
 from olympus.metrics.metric import Metric
 from olympus.utils.stat import StatStream
+from olympus.utils.options import option
 
 from datetime import datetime, timedelta
 
@@ -20,6 +21,10 @@ class ProgressView(Metric):
     max_step: int = 0
     batch_size: int = 0
     step_length: int = 0
+
+    frequency_epoch: int = option('progress.frequency_epoch', 1, type=int)
+    frequency_batch: int = option('progress.frequency_batch', 1, type=int)
+    frequency_trial: int = 0
 
     step_time: StatStream = field(default_factory=lambda: StatStream(drop_first_obs=5))
     epoch_time: StatStream = field(default_factory=lambda: StatStream(drop_first_obs=1))

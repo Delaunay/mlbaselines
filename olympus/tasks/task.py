@@ -1,11 +1,14 @@
 import torch
 from olympus.metrics import MetricList
+from olympus.utils.tracker import BaseTrackLogger
 
 
 class Task:
     def __init__(self, device=None, logger=None):
         self._device = device if device else torch.device('cpu')
         self._logger = logger
+        if not self._logger:
+            self._logger = BaseTrackLogger()
         self._metrics = MetricList()
 
     @property

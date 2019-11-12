@@ -11,7 +11,8 @@ import numpy
 import torch
 
 from olympus.utils.arguments import task_arguments
-
+from olympus.utils.options import option
+from olympus.utils.chrono import Chrono
 
 A = TypeVar('A')
 R = TypeVar('R')
@@ -60,7 +61,7 @@ def set_log_level(level=logging.INFO):
 
 
 def log_record(name, level, path, lno, msg, args, exc_info, func=None, sinfo=None, **kwargs):
-    start = path.rfind('olympus')
+    start = path.rfind('/olympus/')
     if start > -1:
         path = path[start:]
     return logging.LogRecord(name, level, path, lno, msg, args, exc_info, func, sinfo, **kwargs)
@@ -151,7 +152,7 @@ def get_storage(uri):
 
 if globals().get('oly_log') is None:
     oly_log = make_logger('OLY')
-    set_log_level(logging.DEBUG)
+    set_log_level(option('logging.level', logging.WARN, type=int))
 
     warning = oly_log.warning
     info = oly_log.info
@@ -248,6 +249,7 @@ class LazyCall:
     def was_invoked(self):
         return self.obj is not None
 
+
 class MissingParameters(Exception):
     pass
 
@@ -275,7 +277,7 @@ class HyperParameters:
     def check_correct_parameters(self, kwargs):
         for k, v in kwargs.items():
             if k not in self.space:
-                raise WrongParameter(f'{k} is not a valid parameter!')
+                raise WrongParameter(f'{k} is not a valid parameter, pick from: {self.space.keys()}')
 
     def missing_parameters(self):
         missing = {}

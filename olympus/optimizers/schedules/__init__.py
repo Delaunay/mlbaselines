@@ -58,7 +58,7 @@ class LRSchedule:
         if name nor schedule were not set
     """
 
-    def __init__(self, name=None, schedule=None, optimizer=None):
+    def __init__(self, name=None, *, schedule=None, optimizer=None, **kwargs):
         self._schedule = None
         self._schedule_builder = None
         self._optimizer = optimizer
@@ -85,6 +85,8 @@ class LRSchedule:
 
         else:
             raise MissingArgument('None or name needs to be set')
+
+        self.hyper_parameters.add_parameters(**kwargs)
 
     def init(self, optimizer=None, override=False, **kwargs):
         if self._schedule:

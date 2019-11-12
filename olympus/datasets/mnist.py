@@ -42,7 +42,7 @@ class MNIST(AllDataset):
             Proceedings of the IEEE, 86(11):2278-2324, November 1998.
 
     """
-    def __init__(self, data_path, mini=False):
+    def __init__(self, data_path, mini=False, train_size=None, valid_size=None, test_size=None, input_shape=None, target_shape=None):
         transformations = [
             transforms.Normalize((0.1307,), (0.3081,))
         ]
@@ -61,14 +61,25 @@ class MNIST(AllDataset):
             transform=transforms.ToTensor()
         )
 
+        if test_size is None:
+            test_size = len(test_dataset)
+
         super(MNIST, self).__init__(
             torch.utils.data.ConcatDataset([train_dataset, test_dataset]),
-            test_size=len(test_dataset),
-            transforms=transform
+            test_size=test_size,
+            train_size=train_size,
+            valid_size=valid_size,
+            transforms=transform,
+            input_shape=input_shape,
+            target_shape=target_shape
         )
 
 
 builders = {
     'mnist': MNIST,
-    'mini-mnist': functools.partial(MNIST, mini=True)
+    'mini-mnist': functools.partial(MNIST, mini=True),
+    # Technically this should be in the sampler logic but we want to test the usual sampling method
+    'test-mnist': functools.partial(MNIST,
+                                    train_size=128, valid_size=64, test_size=64,
+                                    input_shape=(28, 28), target_shape=(10,)),
 }

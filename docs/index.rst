@@ -37,7 +37,7 @@
    models/index
    optimizers/index
    reinforcement/index
-   scripts/index
+   baselines/index
    tasks/index
    utils/index
 

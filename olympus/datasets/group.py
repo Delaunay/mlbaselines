@@ -48,8 +48,8 @@ class GroupedBatchSampler(BatchSampler):
     It also tries to provide mini-batches which follows an ordering which is
     as close as possible to the ordering from the original sampler.
 
-    Arguments
-    ---------
+    Parameters
+    ----------
     sampler: Sampler
         Base sampler.
 

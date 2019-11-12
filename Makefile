@@ -15,8 +15,19 @@ update-doc: build-doc serve-doc
 
 yolo: rm-doc build-doc serve-doc
 
-run-examples:
+
+travis-doc: build-doc
+
+travis-minimalist:
 	python examples/minimalist.py
+
+travis-hpo_simple:
+	rm test.pkl test.pkl.lock | echo ''
+	python examples/hpo_simple.py
+
+travis-classification:
+	rm test.pkl test.pkl.lock | echo ''
+	olympus classification --batch-size 32 --epochs 5 --dataset test-mnist --model logreg
 
 check:
 	rm test.pkl test.pkl.lock | echo ''

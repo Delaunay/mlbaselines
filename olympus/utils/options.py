@@ -1,10 +1,10 @@
 import os
 
 
-def options(name, default):
+def options(name, default, type=str):
     name = name.upper().replace('.', '_')
-    return os.getenv(f'OLYMPUS_{name}', default)
+    return type(os.getenv(f'OLYMPUS_{name}', default))
 
 
-def option(name, default):
-    return options(name, default)
+def option(name, default, type=str):
+    return options(name, default, type=type)

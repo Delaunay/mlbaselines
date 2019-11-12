@@ -1,14 +1,10 @@
 import torch
 
 from torch.nn import Module, CrossEntropyLoss
-from torch.optim import Optimizer
 
 from olympus.utils import info
 from olympus.tasks.task import Task
 from olympus.metrics import OnlineTrainAccuracy, ElapsedRealTime, SampleCount, ProgressView, MetricList
-
-from track.client import TrialDoesNotExist
-from track.structure import Trial
 
 
 class Classification(Task):
@@ -55,7 +51,7 @@ class Classification(Task):
         self.metrics.append(ElapsedRealTime().every(batch=1))
         self.metrics.append(SampleCount().every(batch=1, epoch=1))
         self.metrics.append(OnlineTrainAccuracy())
-        self.metrics.append(ProgressView().every(epoch=1, batch=1))
+        self.metrics.append(ProgressView())
 
     def get_space(self, **fidelities):
         """Return hyper parameter space"""

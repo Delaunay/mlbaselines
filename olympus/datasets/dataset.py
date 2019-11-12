@@ -50,12 +50,14 @@ class AllDataset(TorchDataset):
         """Size of the training set"""
         if self._train_size is None:
             return len(self) - self.test_size - self.valid_size
+        return self._train_size
 
     @property
     def valid_size(self):
         """Size of the validation set"""
         if self._valid_size is None:
             return self.test_size
+        return self._valid_size
 
     @property
     def test_size(self):
@@ -68,7 +70,9 @@ class AllDataset(TorchDataset):
 
     def __len__(self):
         """Return the number of samples inside the dataset"""
-        return len(self.dataset)
+        if self._train_size is None:
+            return len(self.dataset)
+        return self.valid_size + self.train_size + self.test_size
 
     @property
     def input_shape(self):

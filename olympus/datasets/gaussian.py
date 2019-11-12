@@ -1,53 +1,65 @@
-from collections import OrderedDict
+import functools
+from dataclasses import dataclass, field
+from typing import List
 
 import torch
-from torch.utils.data.dataset import Dataset
+from olympus.datasets.dataset import AllDataset
 
 
-class Gaussian(Dataset):
-    data = None
+@dataclass
+class Multivariate:
+    mean: List = field(default_factory=list)
+    sd: List = field(default_factory=list)
 
-    def __init__(self, width, n_classes, mean, std, length):
-        self.width = width
-        self.n_classes = n_classes
-        self.mean = mean
-        self.std = std
-        self.length = length
+    def __len__(self):
+        return len(self.mean)
+
+
+class Gaussian(AllDataset):
+    def __init__(self, size, distributions):
+        self.size = size
+        self.distribution = distributions
+        self.num_classes = len(distributions)
+        self.features_size = len(distributions[0])
+        self.data = None
         self.generate()
+        super(Gaussian, self).__init__(
+            self,
+            input_shape=(self.features_size,),
+            target_shape=(self.features_size,),
+            train_size=int(len(self) * 0.8),
+            valid_size=int(len(self) * 0.1),
+            test_size=int(len(self) * 0.1)
+        )
 
     def generate(self):
-        mean = self.mean * torch.ones(self.length, self.width)
-        std = self.std * torch.ones(self.length, self.width)
-        X = torch.normal(mean, std)
-        Y = torch.ones(self.length, self.n_classes) * X.sum(1).unsqueeze(1)
-        for n in range(self.n_classes):
-            Y[:, n] += X[:, n] * X[:, n + 1]
-        # Y += Y.min(1)
-        # Y /= Y.sum(1)
-        Y = Y.argmax(1)
+        X = torch.zeros(self.size * self.num_classes, self.features_size, dtype=torch.float)
+        Y = torch.zeros(self.size * self.num_classes, dtype=torch.float)
+
+        for cls, gauss in enumerate(self.distribution):
+            start = cls * self.size
+            end = (cls + 1) * self.size
+
+            for i, (m, s) in enumerate(zip(gauss.mean, gauss.sd)):
+                dat = torch.normal(m, s, (self.size,))
+                X[start:end, i] = dat
+
+            Y[start:end] = cls
+
         self.data = (X, Y)
 
     def __getitem__(self, index):
         return tuple(subdata[index] for subdata in self.data)
 
     def __len__(self):
-        return self.length
+        return self.size * self.num_classes
 
 
-
-def build(batch_size, width, classes, size, data_path):
-    size *= width
-
-    loaders = OrderedDict()
-    for set_name in ['train', 'valid', 'test']:
-        dataset = Gaussian(
-            width=width, n_classes=classes,
-            mean=0, std=1 / width,
-            length=size)
-
-        loaders[set_name] = torch.utils.data.DataLoader(
-            dataset=dataset,
-            batch_size=batch_size, shuffle=True)
+builders = {
+    'gaussian': Gaussian,
+    'gaussian-2': functools.partial(Gaussian, distributions=[
+        Multivariate([1, 2], [2, 1]),
+        Multivariate([2, 1], [1, 2])])
+}
 
 
-    return loaders

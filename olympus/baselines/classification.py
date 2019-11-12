@@ -8,10 +8,12 @@ from olympus.optimizers import Optimizer, known_optimizers
 from olympus.optimizers.schedules import LRSchedule, known_schedule
 from olympus.tasks import Classification
 from olympus.tasks.hpo import HPO, fidelity
-from olympus.utils import fetch_device
+from olympus.utils import fetch_device, Chrono
 from olympus.utils.options import options
 from olympus.utils.storage import StateStorage
 from olympus.utils.tracker import TrackLogger
+
+from olympus.utils.stat import StatStream
 
 DEFAULT_EXP_NAME = 'classification_{dataset}_{model}_{optimizer}_{lr_scheduler}_{weight_init}'
 
@@ -59,46 +61,61 @@ def arguments():
     return parser
 
 
+chrono = Chrono()
+
+
 def classification_baseline(model, weight_init,
                             optimizer, lr_scheduler,
                             dataset, batch_size, device,
                             sampler_seed=0, model_seed=0, storage=None, half=False, hpo_done=False, logger=None, **config):
-    dataset = DataLoader(
-        dataset,
-        seed=sampler_seed,
-        sampling_method={'name': 'original'},
-        batch_size=batch_size)
 
-    input_size, target_size = dataset.get_shapes()
+    with chrono.time('loader'):
+        dataset = DataLoader(
+            dataset,
+            seed=sampler_seed,
+            sampling_method={'name': 'original'},
+            batch_size=batch_size)
 
-    model = Model(
-        model,
-        input_size=input_size,
-        output_size=target_size,
-        weight_init=weight_init,
-        seed=model_seed,
-        half=half)
+    with chrono.time('get_shapes'):
+        input_size, target_size = dataset.get_shapes()
 
-    optimizer = Optimizer(optimizer, half=half)
+    with chrono.time('model'):
+        model = Model(
+            model,
+            input_size=input_size,
+            output_size=target_size,
+            weight_init=weight_init,
+            seed=model_seed,
+            half=half)
 
-    lr_schedule = LRSchedule(lr_scheduler)
+    with chrono.time('optimizer'):
+        optimizer = Optimizer(optimizer, half=half)
 
-    train, valid = dataset.get_train_valid_loaders(hpo_done)
+    with chrono.time('lr'):
+        lr_schedule = LRSchedule(lr_scheduler)
 
-    main_task = Classification(
-        classifier=model,
-        optimizer=optimizer,
-        lr_scheduler=lr_schedule,
-        dataloader=train,
-        device=device,
-        storage=storage,
-        logger=logger)
+    with chrono.time('get_loaders'):
+        train, valid = dataset.get_train_valid_loaders(hpo_done)
 
-    main_task.metrics.append(
-        Accuracy(name='validation', loader=valid)
-    )
+    with chrono.time('task'):
+        main_task = Classification(
+            classifier=model,
+            optimizer=optimizer,
+            lr_scheduler=lr_schedule,
+            dataloader=train,
+            device=device,
+            storage=storage,
+            logger=logger)
+
+    with chrono.time('metric'):
+        main_task.metrics.append(
+            Accuracy(name='validation', loader=valid)
+        )
 
     return main_task
+
+
+task_build_time: StatStream = StatStream(drop_first_obs=1)
 
 
 def main(**kwargs):

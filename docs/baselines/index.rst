@@ -12,7 +12,7 @@ Submodules
 Module contents
 ---------------
 
-.. automodule:: olympus.scripts
+.. automodule:: olympus.baselines
     :members:
     :undoc-members:
     :show-inheritance:
