@@ -39,6 +39,13 @@ class Module(nn.Module):
         raise NotImplemented
 
 
+def try_convert(x, device, dtype):
+    if hasattr(x, 'to'):
+        return x.to(device=device, dtype=dtype)
+
+    return x
+
+
 # TODO: Make Model distributed here
 class Model(nn.Module):
     """Olympus standardized Model interface
@@ -98,7 +105,7 @@ class Model(nn.Module):
 
     def __init__(self, name=None, *, half=False, model=None, input_size=None, output_size=None, weight_init=None, seed=0):
         super(Model, self).__init__()
-        self.transform = lambda x: x.to(device=self.device, dtype=self.dtype)
+        self.transform = lambda x: try_convert(x, self.device, self.dtype)
         self.half = half
         self.seed = seed
         self._model = None
@@ -166,8 +173,8 @@ class Model(nn.Module):
 
         return self._model
 
-    def forward(self, input):
-        return self.model(self.transform(input))
+    def forward(self, *input, **kwargs):
+        return self.model(self.transform(input[0]), *input[1:], **kwargs)
 
     def state_dict(self, destination=None, prefix='', keep_vars=False):
         destination = {

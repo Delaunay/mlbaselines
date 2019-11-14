@@ -4,7 +4,7 @@ from torch.nn import Module, CrossEntropyLoss
 
 from olympus.utils import info
 from olympus.tasks.task import Task
-from olympus.metrics import OnlineTrainAccuracy, ElapsedRealTime, SampleCount, ProgressView, MetricList
+from olympus.metrics import OnlineTrainAccuracy, ElapsedRealTime, SampleCount, ProgressView
 
 
 class Classification(Task):
@@ -30,7 +30,7 @@ class Classification(Task):
     storage: Storage
         Where to save checkpoints in case of failures
 
-    metrics: MetricList
+    metrics: MetricListt
         List of metrics to compute for the tasks
     """
     def __init__(self, classifier, optimizer, lr_scheduler, dataloader, criterion=None, device=None,
@@ -101,14 +101,9 @@ class Classification(Task):
         return self.classifier.parameters()
 
     def resume(self):
-        try:
-            state_dict = self.storage.load('checkpoint', device=self.device)
+        state_dict = self.storage.safe_load('checkpoint', device=self.device)
 
-        except RuntimeError as e:
-            if 'CPU-only machine' in str(e):
-                raise KeyboardInterrupt('Job got scheduled on bad node.') from e
-
-        except FileNotFoundError:
+        if not state_dict:
             info('Starting from scratch')
             return False
 
@@ -117,14 +112,7 @@ class Classification(Task):
             info(f"Resuming from (epoch: {self._first_epoch})")
 
             self.model.load_state_dict(state_dict['model'])
-            self.optimizer.load_state_dict(state_dict['optimizer'])
-            # Dirty fix found here:
-            # https://github.com/pytorch/pytorch/issues/2830#issuecomment-336194949
-            for state in self.optimizer.state.values():
-                for k, v in state.items():
-                    if torch.is_tensor(v):
-                        state[k] = v.to(device=self.device)
-
+            self.optimizer.load_state_dict(state_dict['optimizer'], device=self.device)
             self.lr_scheduler.load_state_dict(state_dict['lr_scheduler'])
             self.dataloader.sampler.load_state_dict(state_dict['sampler'])
             self.metrics.load_state_dict(state_dict['metrics'])
@@ -190,8 +178,8 @@ class Classification(Task):
                 if epoch != epochs - 1:
                     trial_logger.log_metrics(step=epoch + 1, **self.metrics.value())
 
-        self.metrics.finish(self)
-        trial_logger.log_metrics(step=epochs, **self.metrics.value())
+            self.metrics.finish(self)
+            trial_logger.log_metrics(step=epochs, **self.metrics.value())
 
     def epoch(self, epoch, context):
         for step, mini_batch in enumerate(self.dataloader):
@@ -213,7 +201,9 @@ class Classification(Task):
         self.optimizer.step()
 
         results = {
+            # to compute online loss
             'loss': loss.detach(),
+            # to compute only accuracy
             'predictions': predictions.detach()
         }
 
@@ -221,6 +211,17 @@ class Classification(Task):
         self.metrics.on_new_batch(step, self, input, results)
         self.lr_scheduler.step(step)
         return results
+
+    def eval_loss(self, batch):
+        self.model.eval()
+
+        with torch.no_grad():
+            batch, target = batch
+            predictions = self.classifier(batch.to(device=self.device))
+            loss = self.criterion(predictions, target.to(device=self.device))
+
+        self.model.train()
+        return loss.detach()
 
     def predict_probabilities(self, batch):
         with torch.no_grad():

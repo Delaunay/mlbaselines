@@ -4,6 +4,22 @@ from torch.utils.data.dataset import Dataset as TorchDataset
 from typing import Callable, Tuple
 
 
+class Bound1D:
+    def __init__(self, min, max):
+        self.min = min
+        self.max = max
+
+
+class VariableShape:
+    def __init__(self, **shapes):
+        self.shapes = shapes
+
+
+class DictionaryShape:
+    def __init__(self, *keys):
+        self.keys = keys
+
+
 class AllDataset(TorchDataset):
     """Olympus data sets are concatenated data sets that includes train, validation and test sets
     This allow us to change how each sets are splits and give us greater power to design performance
@@ -15,6 +31,10 @@ class AllDataset(TorchDataset):
     ----------
     dataset: TorchDataset
         Underlying dataset (concatenation of original train and test sets)
+
+    collate_fn: Optional[Callable] !! static method !!
+        merges a list of samples to form a mini-batch of Tensor(s).  Used when using batched loading from a
+        map-style dataset.
     """
     # Underlying Pytorch dataset
     dataset: TorchDataset = None
@@ -23,8 +43,9 @@ class AllDataset(TorchDataset):
     # if you are looking to add data augmentation step you should be looking at
     # ref...
     transforms: Callable = lambda sample: sample
+    collate_fn: Callable = None
 
-    def __init__(self, dataset, input_shape=None, target_shape=None,
+    def __init__(self, dataset, data_path=None, input_shape=None, target_shape=None,
                  train_size=None, valid_size=None, test_size=None, transforms=None):
         self.dataset = dataset
         self._input_shape = input_shape
@@ -102,3 +123,8 @@ class AllDataset(TorchDataset):
             classes[y].append(index)
 
         return [classes[i] for i in sorted(classes.keys())]
+
+    @staticmethod
+    def categories():
+        """Dataset tags so we can filter what we want depending on the task"""
+        return set()

@@ -12,8 +12,23 @@ from olympus.datasets.sampling import RandomSampler
 registered_datasets = fetch_factories('olympus.datasets', __file__)
 
 
-def known_datasets():
-    return registered_datasets.keys()
+def known_datasets(*category_filters, include_unknown=False):
+    if not category_filters:
+        return registered_datasets.keys()
+
+    matching = []
+    for filter in category_filters:
+        for name, factory in registered_datasets.items():
+
+            if hasattr(factory, 'categories'):
+                if filter in factory.categories():
+                    matching.append(name)
+
+            # we don't know if it matches because it does not have the categories method
+            elif include_unknown:
+                matching.append(name)
+
+    return matching
 
 
 def register_dataset(name, factory, override=False):
@@ -48,7 +63,11 @@ def split_data(datasets, seed, batch_size, sampling_method, num_workers=0):
         sampler = RandomSampler(dataset, seed)
 
         data_loaders[split_name] = torch.utils.data.DataLoader(
-            dataset=dataset, batch_size=batch_size, sampler=sampler, num_workers=num_workers)
+            dataset=dataset,
+            batch_size=batch_size,
+            sampler=sampler,
+            num_workers=num_workers,
+            collate_fn=type(datasets).collate_fn)
 
     return data_loaders
 

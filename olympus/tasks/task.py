@@ -36,17 +36,14 @@ class Task:
 
         self._device = device
 
-    def fit(self, step, input, context):
+    def fit(self, epoch, context=None):
         """Execute a single batch
 
         Parameters
         ----------
 
-        step: int
-            current batch_id
-
-        input: Tensor. Tuple[Tensor]
-            Pytorch tensor or tuples of tensors
+        epoch: int
+            current step in the training process
 
         context: dict
             Optional Context
@@ -69,6 +66,22 @@ class Task:
 
     def summary(self):
         print(GenerateSummary().task_summary(self))
+
+    def get_space(self, **fidelities):
+        """Return missing hyper parameters that need to be set using `init`"""
+        raise NotImplementedError()
+
+    def init(self, **kwargs):
+        """Used to initialize the hyperparameters is any"""
+        raise NotImplementedError()
+
+    def resume(self):
+        """Try to load a previous unfinished state to resmue"""
+        raise NotImplementedError()
+
+    def checkpoint(self, step):
+        """Save a state the task can go back to if an error occur"""
+        raise NotImplementedError()
 
 
 class GenerateSummary:

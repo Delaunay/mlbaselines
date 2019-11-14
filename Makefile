@@ -16,6 +16,10 @@ update-doc: build-doc serve-doc
 yolo: rm-doc build-doc serve-doc
 
 
+kill-zombies:
+	# bash -c "ps | grep olympus | awk '{print $$1}'"
+	bash -c "kill -9 $$(ps | grep make | awk '{print $$1}' | paste -s -d ' ')"
+
 travis-doc: build-doc
 
 travis-minimalist:
@@ -28,6 +32,10 @@ travis-hpo_simple:
 travis-classification:
 	rm test.pkl test.pkl.lock | echo ''
 	olympus classification --batch-size 32 --epochs 5 --dataset test-mnist --model logreg
+
+travis-detection:
+	rm test.pkl test.pkl.lock | echo ''
+	olympus detection --batch-size 2 --epochs 5 --dataset pennfudan --model fasterrcnn_resnet18_fpn -vv
 
 check:
 	rm test.pkl test.pkl.lock | echo ''

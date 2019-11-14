@@ -249,6 +249,10 @@ class TinyImageNet(AllDataset):
             output_shape=(200, ),
         )
 
+    @staticmethod
+    def categories():
+        return set(['classification'])
+
 
 builders = {
     'tinyimagenet': TinyImageNet}

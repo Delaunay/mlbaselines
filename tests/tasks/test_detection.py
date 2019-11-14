@@ -6,7 +6,7 @@ import torchvision.models
 import olympus.transforms as T
 
 from olympus.tasks.detection import ObjectDetection
-from olympus.datasets.detection import PennFudanDataset
+from olympus.datasets import DataLoader
 
 parser = argparse.ArgumentParser()
 parser.add_argument('--data', type=str, default='/fast/PennFudanPed/', help='Data location')

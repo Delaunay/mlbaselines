@@ -7,7 +7,52 @@ import torch
 from olympus.utils.options import options
 
 
-class StateStorage:
+class BaseStorage:
+    def load(self, *args, **kwargs):
+        pass
+
+    def safe_load(self, *args, **kwargs):
+        pass
+
+    def __init__(self, *args, **kwargs):
+        pass
+
+    def set_base(self, *args, **kwargs):
+        pass
+
+    def show_memory_usage(self):
+        return {}
+
+    def garbage_collect_in_memory(self, *args, **kwargs):
+        pass
+
+    def garbage_collect_on_disk(self, *args, **kwargs):
+        pass
+
+    def garbage_collect(self, *args, **kwargs):
+        pass
+
+    def open(self, *args, **kwargs):
+        pass
+
+    def write(self, *args, **kwargs):
+        pass
+
+    def read(self, *args, **kwargs):
+        pass
+
+    def exits(self, *args, **kwargs):
+        pass
+
+    def save(self, *args, **kwargs):
+        pass
+
+
+def NoStorage(*args, **kwargs):
+    return BaseStorage(*args, **kwargs)
+
+
+class StateStorage(BaseStorage):
     Kio = 1024
     Mio = 1024 * 1024
     USE_IN_MEMORY_CACHE = False
@@ -163,7 +208,24 @@ class StateStorage:
             it indicates the location where all tensors should be loaded.
         """
         buffer = self._pop_from_cache(filename)
+
         if buffer is None:
             buffer = self._file(filename)
 
         return torch.load(buffer, map_location=device)
+
+    def safe_load(self, name, device):
+        """Handles a few common exceptions for you and returns None if a file is not found"""
+        try:
+            return self.load(name, device=device)
+
+        except RuntimeError as e:
+            # This error happens when there is a mismatch between save device and current device
+            if 'CPU-only machine' in str(e):
+                raise KeyboardInterrupt('Job got scheduled on bad node.') from e
+
+        except FileNotFoundError:
+            return None
+
+
+

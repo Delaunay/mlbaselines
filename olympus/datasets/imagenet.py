@@ -79,6 +79,10 @@ class ImagetNet(AllDataset):
             target_shape=target_shape
         )
 
+    @staticmethod
+    def categories():
+        return set(['classification'])   # 'detection'
+
 
 def make_benzina_data_loader(args, size):
     import benzina.torch

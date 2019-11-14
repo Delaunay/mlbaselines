@@ -1,6 +1,8 @@
 from typing import Dict
 
+import torch
 from torch.optim.optimizer import Optimizer as TorchOptimizer
+
 from olympus.utils import MissingArgument, warning, HyperParameters
 from olympus.utils.factory import fetch_factories
 
@@ -257,5 +259,14 @@ class Optimizer(TorchOptimizer):
     def state_dict(self):
         return self.optimizer.state_dict()
 
-    def load_state_dict(self, state_dict):
+    def load_state_dict(self, state_dict, device=None):
         self.optimizer.load_state_dict(state_dict)
+
+        # Dirty fix found here:
+        # https://github.com/pytorch/pytorch/issues/2830#issuecomment-336194949
+        if device:
+            for state in self.state.values():
+                for k, v in state.items():
+                    if torch.is_tensor(v):
+                        state[k] = v.to(device=device)
+

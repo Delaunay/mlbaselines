@@ -52,6 +52,10 @@ class BalancedEMNIST(AllDataset):
             torch.utils.data.ConcatDataset([train_dataset, test_dataset]),
             test_size=len(test_dataset))
 
+    @staticmethod
+    def categories():
+        return set(['classification'])
+
 
 builders = {
     'balanced_emnist': BalancedEMNIST}

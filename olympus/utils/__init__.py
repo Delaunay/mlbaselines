@@ -1,5 +1,4 @@
 import logging
-import os
 import random
 import sys
 import time
@@ -28,7 +27,7 @@ def fetch_device():
     if torch.cuda.is_available():
         default = 'cuda'
 
-    return torch.device(os.environ.get('DEVICE_TYPE', default))
+    return torch.device(option('device.type', default))
 
 
 def show_dict(dictionary, indent=0):
@@ -54,6 +53,20 @@ class TimeThrottler:
             return self.fun(*args, **kwargs)
 
         return None
+
+
+verbose_log_mapping = [
+    logging.WARN,   # 0
+    logging.INFO,   # 1
+    logging.DEBUG   # 2
+]
+
+
+def set_verbose_level(level):
+    if level >= len(verbose_log_mapping):
+        level = -1
+
+    set_log_level(verbose_log_mapping[level])
 
 
 def set_log_level(level=logging.INFO):

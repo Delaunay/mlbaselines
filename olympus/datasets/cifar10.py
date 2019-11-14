@@ -64,6 +64,10 @@ class CIFAR10(AllDataset):
             transforms=transformations
         )
 
+    @staticmethod
+    def categories():
+        return set(['classification'])
+
 
 builders = {
     'cifar10': CIFAR10}

@@ -74,6 +74,10 @@ class MNIST(AllDataset):
             target_shape=target_shape
         )
 
+    @staticmethod
+    def categories():
+        return set(['classification'])
+
 
 builders = {
     'mnist': MNIST,

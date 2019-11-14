@@ -1,25 +1,24 @@
 from argparse import ArgumentParser, Namespace
 
 from olympus.datasets import DataLoader, known_datasets
-from olympus.metrics import Accuracy
 from olympus.models import Model, known_models
 from olympus.models.inits import known_initialization
 from olympus.optimizers import Optimizer, known_optimizers
 from olympus.optimizers.schedules import LRSchedule, known_schedule
-from olympus.tasks import Classification
+from olympus.tasks import ObjectDetection
 from olympus.tasks.hpo import HPO, fidelity
 from olympus.utils import fetch_device, Chrono, set_verbose_level
 from olympus.utils.options import options
 from olympus.utils.storage import StateStorage
 from olympus.utils.tracker import TrackLogger
+from olympus.metrics import Loss
 
-from olympus.utils.stat import StatStream
 
-DEFAULT_EXP_NAME = 'classification_{dataset}_{model}_{optimizer}_{lr_scheduler}_{weight_init}'
+DEFAULT_EXP_NAME = 'detection_{dataset}_{model}_{optimizer}_{lr_scheduler}_{weight_init}'
 
 
 def arguments():
-    parser = ArgumentParser(prog='classification', description='Classification Baseline')
+    parser = ArgumentParser(prog='detection', description='Detection Baseline')
 
     parser.add_argument(
         '--experiment-name', type=str, default=DEFAULT_EXP_NAME,  metavar='EXP_NAME',
@@ -28,7 +27,7 @@ def arguments():
         '--model', type=str, metavar='MODEL_NAME', choices=known_models(), required=True,
         help='Name of the model')
     parser.add_argument(
-        '--dataset', type=str, metavar='DATASET_NAME', choices=known_datasets('classification', include_unknown=True), required=True,
+        '--dataset', type=str, metavar='DATASET_NAME', choices=known_datasets('detection'), required=True,
         help='Name of the dataset')
     parser.add_argument(
         '--optimizer', type=str, default='sgd',
@@ -67,10 +66,14 @@ def arguments():
 chrono = Chrono()
 
 
-def classification_baseline(model, weight_init,
-                            optimizer, lr_scheduler,
-                            dataset, batch_size, device,
-                            sampler_seed=0, model_seed=0, storage=None, half=False, hpo_done=False, logger=None, **config):
+def reduce_loss(loss_dict):
+    return sum(loss for loss in loss_dict.values())
+
+
+def detection_baseline(model, weight_init,
+                       optimizer, lr_scheduler,
+                       dataset, batch_size, device,
+                       sampler_seed=0, model_seed=0, storage=None, half=False, hpo_done=False, logger=None, **config):
 
     with chrono.time('loader'):
         dataset = DataLoader(
@@ -86,7 +89,7 @@ def classification_baseline(model, weight_init,
         model = Model(
             model,
             input_size=input_size,
-            output_size=target_size,
+            output_size=dataset.datasets.num_classes,
             weight_init=weight_init,
             seed=model_seed,
             half=half)
@@ -101,24 +104,22 @@ def classification_baseline(model, weight_init,
         train, valid = dataset.get_train_valid_loaders(hpo_done)
 
     with chrono.time('task'):
-        main_task = Classification(
-            classifier=model,
+        main_task = ObjectDetection(
+            detector=model,
             optimizer=optimizer,
             lr_scheduler=lr_schedule,
             dataloader=train,
             device=device,
             storage=storage,
+            criterion=reduce_loss,
             logger=logger)
 
     with chrono.time('metric'):
         main_task.metrics.append(
-            Accuracy(name='validation', loader=valid)
+            Loss(name='validation', loader=valid)
         )
 
     return main_task
-
-
-task_build_time: StatStream = StatStream(drop_first_obs=1)
 
 
 def main(**kwargs):
@@ -129,15 +130,17 @@ def main(**kwargs):
     experiment_name = args.experiment_name.format(**kwargs)
 
     client = TrackLogger(
-        'classification',
+        'detection',
         experiment_name,
         'file://track_test.json')
 
     # save partial results here
-    state_storage = StateStorage(folder=options('state.storage', '/tmp'), time_buffer=30)
+    state_storage = StateStorage(
+        folder=options('state.storage', '/tmp'),
+        time_buffer=30)
 
     def main_task():
-        return classification_baseline(device=device, logger=client, storage=state_storage, **kwargs)
+        return detection_baseline(device=device, logger=client, storage=state_storage, **kwargs)
 
     hpo = HPO(
         experiment_name,
@@ -149,10 +152,10 @@ def main(**kwargs):
         max_trials=300
     )
 
-    hpo.fit(epochs=fidelity(args.epochs), objective='validation_accuracy')
+    hpo.fit(epochs=fidelity(args.epochs), objective='validation_loss')
 
     # Train using train+valid for the final result
-    final_task = classification_baseline(device=device, logger=client, storage=state_storage, **kwargs, hpo_done=True)
+    final_task = detection_baseline(device=device, logger=client, storage=state_storage, **kwargs, hpo_done=True)
 
     params = hpo.best_trial.params
     task_args = params.pop('task')

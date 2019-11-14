@@ -2,7 +2,6 @@ from dataclasses import dataclass, field
 from olympus.utils import warning
 
 
-
 @dataclass
 class Metric:
     """Metrics are observers that receives events periodically

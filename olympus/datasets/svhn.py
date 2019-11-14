@@ -56,6 +56,10 @@ class SVHN(AllDataset):
             test_size=len(test_dataset)
         )
 
+    @staticmethod
+    def categories():
+        return set(['classification'])
+
 
 builders = {
     'svhn': SVHN}

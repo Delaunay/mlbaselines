@@ -141,7 +141,7 @@ class SampleCount(Metric):
 
     def on_new_batch(self, step, task, input, context):
         if hasattr(input, '__getitem__'):
-            batch_size = input[0].size(0)
+            batch_size = len(input[0])
         else:
             batch_size = input.size(0)
 

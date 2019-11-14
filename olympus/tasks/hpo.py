@@ -73,7 +73,7 @@ class HPO(Task):
 
         return hash.hexdigest()
 
-    def fit(self, objective='validation_accuracy', step=None, input=None, context=None, **fidelities):
+    def fit(self, objective, step=None, input=None, context=None, **fidelities):
         """Train the model a few times and return a best trial/set of parameters"""
         self.fidelities = fidelities
 
