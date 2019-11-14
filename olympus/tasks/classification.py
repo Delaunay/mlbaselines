@@ -2,7 +2,7 @@ import torch
 
 from torch.nn import Module, CrossEntropyLoss
 
-from olympus.utils import info
+from olympus.utils import info, BadResume
 from olympus.tasks.task import Task
 from olympus.metrics import OnlineTrainAccuracy, ElapsedRealTime, SampleCount, ProgressView
 
@@ -53,6 +53,9 @@ class Classification(Task):
         self.metrics.append(OnlineTrainAccuracy())
         self.metrics.append(ProgressView())
 
+        self.hyper_parameters = {}
+        self.bad_state = False
+
     def get_space(self, **fidelities):
         """Return hyper parameter space"""
         return {
@@ -86,6 +89,11 @@ class Classification(Task):
             override=True, **lr_schedule
         )
 
+        self.hyper_parameters = {
+            'optimizer': optimizer,
+            'lr_schedule': lr_schedule,
+            'model': model
+        }
         # try to resume itself
         self.resume()
 
@@ -94,13 +102,17 @@ class Classification(Task):
         parameters.update(lr_schedule)
         parameters.update(model)
 
-        self.logger.upsert_trial(parameters)
+        self.logger.upsert_trial(self.parameters)
         self.set_device(self.device)
 
     def parameters(self):
         return self.classifier.parameters()
 
     def resume(self):
+        if self.bad_state:
+            raise BadResume('Cannot resume from bad state! '
+                            'You need to create a new task than can resume the previous state')
+
         state_dict = self.storage.safe_load('checkpoint', device=self.device)
 
         if not state_dict:
@@ -140,10 +152,6 @@ class Classification(Task):
             info('Skipped Checkpoint')
 
     @property
-    def metrics(self):
-        return self._metrics
-
-    @property
     def model(self) -> Module:
         return self.classifier
 
@@ -155,6 +163,13 @@ class Classification(Task):
         return self._first_epoch > 0
 
     def fit(self, epochs, context=None):
+        try:
+            self._fit(epochs, context)
+        except:
+            self.bad_state = True
+            raise
+
+    def _fit(self, epochs, context=None):
         self.classifier.to(self.device)
         progress = self.metrics.get('ProgressView')
 

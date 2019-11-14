@@ -13,6 +13,12 @@ jobs:
       script:
         - pip install -r docs/requirements.txt
         - make travis-doc
+    - stage: unit-test
+      script:
+        - pip install -r tests/requirements.txt
+        - python -m pytest --cov=olympus tests/unit
+        - python -m pytest --cov-append --cov=olympus tests/integration
+        - codecov
     - stage: minimalist
       script:
         - make travis-minimalist

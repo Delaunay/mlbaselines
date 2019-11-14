@@ -311,3 +311,7 @@ class HyperParameters:
                 raise MissingParameters('Parameters are missing: {}'.format(', '.join(missing.keys())))
 
         return self.current_parameters
+
+
+class BadResume(Exception):
+    pass

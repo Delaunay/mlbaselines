@@ -1,0 +1,74 @@
+version: 2
+jobs:
+  build:
+    branches:
+      only:
+        - resume_testing
+
+    docker:
+      - image: circleci/python:3.7.5
+
+    working_directory: ~/repo
+
+    steps:
+      - checkout
+
+      # Download and cache dependencies
+      - restore_cache:
+          keys:
+            - v1-dependencies-{{ checksum "requirements.txt" }}
+            # fallback to using the latest cache if no exact match is found
+            - v1-dependencies-
+
+      - run:
+          name: install dependencies
+          command: |
+            python3 -m venv venv
+            . venv/bin/activate
+            pip install -e .
+            pip install -r requirements.txt
+            pip install -r docs/requirements.txt
+            pip install -r tests/requirements.txt
+
+      - save_cache:
+          paths:
+            - ./venv
+          key: v1-dependencies-{{ checksum "requirements.txt" }}
+
+      # run tests!
+      - run:
+          name: run doc
+          command: |
+            . venv/bin/activate
+            python -m pytest --cov=olympus tests/unit
+            python -m pytest --cov-append --cov=olympus tests/integration
+            codecov
+
+      - run:
+          name: run tests
+          command: |
+            . venv/bin/activate
+            make travis-doc
+
+      - run:
+          name: run minimalist
+          command: |
+            . venv/bin/activate
+            make travis-minimalist
+
+      - run:
+          name: run hpo
+          command: |
+            . venv/bin/activate
+            make travis-hpo_simple
+
+      - run:
+          name: run classification
+          command: |
+            . venv/bin/activate
+            make travis-classification
+
+      - store_artifacts:
+          path: test-reports
+          destination: test-reports
+

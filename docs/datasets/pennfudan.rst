@@ -1,7 +1,7 @@
-Detection
+Pennfudan
 =========
 
-.. automodule:: olympus.datasets.detection
+.. automodule:: olympus.datasets.pennfudan
     :members:
     :undoc-members:
     :show-inheritance:

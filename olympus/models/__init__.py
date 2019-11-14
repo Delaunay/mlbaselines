@@ -164,6 +164,7 @@ class Model(nn.Module):
 
         # Register module so we can use all the parent methods
         self.add_module('main_model', self._model)
+
         return self
 
     @property

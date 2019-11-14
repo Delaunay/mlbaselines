@@ -97,7 +97,7 @@ class MetricList:
         """Broadcast a `new_batch` event to all metrics"""
         # Step back to 0, means it is a new epoch
         if self._previous_step > step:
-            assert self.batch_id == 0
+            assert self.batch_id == 0, 'This is called when metric is in a bad state!'
 
         for m in self.metrics:
             if m.frequency_batch > 0 and self.batch_id % m.frequency_batch == 0:

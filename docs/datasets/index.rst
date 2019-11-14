@@ -17,7 +17,7 @@ Submodules
    cifar10
    cifar100
    dataset
-   detection
+   pennfudan
    emnist
    fashionmnist
    gaussian

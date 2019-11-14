@@ -23,6 +23,10 @@ def register_initialization(name, factory, override=False):
     registered_initialization[name] = factory
 
 
+class RegisteredInitNotFound(Exception):
+    pass
+
+
 def initialize_weights(model, name=None, seed=0, half=False, **kwargs):
     """Initialize the model weights using a particular method
 
@@ -44,4 +48,11 @@ def initialize_weights(model, name=None, seed=0, half=False, **kwargs):
     # At the moment we simply fork the PRNG to prevent affecting later calls
     with fork_rng(enabled=True):
         init_seed(seed)
-        return registered_initialization[name](model, **kwargs)
+
+        method_builder = registered_initialization.get(name)
+
+        if not method_builder:
+            raise RegisteredInitNotFound(name)
+
+        method = method_builder(**kwargs)
+        return method(model)

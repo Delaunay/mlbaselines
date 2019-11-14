@@ -56,7 +56,7 @@ hpo = HPO(
     max_trials=500
 )
 
-hpo.fit(epochs=fidelity(args.epochs))
+hpo.fit(epochs=fidelity(args.epochs), objective='validation_accuracy')
 
 print('Best Params:')
 print('-' * 40)

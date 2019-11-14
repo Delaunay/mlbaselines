@@ -5,6 +5,7 @@ import torch.nn
 class Initialization:
     def __call__(self, model):
         """Init model using given function for Linear and Conv2d, and {0, 1} for BatchNorm."""
+
         for m in model.modules():
             if isinstance(m, (torch.nn.Linear, torch.nn.Conv2d)):
                 self.layer_init(m.weight)
@@ -14,6 +15,7 @@ class Initialization:
                 if m.affine:
                     torch.nn.init.constant_(m.weight, 1.0)
                     torch.nn.init.constant_(m.bias, 0.0)
+
         return model
 
     def layer_init(self, weight):
