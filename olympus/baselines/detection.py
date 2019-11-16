@@ -8,7 +8,7 @@ from olympus.optimizers.schedules import LRSchedule, known_schedule
 from olympus.tasks import ObjectDetection
 from olympus.tasks.hpo import HPO, fidelity
 from olympus.utils import fetch_device, Chrono, set_verbose_level
-from olympus.utils.options import options
+from olympus.utils.options import option
 from olympus.utils.storage import StateStorage
 from olympus.utils.tracker import TrackLogger
 from olympus.metrics import Loss
@@ -129,14 +129,12 @@ def main(**kwargs):
     device = fetch_device()
     experiment_name = args.experiment_name.format(**kwargs)
 
-    client = TrackLogger(
-        'detection',
-        experiment_name,
-        'file://track_test.json')
+    path = option('trial.storage', 'file://track_test.json')
+    client = TrackLogger(experiment_name, storage_uri=path)
 
     # save partial results here
     state_storage = StateStorage(
-        folder=options('state.storage', '/tmp'),
+        folder=option('state.storage', '/tmp'),
         time_buffer=30)
 
     def main_task():
@@ -149,7 +147,8 @@ def main(**kwargs):
         seed=1,
         num_rungs=5,
         num_brackets=1,
-        max_trials=300
+        max_trials=300,
+        storage=f'track:{path}'
     )
 
     hpo.fit(epochs=fidelity(args.epochs), objective='validation_loss')

@@ -1,1 +1,2 @@
 git+git://github.com/Epistimio/orion.git@develop#egg=orion
+git+git://git@github.com:Delaunay/track.git#egg=track

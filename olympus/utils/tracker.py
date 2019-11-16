@@ -15,7 +15,7 @@ class BaseTrackLogger:
     def __init__(self, project=None, group=None, storage_uri=options('metric.storage', 'file://track_test.json')):
         pass
 
-    def upsert_trial(self, parameters):
+    def upsert_trial(self, parameters, trial_id):
         pass
 
     def log_metrics(self, step=None, **kwargs):
@@ -29,17 +29,32 @@ class BaseTrackLogger:
 
 
 class TrackLogger:
-    def __init__(self, project, group, storage_uri=options('metric.storage', 'file://track_test.json')):
+    def __init__(self, project, *, group=None, storage_uri=options('metric.storage', 'file://track_test.json')):
         self.client = TrackClient(storage_uri)
         self.client.set_project(Project(name=project))
-        self.client.set_group(TrialGroup(name=group))
+        if group:
+            self.client.set_group(TrialGroup(name=group))
 
-    def upsert_trial(self, parameters):
+    def upsert_trial(self, parameters, trial_id):
+        # if UID is set then used the UID
+        # this so when we are using orion we use its trial and not create another one
+        trial = Trial(parameters=parameters)
+        if trial_id:
+            try:
+                trial = Trial()
+                trial.uid = trial_id
+            except ValueError:
+                # trial_id is not a track id so orion backend and
+                # track backend are not compatible, just insert a new trial
+                self.client.new_trial(force=True, parameters=parameters)
+                return
+
         try:
-            self.client.set_trial(Trial(parameters=parameters), force=True)
+            self.client.set_trial(trial, force=True)
             info('Appending to Track Trial')
 
         except TrialDoesNotExist:
+            assert not trial_id, 'A trial_id was provided which means the trial should exist'
             self.client.new_trial(force=True, parameters=parameters)
 
     def log_metrics(self, step=None, **kwargs):

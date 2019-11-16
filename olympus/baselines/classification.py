@@ -8,12 +8,10 @@ from olympus.optimizers import Optimizer, known_optimizers
 from olympus.optimizers.schedules import LRSchedule, known_schedule
 from olympus.tasks import Classification
 from olympus.tasks.hpo import HPO, fidelity
-from olympus.utils import fetch_device, Chrono, set_verbose_level
+from olympus.utils import fetch_device, Chrono, set_verbose_level, select
 from olympus.utils.options import options
 from olympus.utils.storage import StateStorage
 from olympus.utils.tracker import TrackLogger
-
-from olympus.utils.stat import StatStream
 
 DEFAULT_EXP_NAME = 'classification_{dataset}_{model}_{optimizer}_{lr_scheduler}_{weight_init}'
 
@@ -60,6 +58,12 @@ def arguments():
     parser.add_argument(
         '-v', '--verbose', action='count', default=0,
         help='verbose level')
+    parser.add_argument(
+        '--database', type=str, default='file://track_test.json',
+        help='where to store metrics and intermediate results')
+    parser.add_argument(
+        '--orion-database', type=str, default=None,
+        help='where to store Orion data')
 
     return parser
 
@@ -118,9 +122,6 @@ def classification_baseline(model, weight_init,
     return main_task
 
 
-task_build_time: StatStream = StatStream(drop_first_obs=1)
-
-
 def main(**kwargs):
     args = Namespace(**kwargs)
     set_verbose_level(args.verbose)
@@ -128,10 +129,7 @@ def main(**kwargs):
     device = fetch_device()
     experiment_name = args.experiment_name.format(**kwargs)
 
-    client = TrackLogger(
-        'classification',
-        experiment_name,
-        'file://track_test.json')
+    client = TrackLogger(experiment_name, storage_uri=args.database)
 
     # save partial results here
     state_storage = StateStorage(folder=options('state.storage', '/tmp'), time_buffer=30)
@@ -146,7 +144,8 @@ def main(**kwargs):
         seed=1,
         num_rungs=5,
         num_brackets=1,
-        max_trials=300
+        max_trials=300,
+        storage=select(args.orion_database, f'track:{args.database}')    # 'legacy:pickleddb:my_data.pkl'
     )
 
     hpo.fit(epochs=fidelity(args.epochs), objective='validation_accuracy')

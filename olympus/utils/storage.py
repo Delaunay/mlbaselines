@@ -136,7 +136,6 @@ class StateStorage(BaseStorage):
         return os.path.exists(self._file(filename))
 
     def save(self, filename, state):
-
         path = self._file(filename)
         dirname = os.path.dirname(path)
         if dirname:

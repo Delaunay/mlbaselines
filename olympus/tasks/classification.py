@@ -2,8 +2,8 @@ import torch
 
 from torch.nn import Module, CrossEntropyLoss
 
-from olympus.utils import info, BadResume
-from olympus.tasks.task import Task
+from olympus.utils import info, select
+from olympus.tasks.task import Task, BadResumeGuard
 from olympus.metrics import OnlineTrainAccuracy, ElapsedRealTime, SampleCount, ProgressView
 
 
@@ -37,8 +37,7 @@ class Classification(Task):
                  storage=None, logger=None):
         super(Classification, self).__init__(device=device, logger=logger)
 
-        if criterion is None:
-            criterion = CrossEntropyLoss()
+        criterion = select(criterion, CrossEntropyLoss())
 
         self._first_epoch = 0
         self.classifier = classifier
@@ -54,7 +53,6 @@ class Classification(Task):
         self.metrics.append(ProgressView())
 
         self.hyper_parameters = {}
-        self.bad_state = False
 
     def get_space(self, **fidelities):
         """Return hyper parameter space"""
@@ -67,15 +65,27 @@ class Classification(Task):
             'model': self.model.get_space()
         }
 
-    def init(self, optimizer=None, lr_schedule=None, model=None):
-        if optimizer is None:
-            optimizer = {}
+    def init(self, optimizer=None, lr_schedule=None, model=None, trial_id=None):
+        """
+        Parameters
+        ----------
+        optimizer: Dict
+            Optimizer hyper parameters
 
-        if lr_schedule is None:
-            lr_schedule = {}
+        lr_shchedule: Dict
+            lr schedule hyper parameters
 
-        if model is None:
-            model = {}
+        model: Dict
+            model hyper parameters
+
+        trial_id: Optional[str]
+            trial id to use for logging.
+            When using orion usually it already created a trial for us we just need to append to it
+        """
+
+        optimizer = select(optimizer, {})
+        lr_schedule = select(lr_schedule, {})
+        model = select(model, {})
 
         self.classifier.init(
             **model
@@ -102,36 +112,33 @@ class Classification(Task):
         parameters.update(lr_schedule)
         parameters.update(model)
 
-        self.logger.upsert_trial(self.parameters)
+        self.logger.upsert_trial(parameters, trial_id=trial_id)
         self.set_device(self.device)
 
     def parameters(self):
         return self.classifier.parameters()
 
     def resume(self):
-        if self.bad_state:
-            raise BadResume('Cannot resume from bad state! '
-                            'You need to create a new task than can resume the previous state')
+        with BadResumeGuard(self):
+            state_dict = self.storage.safe_load('checkpoint', device=self.device)
 
-        state_dict = self.storage.safe_load('checkpoint', device=self.device)
+            if not state_dict:
+                info('Starting from scratch')
+                return False
 
-        if not state_dict:
-            info('Starting from scratch')
-            return False
+            try:
+                self._first_epoch = state_dict['epoch']
+                info(f"Resuming from (epoch: {self._first_epoch})")
 
-        try:
-            self._first_epoch = state_dict['epoch']
-            info(f"Resuming from (epoch: {self._first_epoch})")
+                self.model.load_state_dict(state_dict['model'])
+                self.optimizer.load_state_dict(state_dict['optimizer'], device=self.device)
+                self.lr_scheduler.load_state_dict(state_dict['lr_scheduler'])
+                self.dataloader.sampler.load_state_dict(state_dict['sampler'])
+                self.metrics.load_state_dict(state_dict['metrics'])
 
-            self.model.load_state_dict(state_dict['model'])
-            self.optimizer.load_state_dict(state_dict['optimizer'], device=self.device)
-            self.lr_scheduler.load_state_dict(state_dict['lr_scheduler'])
-            self.dataloader.sampler.load_state_dict(state_dict['sampler'])
-            self.metrics.load_state_dict(state_dict['metrics'])
-
-            return True
-        except KeyError as e:
-            raise KeyError(f'Bad state dictionary!, missing (key: {e.args})') from e
+                return True
+            except KeyError as e:
+                raise KeyError(f'Bad state dictionary!, missing (key: {e.args})') from e
 
     def checkpoint(self, epoch):
         info(f'Saving checkpoint (epoch: {epoch})')
@@ -163,38 +170,33 @@ class Classification(Task):
         return self._first_epoch > 0
 
     def fit(self, epochs, context=None):
-        try:
-            self._fit(epochs, context)
-        except:
-            self.bad_state = True
-            raise
+        with BadResumeGuard(self):
+            self.classifier.to(self.device)
+            progress = self.metrics.get('ProgressView')
 
-    def _fit(self, epochs, context=None):
-        self.classifier.to(self.device)
-        progress = self.metrics.get('ProgressView')
+            if progress:
+                # in case of a resume
+                progress.epoch = self._first_epoch
+                progress.max_epoch = epochs
+                progress.max_step = len(self.dataloader)
 
-        if progress:
-            # in case of a resume
-            progress.epoch = self._first_epoch
-            progress.max_epoch = epochs
-            progress.max_step = len(self.dataloader)
+            with self.logger as trial_logger:
+                if not self.resumed():
+                    self.metrics.start(self)
+                    self.report(pprint=True, print_fun=print)
+                    trial_logger.log_metrics(step=0, **self.metrics.value())
 
-        with self.logger as trial_logger:
-            if not self.resumed():
-                self.metrics.start(self)
-                self.report(pprint=True, print_fun=print)
-                trial_logger.log_metrics(step=0, **self.metrics.value())
+                for epoch in range(self._first_epoch, epochs):
+                    # Epochs starts from 1 but we iterate from 0 because we are not matlab!
+                    self.epoch(epoch + 1, context)
+                    self.report(pprint=True, print_fun=print)
 
-            for epoch in range(self._first_epoch, epochs):
-                # Epochs starts from 1 but we iterate from 0 because we are not matlab!
-                self.epoch(epoch + 1, context)
-                self.report(pprint=True, print_fun=print)
+                    # FIXME: this is ugly
+                    if epoch != epochs - 1:
+                        trial_logger.log_metrics(step=epoch + 1, **self.metrics.value())
 
-                if epoch != epochs - 1:
-                    trial_logger.log_metrics(step=epoch + 1, **self.metrics.value())
-
-            self.metrics.finish(self)
-            trial_logger.log_metrics(step=epochs, **self.metrics.value())
+                self.metrics.finish(self)
+                trial_logger.log_metrics(step=epochs, **self.metrics.value())
 
     def epoch(self, epoch, context):
         for step, mini_batch in enumerate(self.dataloader):

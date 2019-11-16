@@ -35,7 +35,7 @@ class KaimingUniform(Kaiming):
         self.a = a
         self.mode = mode
 
-    def layer_init(self, weight, non_linearity):
+    def layer_init(self, weight, non_linearity='leaky_relu'):
         torch.nn.init.kaiming_uniform_(weight, self.a, self.mode, non_linearity)
 
 
@@ -46,7 +46,7 @@ class KaimingNormal(Initialization):
         self.a = a
         self.mode = mode
 
-    def layer_init(self, weight, non_linearity):
+    def layer_init(self, weight, non_linearity='leaky_relu'):
         torch.nn.init.kaiming_normal_(weight, self.a, self.mode, non_linearity)
 
 

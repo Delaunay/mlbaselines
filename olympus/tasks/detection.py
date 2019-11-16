@@ -3,8 +3,8 @@ from torch.nn import Module
 from torch.optim import Optimizer
 from torch.utils.data import DataLoader
 
-from olympus.utils import info
-from olympus.tasks.task import Task
+from olympus.utils import info, select
+from olympus.tasks.task import Task, BadResumeGuard
 from olympus.optimizers.schedules import LRSchedule
 from olympus.utils.storage import StateStorage, NoStorage
 from olympus.metrics import ElapsedRealTime, SampleCount, ProgressView, OnlineLoss
@@ -44,9 +44,6 @@ class ObjectDetection(Task):
     def model(self, model):
         self.detector = model
 
-    def init(self, **kwargs):
-        raise NotImplementedError()
-
     def eval_loss(self, batch):
         self.model.train()
 
@@ -71,30 +68,31 @@ class ObjectDetection(Task):
         return self._first_epoch > 0
 
     def fit(self, epochs, context=None):
-        self.detector.to(self.device)
-        progress = self.metrics.get('ProgressView')
+        with BadResumeGuard(self):
+            self.detector.to(self.device)
+            progress = self.metrics.get('ProgressView')
 
-        if progress:
-            # in case of a resume
-            progress.epoch = self._first_epoch
-            progress.max_epoch = epochs
-            progress.max_step = len(self.dataloader)
+            if progress:
+                # in case of a resume
+                progress.epoch = self._first_epoch
+                progress.max_epoch = epochs
+                progress.max_step = len(self.dataloader)
 
-        with self.logger as trial_logger:
-            if not self.resumed():
-                self.metrics.start(self)
-                self.report(pprint=True, print_fun=print)
-                trial_logger.log_metrics(step=0, **self.metrics.value())
+            with self.logger as trial_logger:
+                if not self.resumed():
+                    self.metrics.start(self)
+                    self.report(pprint=True, print_fun=print)
+                    trial_logger.log_metrics(step=0, **self.metrics.value())
 
-            for epoch in range(self._first_epoch, epochs):
-                self.epoch(epoch + 1, context)
-                self.report(pprint=True, print_fun=print)
+                for epoch in range(self._first_epoch, epochs):
+                    self.epoch(epoch + 1, context)
+                    self.report(pprint=True, print_fun=print)
 
-                if epoch != epochs - 1:
-                    trial_logger.log_metrics(step=epoch + 1, **self.metrics.value())
+                    if epoch != epochs - 1:
+                        trial_logger.log_metrics(step=epoch + 1, **self.metrics.value())
 
-            self.metrics.finish(self)
-            trial_logger.log_metrics(step=epochs, **self.metrics.value())
+                self.metrics.finish(self)
+                trial_logger.log_metrics(step=epochs, **self.metrics.value())
 
     def epoch(self, epoch, context):
         for step, batch in enumerate(self.dataloader):
@@ -129,25 +127,26 @@ class ObjectDetection(Task):
         return results
 
     def resume(self):
-        state_dict = self.storage.safe_load('checkpoint', device=self.device)
+        with BadResumeGuard(self):
+            state_dict = self.storage.safe_load('checkpoint', device=self.device)
 
-        if not state_dict:
-            info('Starting from scratch')
-            return False
+            if not state_dict:
+                info('Starting from scratch')
+                return False
 
-        try:
-            self._first_epoch = state_dict['epoch']
-            info(f"Resuming from (epoch: {self._first_epoch})")
+            try:
+                self._first_epoch = state_dict['epoch']
+                info(f"Resuming from (epoch: {self._first_epoch})")
 
-            self.model.load_state_dict(state_dict['model'])
-            self.optimizer.load_state_dict(state_dict['optimizer'], device=self.device)
-            self.lr_scheduler.load_state_dict(state_dict['lr_scheduler'])
-            self.dataloader.sampler.load_state_dict(state_dict['sampler'])
-            self.metrics.load_state_dict(state_dict['metrics'])
+                self.model.load_state_dict(state_dict['model'])
+                self.optimizer.load_state_dict(state_dict['optimizer'], device=self.device)
+                self.lr_scheduler.load_state_dict(state_dict['lr_scheduler'])
+                self.dataloader.sampler.load_state_dict(state_dict['sampler'])
+                self.metrics.load_state_dict(state_dict['metrics'])
 
-            return True
-        except KeyError as e:
-            raise KeyError(f'Bad state dictionary!, missing (key: {e.args})') from e
+                return True
+            except KeyError as e:
+                raise KeyError(f'Bad state dictionary!, missing (key: {e.args})') from e
 
     def checkpoint(self, epoch):
         info(f'Saving checkpoint (epoch: {epoch})')
@@ -178,15 +177,10 @@ class ObjectDetection(Task):
             'model': self.model.get_space()
         }
 
-    def init(self, optimizer=None, lr_schedule=None, model=None):
-        if optimizer is None:
-            optimizer = {}
-
-        if lr_schedule is None:
-            lr_schedule = {}
-
-        if model is None:
-            model = {}
+    def init(self, optimizer=None, lr_schedule=None, model=None, trial_id=None):
+        optimizer = select(optimizer, {})
+        lr_schedule = select(lr_schedule, {})
+        model = select(model, {})
 
         self.detector.init(
             **model
@@ -208,5 +202,5 @@ class ObjectDetection(Task):
         parameters.update(lr_schedule)
         parameters.update(model)
 
-        self.logger.upsert_trial(parameters)
+        self.logger.upsert_trial(parameters, trial_id=trial_id)
         self.set_device(self.device)

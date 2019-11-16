@@ -1,9 +1,17 @@
 from datetime import datetime
 
-# from .orion import OrionClient
-from orion.client.experiment import ExperimentClient
-
+from olympus.distributed.multigpu import rank
+from olympus.utils import get_storage
+from olympus.utils.options import option
 from olympus.utils.stat import StatStream
+
+# Orion Debug
+import logging
+logging.basicConfig(level=option('orion.debug', logging.DEBUG, type=int))
+
+from orion.client.experiment import ExperimentClient
+from orion.client import create_experiment
+from orion.core.worker.trial import Trial
 
 
 class TrialIterator:
@@ -35,3 +43,35 @@ class TrialIterator:
         return trial
 
     next = __next__
+
+
+class OrionClient:
+    def __init__(self, storage_uri=option('orion.uri', 'track://file.json')):
+        self.experiment = None
+        self.trial = None
+        self.storage = get_storage(storage_uri)
+
+    def new_experiment(self, name, algorithms, space, objective):
+        # fetch or create the experiment being ran
+        self.experiment = create_experiment(
+            name=name,
+            algorithms=algorithms,
+            space=space,
+            storage=self.storage + f'?objective={objective}'
+        )
+
+    def __iter__(self):
+        return TrialIterator(self.experiment)
+
+    def report(self, name, value, type):
+        # Only the main process or master process can report values
+        if rank() == -1 or rank() == 0:
+            assert type in Trial.Result.allowed_types
+
+            self.experiment.observe(
+                self.trial,
+                [dict(name=name, type=type, value=value)]
+            )
+
+    def report_objective(self, name, value):
+        return self.report(name, value, type='objective')

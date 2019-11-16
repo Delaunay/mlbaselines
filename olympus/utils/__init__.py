@@ -12,6 +12,7 @@ import torch
 from olympus.utils.arguments import task_arguments
 from olympus.utils.options import option
 from olympus.utils.chrono import Chrono
+from olympus.utils.functional import select
 
 A = TypeVar('A')
 R = TypeVar('R')
@@ -141,7 +142,7 @@ def parse_uri(uri):
     return arguments
 
 
-def get_storage(uri):
+def get_storage(uri, objective=None):
     """Shorten the storage config from orion that is super long an super confusing
         <storage_type>:<database>:<file or address>
 
@@ -153,14 +154,21 @@ def get_storage(uri):
     database = arguments.get('scheme', 'pickleddb')
     database_resource = arguments.get('path', arguments.get('address'))
 
-    # TODO: make it work for mongodb
-    return {
-        'type': storage_type,
-        'database': {
-            'type': database,
-            'host': database_resource,
+    if storage_type == 'legacy':
+        # TODO: make it work for mongodb
+        return {
+            'type': storage_type,
+            'database': {
+                'type': database,
+                'host': database_resource,
+            }
         }
-    }
+
+    if storage_type == 'track':
+        return {
+            'type': 'track',
+            'uri': f'{storage_uri}?objective={objective}'
+        }
 
 
 if globals().get('oly_log') is None:

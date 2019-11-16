@@ -1,6 +1,23 @@
 import torch
 from olympus.metrics import MetricList
 from olympus.utils.tracker import BaseTrackLogger
+from olympus.utils import BadResume
+
+
+class BadResumeGuard:
+    """Make sure we do not reuse a task with a bad state"""
+
+    def __init__(self, task):
+        self.task = task
+
+    def __enter__(self):
+        if self.task.bad_state:
+            raise BadResume('Cannot resume from bad state! '
+                            'You need to create a new task than can resume the previous state')
+
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        if exc_type is not None:
+            self.task.bad_state = True
 
 
 class Task:
@@ -10,6 +27,7 @@ class Task:
         if not self._logger:
             self._logger = BaseTrackLogger()
         self._metrics = MetricList()
+        self.bad_state = False
 
     @property
     def device(self):
@@ -36,6 +54,10 @@ class Task:
 
         self._device = device
 
+    def eval_loss(self, batch):
+        """This is used to compute validation and test loss"""
+        raise NotImplementedError()
+
     def fit(self, epoch, context=None):
         """Execute a single batch
 
@@ -47,6 +69,14 @@ class Task:
 
         context: dict
             Optional Context
+
+        Notes
+        -----
+        You should wrap whatever code you have here inside a `BadResumeGuard`
+        to prevent users from resuming a failed task that can have a bad states
+
+        To resume a task, you need to create a clean one with the same hyper parameters.
+        It will pickup automatically where at its last checkpoint
         """
         raise NotImplementedError()
 
@@ -76,7 +106,16 @@ class Task:
         raise NotImplementedError()
 
     def resume(self):
-        """Try to load a previous unfinished state to resmue"""
+        """Try to load a previous unfinished state to resume
+
+        Notes
+        -----
+        You should wrap whatever code you have here inside a `BadResumeGuard`
+        to prevent users from resuming a failed task that can have a bad states
+
+        To resume a task, you need to create a clean one with the same hyper parameters.
+        It will pickup automatically where at its last checkpoint
+        """
         raise NotImplementedError()
 
     def checkpoint(self, step):

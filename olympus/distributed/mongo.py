@@ -343,3 +343,19 @@ class MongoClient(MessageQueue):
         for msg in msgs:
             items.append(self._parse(msg))
         return items
+
+
+def start_mongod():
+    from argparse import ArgumentParser
+    import os
+
+    parser = ArgumentParser()
+    parser.add_argument('--address', type=str, default='localhost')
+    parser.add_argument('--port', type=int, default=8123)
+    parser.add_argument('--loc', type=str, default=os.getcwd())
+    args = parser.parse_args()
+
+    print(args.port)
+    server = MongoDB(args.address, args.port, args.loc, False)
+
+    server.start()
