@@ -122,10 +122,16 @@ class Optimizer(TorchOptimizer):
 
         if optimizer:
             warning('Using custom optimizer')
-            self._optimizer = self._wrap_optimizer(optimizer)
+            if isinstance(optimizer, type):
+                self.optimizer_builder = optimizer
 
-            if hasattr(self._optimizer, 'get_space'):
-                self.hyper_parameters.space = self._optimizer.get_space()
+                if hasattr(optimizer, 'get_space'):
+                    self.hyper_parameters.space = optimizer.get_space()
+            else:
+                self._optimizer = self._wrap_optimizer(optimizer)
+
+                if hasattr(self._optimizer, 'get_space'):
+                    self.hyper_parameters.space = self._optimizer.get_space()
 
         elif name:
             # load an olympus model
@@ -194,7 +200,7 @@ class Optimizer(TorchOptimizer):
 
         return {}
 
-    def init(self, model_parameters=None, override=False, **kwargs):
+    def init(self, params=None, override=False, **kwargs):
         """instantiate the underlying optimizer
 
         Raises
@@ -209,14 +215,14 @@ class Optimizer(TorchOptimizer):
         # add missing hyper parameters
         self.hyper_parameters.add_parameters(**kwargs)
 
-        if model_parameters is None:
-            model_parameters = self._model_parameters
+        if params is None:
+            params = self._model_parameters
 
-        if model_parameters is None:
+        if params is None:
             raise MissingArgument('Missing Model parameters!')
 
         self._optimizer = self._wrap_optimizer(
-            self.optimizer_builder(model_parameters, **self.hyper_parameters.parameters(strict=True)))
+            self.optimizer_builder(params, **self.hyper_parameters.parameters(strict=True)))
 
         return self
 

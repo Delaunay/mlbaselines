@@ -141,3 +141,6 @@ class MetricList:
             print_fun(json.dumps(metrics, indent=2))
 
         return metrics
+
+
+ObserverList = MetricList

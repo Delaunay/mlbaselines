@@ -1,38 +1,49 @@
-class ScheduleBuilder:
-    def __call__(self, optimizer, **kwargs):
-        return self.build(optimizer, **kwargs)
-
-    def build(self, optimizer, **kwargs):
-        raise NotImplementedError
-
-    def get_space(self):
-        raise NotImplementedError
-
-    def get_params(self, params):
-        optimizer_params = dict()
-
-        for key in self.get_space().keys():
-            optimizer_params[key] = params[key]
-
-        return optimizer_params
+from torch.optim.lr_scheduler import _LRScheduler
 
 
-class LRSchedule:
-
-    def __init__(self, lr_scheduler):
-        self.lr_scheduler = lr_scheduler
+class LRScheduleI(_LRScheduler):
+    def __init__(self, optimizer, last_epoch=-1):
+        super(LRScheduleI, self).__init__(optimizer, last_epoch)
 
     def state_dict(self):
-        return self.lr_scheduler.state_dict()
+        raise NotImplementedError()
 
     def load_state_dict(self, state_dict):
-        self.lr_scheduler.load_state_dict(state_dict)
+        raise NotImplementedError()
 
     def epoch(self, epoch, metrics=None):
-        pass
+        super(LRScheduleI, self).step(epoch)
 
     def step(self, step, metrics=None):
         pass
 
     def get_lr(self):
-        return self.lr_scheduler.get_lr()
+        raise NotImplementedError()
+
+    @staticmethod
+    def get_space():
+        raise NotImplementedError()
+
+
+class LRScheduleAdapter:
+    def __init__(self, builder, optimizer, last_epoch=-1, **kwargs):
+        self.schedule = builder(optimizer=optimizer, last_epoch=last_epoch, **kwargs)
+
+    def state_dict(self):
+        return self.schedule.state_dict()
+
+    def load_state_dict(self, state_dict):
+        return self.schedule.load_state_dict(state_dict)
+
+    def epoch(self, epoch, metrics=None):
+        return self.schedule.step(epoch)
+
+    def step(self, step, metrics=None):
+        pass
+
+    def get_lr(self):
+        return self.schedule.get_lr()
+
+    @staticmethod
+    def get_space():
+        raise NotImplementedError()

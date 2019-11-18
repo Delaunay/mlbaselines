@@ -22,6 +22,7 @@ jobs:
     - stage: minimalist
       script:
         - make travis-minimalist
+        - make travis-custom
     - stage: hpo
       script:
         - make travis-hpo_simple

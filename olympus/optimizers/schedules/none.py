@@ -1,21 +1,13 @@
-from olympus.optimizers.schedules.base import ScheduleBuilder, LRSchedule
+from olympus.optimizers.schedules.base import LRScheduleI
 
 
-class NoScheduleBuilder(ScheduleBuilder):
-    def build(self, optimizer):
-        return NoLR()
-
-    def get_space(self):
-        return {}
-
-
-class NoLR(LRSchedule):
-    def __init__(self):
-        pass
+class NoLR(LRScheduleI):
+    def __init__(self, optimizer):
+        super(NoLR, self).__init__(optimizer)
 
     def state_dict(self):
         return {}
-    
+
     def load_state_dict(self, state_dict):
         pass
 
@@ -25,5 +17,9 @@ class NoLR(LRSchedule):
     def step(self, step, metrics=None):
         pass
 
+    @staticmethod
+    def get_space():
+        return {}
 
-builders = {'none': NoScheduleBuilder}
+
+builders = {'none': NoLR}

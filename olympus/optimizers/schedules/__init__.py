@@ -66,7 +66,14 @@ class LRSchedule:
         self.hyper_parameters = HyperParameters(space={})
 
         if schedule:
-            self._schedule = schedule
+            if isinstance(schedule, type):
+                self._schedule_builder = schedule
+
+                if hasattr(schedule, 'get_space'):
+                    self.hyper_parameters.space = schedule.get_space()
+
+            else:
+                self._schedule = schedule
 
             if hasattr(self._schedule, 'get_space'):
                 self.hyper_parameters.space = self._schedule.get_space()

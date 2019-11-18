@@ -254,10 +254,10 @@ class LazyCall:
         self.args = self.args + args
         self.kwargs.update(kwargs)
 
-    def invoke(self):
+    def invoke(self, **kwargs):
         if self.obj is None:
             self.is_processing = True
-            self.obj = self.fun(*self.args, **self.kwargs)
+            self.obj = self.fun(*self.args, **self.kwargs, **kwargs)
             self.is_processing = False
 
     def __getattr__(self, item):

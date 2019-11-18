@@ -51,6 +51,12 @@ jobs:
             make travis-doc
 
       - run:
+          name: run custom
+          command: |
+            . venv/bin/activate
+            make travis-custom
+
+      - run:
           name: run minimalist
           command: |
             . venv/bin/activate

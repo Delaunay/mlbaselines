@@ -104,3 +104,7 @@ class NamedMetric(Metric):
         return {
             self.name: self.metrics[-1]
         }
+
+
+Observer = Metric
+NamedObserver = NamedMetric

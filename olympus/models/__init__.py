@@ -103,7 +103,7 @@ class Model(nn.Module):
     _dtype = torch.float32
     _device = torch.device('cpu')
 
-    def __init__(self, name=None, *, half=False, model=None, input_size=None, output_size=None, weight_init=None, seed=0):
+    def __init__(self, name=None, *, half=False, model=None, input_size=None, output_size=None, weight_init='glorot_uniform', seed=0):
         super(Model, self).__init__()
         self.transform = lambda x: try_convert(x, self.device, self.dtype)
         self.half = half
@@ -120,7 +120,10 @@ class Model(nn.Module):
             if hasattr(model, 'get_space'):
                 self.hyper_parameters.space.update(model.get_space())
 
-            self.model_builder = LazyCall(lambda x: model)
+            if isinstance(model, type):
+                self.model_builder = LazyCall(model, input_size=input_size, output_size=output_size)
+            else:
+                self.model_builder = LazyCall(lambda *args, **kwargs: model)
 
         elif name:
             # load an olympus model
@@ -132,7 +135,7 @@ class Model(nn.Module):
             self.model_builder = LazyCall(model_fun, input_size=input_size, output_size=output_size)
 
             if hasattr(model_fun, 'get_space'):
-                self.hyper_parameters.space.update(model.get_space())
+                self.hyper_parameters.space.update(model_fun.get_space())
         else:
             raise MissingArgument('Model or Name needs to be set')
 
@@ -148,8 +151,8 @@ class Model(nn.Module):
         """Return hyper parameter space"""
         return self.hyper_parameters.missing_parameters()
 
-    def init(self, override=False, weight_init=None):
-        self.model_builder.invoke()
+    def init(self, override=False, weight_init=None, **model_hyperparams):
+        self.model_builder.invoke(**model_hyperparams)
         self._model = self.model_builder.obj
 
         parameters = self.hyper_parameters.parameters(strict=False)
@@ -176,6 +179,9 @@ class Model(nn.Module):
 
     def forward(self, *input, **kwargs):
         return self.model(self.transform(input[0]), *input[1:], **kwargs)
+
+    def __call__(self, *args, **kwargs):
+        return super(Model, self).__call__(*args, **kwargs)
 
     def state_dict(self, destination=None, prefix='', keep_vars=False):
         destination = {

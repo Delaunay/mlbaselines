@@ -1,22 +1,33 @@
 import torch.optim
 
-from olympus.optimizers.schedules.base import ScheduleBuilder, LRSchedule
+from olympus.optimizers.schedules.base import LRScheduleAdapter
 
 
-class ExponentialScheduleBuilder(ScheduleBuilder):
-    def build(self, optimizer, gamma):
-        return ExponentialLR(torch.optim.lr_scheduler.ExponentialLR(optimizer, gamma))
+class ExponentialLR(LRScheduleAdapter):
+    def __init__(self, optimizer, gamma):
+        super(ExponentialLR, self).__init__(
+            torch.optim.lr_scheduler.ExponentialLR,
+            optimizer, gamma=gamma
+        )
 
-    def get_space(self):
-        return {'gamma': 'loguniform(0.97, 1)'}
+    def state_dict(self):
+        state_dict = self.schedule.state_dict()
+        state_dict.pop('scale_fn')
+        return state_dict
 
+    def load_state_dict(self, state_dict):
+        state_dict['scale_fn'] = self.schedule.scale_fn
+        self.schedule.load_state_dict(state_dict)
 
-class ExponentialLR(LRSchedule):
     def epoch(self, epoch, metrics=None):
-        self.lr_scheduler.step(epoch=epoch)
+        self.schedule.step(epoch)
 
     def step(self, step, metrics=None):
         pass
 
+    @staticmethod
+    def get_space():
+        return {'gamma': 'loguniform(0.97, 1)'}
 
-builders = {'exponential': ExponentialScheduleBuilder}
+
+builders = {'exponential': ExponentialLR}
