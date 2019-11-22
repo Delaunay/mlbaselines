@@ -32,6 +32,8 @@ class ProgressView(Metric):
     step_start: datetime = field(default_factory=datetime.utcnow)
     epoch_start: datetime = field(default_factory=datetime.utcnow)
 
+    orion_handle = None
+
     def show_progress(self, epoch, step=None):
         if step is None:
             step = ' ' * self.step_length
@@ -39,20 +41,41 @@ class ProgressView(Metric):
             step = f'Step [{step:3d}/{self.max_step:3d}]'
             self.step_length = len(step)
 
-        self.print_fun(f'\rEpoch [{epoch:3d}/{self.max_epoch:3d}] {step} {self.eta(epoch)}', end='')
+        hpo = ''
+        if self.orion_handle is not None:
+            hpo_completion = self.overall_progress()
+            hpo = f'HPO [{hpo_completion:6.2f}%] '
+
+        self.print_fun(f'\r{hpo}Epoch [{epoch:3d}/{self.max_epoch:3d}] {step} {self.eta(epoch)}', end='')
+
+    def overall_progress(self):
+        """Return the overall HPO progress in % completion"""
+        return self.orion_handle.stats.get('trials_completed', 0) * 100 / self.number_of_trials()
+
+    def number_of_trials(self):
+        return self.orion_handle.max_trials
+
+    def estimate_time_trial_finish(self, epoch):
+        """Estimate when a trial will finish"""
+        if self.step_time.count == 0:
+            return None
+
+        total_steps = self.max_step * self.max_epoch
+        spent_steps = self.max_step * epoch + self.step
+        remaining_steps = total_steps - spent_steps
+
+        avg = self.step_time.avg
+        # if we spent enough epochs estimate using both duration
+        if self.epoch_time.count > 0:
+            avg = (avg + self.epoch_time.avg / float(self.max_step)) / 2
+
+        step_estimate = avg * remaining_steps
+        return step_estimate
 
     def eta(self, epoch):
-        if self.step_time.count > 0:
-            total_steps = self.max_step * self.max_epoch
-            spent_steps = self.max_step * epoch + self.step
-            remaining_steps = total_steps - spent_steps
+        step_estimate = self.estimate_time_trial_finish(epoch)
 
-            avg = self.step_time.avg
-            # if we spent enough epochs estimate using both duration
-            if self.epoch_time.count > 0:
-                avg = (avg + self.epoch_time.avg / float(self.max_step)) / 2
-
-            step_estimate = avg * remaining_steps
+        if step_estimate:
             return f'ETA: {step_estimate / 60:9.4f} min'
 
         return ''

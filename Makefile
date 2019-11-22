@@ -53,7 +53,7 @@ tests: clean
 	python -m pytest --cov-append --cov=olympus tests/integration
 
 check: clean
-	olympus classification --batch-size 32 --epochs 10 --dataset mnist --model logreg
+	olympus classification --batch-size 32 --epochs 10 --dataset mnist --model logreg --orion-database legacy:pickleddb:test.pkl
 
 run-hpo: clean
 	python examples/hpo_simple.py

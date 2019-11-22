@@ -116,6 +116,7 @@ class HPO(Task):
         iterator = TrialIterator(self.experiment)
         for idx, trial in enumerate(iterator):
             new_task = self.task_maker()
+            self._set_orion_progress(new_task)
 
             # Get a unique ID for the trial checkpointing
             trial_id = HPO.unique_trial_id(trial, experiment_folder)
@@ -140,6 +141,12 @@ class HPO(Task):
 
         best_params = self.experiment.get_trial(uid=self.experiment.stats['best_trials_id'])
         return best_params
+
+    def _set_orion_progress(self, task):
+        progress = task.metrics.get('ProgressView')
+        if progress:
+            progress.orion_handle = self.experiment
+
 
     @property
     def best_trial(self):

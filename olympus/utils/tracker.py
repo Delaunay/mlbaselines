@@ -7,7 +7,7 @@ except ImportError:
     NO_TRACK = True
 
 
-from olympus.utils import info
+from olympus.utils import info, warning
 from olympus.utils.options import options
 
 
@@ -43,10 +43,13 @@ class TrackLogger:
             try:
                 trial = Trial()
                 trial.uid = trial_id
+
             except ValueError:
                 # trial_id is not a track id so orion backend and
                 # track backend are not compatible, just insert a new trial
-                self.client.new_trial(force=True, parameters=parameters)
+                self.upsert_trial(parameters, None)
+                warning(f'(trial_id: {trial_id}) is not recognized by track, creating its own trial')
+                warning(f'trial id is now (trial_id: {self.client.trial.uid})')
                 return
 
         try:
