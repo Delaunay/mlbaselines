@@ -85,7 +85,7 @@ class LRSchedule:
             if not builder:
                 raise RegisteredLRSchedulerNotFound(name)
 
-            self._schedule_builder = builder()
+            self._schedule_builder = builder
 
             if hasattr(self._schedule_builder, 'get_space'):
                 self.hyper_parameters.space = self._schedule_builder.get_space()
