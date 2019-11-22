@@ -1,5 +1,5 @@
 from dataclass import dataclass
-from olympus.metrics import Observer
+from olympus.observer import Observer
 
 
 @dataclass

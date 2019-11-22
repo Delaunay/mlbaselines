@@ -11,3 +11,4 @@ Extending Olympus
    custom_model_nas
    custom_optimizer
    custom_schedule
+   custom_observer
