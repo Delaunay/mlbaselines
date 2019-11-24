@@ -12,11 +12,9 @@ class ExponentialLR(LRScheduleAdapter):
 
     def state_dict(self):
         state_dict = self.schedule.state_dict()
-        state_dict.pop('scale_fn')
         return state_dict
 
     def load_state_dict(self, state_dict):
-        state_dict['scale_fn'] = self.schedule.scale_fn
         self.schedule.load_state_dict(state_dict)
 
     def epoch(self, epoch, metrics=None):
