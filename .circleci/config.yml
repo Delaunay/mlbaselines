@@ -40,15 +40,13 @@ jobs:
           name: run doc
           command: |
             . venv/bin/activate
-            python -m pytest --cov=olympus tests/unit
-            python -m pytest --cov-append --cov=olympus tests/integration
-            codecov
+            make travis-doc
 
       - run:
           name: run tests
           command: |
             . venv/bin/activate
-            make travis-doc
+            make travis-unit
 
       - run:
           name: run custom
@@ -73,6 +71,12 @@ jobs:
           command: |
             . venv/bin/activate
             make travis-classification
+
+      - run:
+          name: run end
+          command: |
+            . venv/bin/activate
+            make travis-end
 
       - store_artifacts:
           path: test-reports
