@@ -43,8 +43,8 @@ travis-detection: clean
 	olympus detection --batch-size 2 --epochs 5 --dataset pennfudan --model fasterrcnn_resnet18_fpn -vv
 
 travis-custom:
-	python examples/custom_mode.py
-	python examples/custom_mode_nas.py
+	python examples/custom_model.py
+	python examples/custom_model_nas.py
 	python examples/custom_optimizer.py
 	python examples/custom_schedule.py
 
