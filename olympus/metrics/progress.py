@@ -50,7 +50,7 @@ class ProgressView(Metric):
 
     def overall_progress(self):
         """Return the overall HPO progress in % completion"""
-        return self.orion_handle.stats.get('trials_completed', 0) * 100 / self.number_of_trials()
+        return len(self.orion_handle.fetch_trials_by_status('completed')) * 100 / self.number_of_trials()
 
     def number_of_trials(self):
         return self.orion_handle.max_trials

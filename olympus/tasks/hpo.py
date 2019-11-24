@@ -139,15 +139,28 @@ class HPO(Task):
 
             self.experiment.observe(trial, results)
 
-        best_params = self.experiment.get_trial(uid=self.experiment.stats['best_trials_id'])
-        return best_params
+        return self.get_best_trial()
+
+    def get_best_trial(self):
+        completed_trials = self.experiment.fetch_trials_by_status('completed')
+
+        best_eval = completed_trials[0].objective.value
+        best_trial = completed_trials[0]
+
+        for trial in completed_trials:
+            objective = trial.objective.value
+
+            if objective < best_eval:
+                best_eval = objective
+                best_trial = trial
+
+        return best_trial
 
     def _set_orion_progress(self, task):
         progress = task.metrics.get('ProgressView')
         if progress:
             progress.orion_handle = self.experiment
 
-
     @property
     def best_trial(self):
-        return self.experiment.get_trial(uid=self.experiment.stats['best_trials_id'])
+        return self.get_best_trial()
