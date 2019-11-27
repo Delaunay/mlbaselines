@@ -3,7 +3,6 @@ import json
 from .metric import *
 from .adversary import ClassifierAdversary
 from .accuracy import OnlineTrainAccuracy, Accuracy
-from .progress import ElapsedRealTime, ProgressView, SampleCount
 from .loss import Loss, OnlineLoss
 
 

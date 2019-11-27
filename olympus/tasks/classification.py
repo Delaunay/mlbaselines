@@ -4,7 +4,8 @@ from torch.nn import Module, CrossEntropyLoss
 
 from olympus.utils import info, select
 from olympus.tasks.task import Task, BadResumeGuard
-from olympus.metrics import OnlineTrainAccuracy, ElapsedRealTime, SampleCount, ProgressView
+from olympus.metrics import OnlineTrainAccuracy
+from olympus.observers import ElapsedRealTime, SampleCount, ProgressView
 
 
 class Classification(Task):

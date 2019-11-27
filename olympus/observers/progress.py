@@ -1,7 +1,7 @@
 from dataclasses import dataclass, field
 
 
-from olympus.metrics.metric import Metric
+from olympus.metrics.metric import Observer
 from olympus.utils.stat import StatStream
 from olympus.utils.options import option
 
@@ -13,7 +13,7 @@ def get_time_delta(start):
 
 
 @dataclass
-class ProgressView(Metric):
+class ProgressView(Observer):
     print_fun = print
     epoch = 0
     step = 0
@@ -148,7 +148,7 @@ class ProgressView(Metric):
 
 
 @dataclass
-class SampleCount(Metric):
+class SampleCount(Observer):
     sample_count: int = 0
     epoch: int = 0
 
@@ -178,7 +178,7 @@ class SampleCount(Metric):
 
 
 @dataclass
-class ElapsedRealTime(Metric):
+class ElapsedRealTime(Observer):
     start_time: datetime = field(default_factory=datetime.utcnow)
     end_time: datetime = field(default_factory=datetime.utcnow)
 
@@ -208,7 +208,7 @@ class ElapsedRealTime(Metric):
 
 
 @dataclass
-class CheckPointer(Metric):
+class CheckPointer(Observer):
     time_buffer: int = option('checkpoint.time_buffer', 5 * 60, type=int)
     last_save: datetime = None
     epoch: int = 0
