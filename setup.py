@@ -24,7 +24,6 @@ if __name__ == '__main__':
             'olympus.reinforcement',
             'olympus.baselines',
             'olympus.tasks',
-            'olympus.transforms',
             'olympus.utils',
         ],
         install_requires=[

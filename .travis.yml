@@ -1,5 +1,7 @@
 language: python
 
+cache: pip
+
 python:
   - "3.7"
 
@@ -16,6 +18,8 @@ jobs:
         - make travis-doc
     - stage: unit-test
       script:
+        - export OLYMPUS_PROGRESS_FREQUENCY_EPOCH=0
+        - export OLYMPUS_PROGRESS_FREQUENCY_BATCH=0
         - make travis-unit
         - make travis-minimalist
         - make travis-custom

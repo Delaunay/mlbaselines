@@ -6,12 +6,8 @@ Submodules
 
 .. toctree::
 
-   cockroachdb
-   launch
-   mongo
    multigpu
-   pyqueue
-   queue
+
 
 Module contents
 ---------------

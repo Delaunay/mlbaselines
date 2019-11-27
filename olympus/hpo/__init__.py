@@ -7,7 +7,7 @@ from olympus.utils.stat import StatStream
 
 # Orion Debug
 import logging
-logging.basicConfig(level=option('orion.debug', logging.DEBUG, type=int))
+logging.basicConfig(level=option('orion.debug', logging.WARN, type=int))
 
 from orion.client.experiment import ExperimentClient
 from orion.client import create_experiment
