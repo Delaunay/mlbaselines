@@ -90,6 +90,9 @@ class Classification(Task):
         self.classifier.init(
             **model
         )
+
+        # We need to set the device now so optimizer receive cuda tensors
+        self.set_device(self.device)
         self.optimizer.init(
             self.classifier.parameters(),
             override=True, **optimizer
