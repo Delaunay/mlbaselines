@@ -31,6 +31,18 @@ body{
     font-size: 12px;
 }
 
+.projects-list {
+    display: inline-block;
+}
+
+.project-details {
+    display: inline-block;
+}
+
+.track-project {
+    display: inline-block;
+}
+
 
 h3 {
     font-size: 14px;
@@ -106,6 +118,28 @@ input[type="radio"]{
 
 .details {
     text-align: left;
+}
+
+.tabs {
+    padding: 0;
+}
+
+.tab {
+    padding: 0;
+}
+
+#base-eng {
+    padding: 0;
+}
+
+#sql-eng {
+    padding: 0;
+}
+
+.sql-input {
+    width: 99%;
+    padding: 5px;
+    margin: 5px;
 }
 
 .toolbox {
