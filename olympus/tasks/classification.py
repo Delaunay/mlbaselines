@@ -198,12 +198,15 @@ class Classification(Task):
                 self.metrics.finish(self)
                 trial_logger.log_metrics(step=epochs, **self.metrics.value())
 
+    def _get_validation_accuracy(self, x):
+        return self.metrics.value().get('validation_accuracy', None)
+
     def epoch(self, epoch, context):
         for step, mini_batch in enumerate(self.dataloader):
             self.step(step, mini_batch, context)
 
         self.metrics.on_new_epoch(epoch, self, context)
-        self.lr_scheduler.epoch(epoch, lambda x: self.metrics.value()['validation_accuracy'])
+        self.lr_scheduler.epoch(epoch, self._get_validation_accuracy)
         self.checkpoint(epoch)
 
     def step(self, step, input, context):

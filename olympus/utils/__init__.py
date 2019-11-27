@@ -10,7 +10,7 @@ import numpy
 import torch
 
 from olympus.utils.arguments import task_arguments
-from olympus.utils.options import option
+from olympus.utils.options import option, set_option
 from olympus.utils.chrono import Chrono
 from olympus.utils.functional import select
 
@@ -58,12 +58,24 @@ class TimeThrottler:
 
 verbose_log_mapping = [
     logging.WARN,   # 0
-    logging.INFO,   # 1
-    logging.DEBUG   # 2
+    logging.WARN,   # 1
+    logging.INFO,   # 2
+    logging.DEBUG   # 3
 ]
 
 
 def set_verbose_level(level):
+    """Set verbose level
+        - 0 disables all progress output (warning logging enabled)
+        - 1 enables progress output and warning logging
+        - 2 adds info logging
+        - 3 adds debug logging
+    """
+    if level <= 0:
+        # mute progress printing
+        set_option('progress.frequency_epoch', 0)
+        set_option('progress.frequency_batch', 0)
+
     if level >= len(verbose_log_mapping):
         level = -1
 

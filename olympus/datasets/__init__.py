@@ -1,3 +1,4 @@
+import copy
 import os
 import torch
 
@@ -54,6 +55,7 @@ def set_data_path(config):
 # TODO refactor this into something readable
 def split_data(datasets, seed, batch_size, sampling_method, num_workers=0):
 
+    sampling_method = copy.deepcopy(sampling_method)
     indices = generate_indices(datasets, sampling_method.pop('name'), **sampling_method)
 
     data_loaders = dict()

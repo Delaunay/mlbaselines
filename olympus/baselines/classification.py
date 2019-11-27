@@ -56,8 +56,11 @@ def arguments():
         '--half', action='store_true', default=False,
         help='enable fp16 training')
     parser.add_argument(
-        '-v', '--verbose', action='count', default=0,
-        help='verbose level')
+        '-v', '--verbose', type=int, default=1,
+        help='verbose level'
+             '0 disable all progress output, '
+             '1 enables progress output, '
+             'higher enable higher level logging')
     parser.add_argument(
         '--database', type=str, default='file://track_test.json',
         help='where to store metrics and intermediate results')
@@ -74,13 +77,18 @@ chrono = Chrono()
 def classification_baseline(model, weight_init,
                             optimizer, lr_scheduler,
                             dataset, batch_size, device,
-                            sampler_seed=0, model_seed=0, storage=None, half=False, hpo_done=False, logger=None, **config):
+                            sampling_method=None,
+                            sampler_seed=0, model_seed=0, storage=None, half=False, hpo_done=False,
+                            logger=None, validate=True, **config):
+
+    if sampling_method is None:
+        sampling_method = {'name': 'original'}
 
     with chrono.time('loader'):
         dataset = DataLoader(
             dataset,
             seed=sampler_seed,
-            sampling_method={'name': 'original'},
+            sampling_method=sampling_method,
             batch_size=batch_size)
 
     with chrono.time('get_shapes'):
@@ -90,7 +98,7 @@ def classification_baseline(model, weight_init,
         model = Model(
             model,
             input_size=input_size,
-            output_size=target_size,
+            output_size=target_size[0],
             weight_init=weight_init,
             seed=model_seed,
             half=half)
@@ -114,10 +122,11 @@ def classification_baseline(model, weight_init,
             storage=storage,
             logger=logger)
 
-    with chrono.time('metric'):
-        main_task.metrics.append(
-            Accuracy(name='validation', loader=valid)
-        )
+    if validate:
+        with chrono.time('metric'):
+            main_task.metrics.append(
+                Accuracy(name='validation', loader=valid)
+            )
 
     return main_task
 

@@ -20,6 +20,7 @@ def bootstrap_random_indices(rng, indices, n_train, n_valid, n_test):
     return dict(train=train_indices, valid=valid_indices, test=test_indices)
 
 
-def sample(datasets, data_size, seed, **kwargs):
+def sample(datasets, data_size, seed, split_ratio=0.1, **kwargs):
     return balanced_random_indices(
-        method=bootstrap_random_indices, classes=datasets.classes, n_points=data_size, seed=seed)
+        method=bootstrap_random_indices, classes=datasets.classes, n_points=data_size, seed=seed,
+        split_ratio=split_ratio)

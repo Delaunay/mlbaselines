@@ -149,7 +149,7 @@ class StateStorage(BaseStorage):
         # if it has been a while write it to disk
         if (datetime.utcnow() - self.last_save).total_seconds() > self.time_buffer:
             # write it inside a temporary file
-            fd, name = tempfile.mkstemp('state')
+            fd, name = tempfile.mkstemp('state', dir=self.folder)
 
             file = os.fdopen(fd, 'wb')
             file.write(buffer)
