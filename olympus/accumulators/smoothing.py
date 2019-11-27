@@ -1,7 +1,7 @@
 
 
 class ExponentialSmoothing:
-    """More on `Wikipeia <https://en.wikipedia.org/wiki/Exponential_smoothing>`_"""
+    """More on `Wikipedia <https://en.wikipedia.org/wiki/Exponential_smoothing>`_"""
 
     def __init__(self, alpha, value=None):
         assert 0 < alpha < 1, 'alpha must be between 0 and 1'
@@ -22,7 +22,7 @@ class ExponentialSmoothing:
 
 
 class MovingAverage:
-    """More on `Wikipeia <https://en.wikipedia.org/wiki/Moving_average>`_"""
+    """More on `Wikipedia MA <https://en.wikipedia.org/wiki/Moving_average>`_"""
 
     def __init__(self, n: int):
         self.n = n
