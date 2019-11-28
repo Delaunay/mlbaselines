@@ -4,7 +4,7 @@ from olympus.datasets import DataLoader
 from olympus.optimizers.schedules import LRSchedule
 from olympus.optimizers import Optimizer
 from olympus.models import Model
-from olympus.metrics import MetricList, ProgressView
+from olympus.observers import ObserverList, ProgressView
 from olympus.utils import fetch_device
 
 
@@ -35,7 +35,7 @@ loader = DataLoader(
 )
 
 # event handler
-event_handler = MetricList()
+event_handler = ObserverList()
 event_handler.append(
     ProgressView(max_epoch=epochs, max_step=len(loader.train())).every(epoch=1, batch=1))
 

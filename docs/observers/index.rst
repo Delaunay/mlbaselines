@@ -1,20 +1,18 @@
-Metrics
-=======
+Observers
+=========
 
 Submodules
 ----------
 
 .. toctree::
 
-   metric
-   rl
-   accuracy
-   adversary
+   progress
+
 
 Module contents
 ---------------
 
-.. automodule:: olympus.metrics
+.. automodule:: olympus.observers
     :members:
     :undoc-members:
     :show-inheritance:

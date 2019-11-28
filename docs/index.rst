@@ -34,6 +34,7 @@
    distributed/index
    hpo/index
    metrics/index
+   observers/index
    models/index
    optimizers/index
    reinforcement/index
