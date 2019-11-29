@@ -86,7 +86,9 @@ class RLDataloader(DataLoader):
             # Transform might modify the shape of the state so we have to compute the shape using a dummy state
             with torch.no_grad():
                 tracer = torch.randn((1,) + self.env.observation_space.shape)
-                tracer = self.env.transforms(tracer)
+
+                if hasattr(self.env, 'transforms'):
+                    tracer = self.env.transforms(tracer)
                 self._batch_shape = (self.batch_size,) + tracer.shape[1:]
 
         return self._batch_shape

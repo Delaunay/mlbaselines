@@ -8,7 +8,7 @@ https://sergioskar.github.io/Actor_critics/
 """
 from collections import namedtuple
 from dataclasses import dataclass
-from typing import  Callable
+from typing import Callable
 
 import numpy as np
 import torch
