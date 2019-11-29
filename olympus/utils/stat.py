@@ -44,8 +44,10 @@ class StatStream(object):
             0,  # current_obs
             drop_first_obs)  # drop_obs
 
-    @classmethod
-    def from_dict(cls, data):
+    @staticmethod
+    def from_dict(data):
+        cls = StatStream()
+
         cls.struct.sum = data['sum']
         cls.struct.sum_sqr = data['sum_sqr']
         cls.struct.first_obs = data['first_obs']
