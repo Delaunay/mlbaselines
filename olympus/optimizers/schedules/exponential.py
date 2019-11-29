@@ -27,5 +27,9 @@ class ExponentialLR(LRScheduleAdapter):
     def get_space():
         return {'gamma': 'loguniform(0.97, 1)'}
 
+    @staticmethod
+    def defaults():
+        return {'gamma': 0.97}
+
 
 builders = {'exponential': ExponentialLR}

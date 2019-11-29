@@ -1,23 +1,30 @@
+
 import pytest
 
 import torch
 
-from olympus.optimizers import Optimizer, known_optimizers
+from olympus.optimizers import Optimizer
+from olympus.optimizers.schedules import LRSchedule, known_schedule
 from olympus.models import Model
 
-optimizers = known_optimizers()
+schedules = known_schedule()
 
 
-@pytest.mark.parametrize('optimizer', optimizers)
-def test_build_optimizer(optimizer, batch_size=1):
+@pytest.mark.parametrize('schedule', schedules)
+def test_build_schedule(schedule, batch_size=1):
     model = Model('logreg', weight_init='glorot_uniform', input_size=(1, 28, 28), output_size=(10,))
 
     optimizer = Optimizer(
-        optimizer,
+        'sgd',
         params=model.parameters()
     )
-
     optimizer.init(**optimizer.defaults)
+
+    schedule = LRSchedule(
+        schedule,
+        optimizer=optimizer
+    )
+    schedule.init(**schedule.defaults)
 
     optimizer.zero_grad()
     input = torch.randn((batch_size, 1, 28, 28))
@@ -26,4 +33,5 @@ def test_build_optimizer(optimizer, batch_size=1):
     optimizer.backward(loss)
     optimizer.step()
 
-
+    schedule.step(1)
+    schedule.epoch(1)

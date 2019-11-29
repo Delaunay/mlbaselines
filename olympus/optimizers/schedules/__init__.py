@@ -128,6 +128,10 @@ class LRSchedule:
         return {}
 
     @property
+    def defaults(self):
+        return self._schedule_builder.defaults()
+
+    @property
     def lr_scheduler(self):
         if not self._schedule:
             self.init()

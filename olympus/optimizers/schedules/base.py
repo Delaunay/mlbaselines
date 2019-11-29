@@ -24,6 +24,10 @@ class LRScheduleI(_LRScheduler):
     def get_space():
         raise NotImplementedError()
 
+    @staticmethod
+    def defaults():
+        return {}
+
 
 class LRScheduleAdapter:
     def __init__(self, builder, optimizer, last_epoch=-1, **kwargs):
@@ -47,3 +51,7 @@ class LRScheduleAdapter:
     @staticmethod
     def get_space():
         raise NotImplementedError()
+
+    @staticmethod
+    def defaults():
+        return {}

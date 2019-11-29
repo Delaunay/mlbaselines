@@ -3,19 +3,18 @@ import pytest
 from olympus.datasets import DataLoader
 
 datasets = [
-    'svhn',
-    'cifar100',
-    'pennfudan',
-    'fashion_mnist',
-    'tinyimagenet',
-    'cifar10',
+    # 'svhn',
+    # 'cifar100',
+    # 'pennfudan',
+    # 'fashion_mnist',
+    # 'cifar10',
     'fake_imagenet',
     'fake_mnist',
     'fake_cifar',
-    'balanced_emnist',
-    'mnist',
-    'mini-mnist',
-    'test-mnist'
+    # 'balanced_emnist',
+    # 'mnist',
+    # 'mini-mnist',
+    # 'test-mnist'
 ]
 
 

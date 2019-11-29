@@ -188,6 +188,7 @@ class Optimizer(TorchOptimizer):
 
         return self.hyper_parameters.missing_parameters()
 
+    @property
     def defaults(self):
         """Returns the default hyper parameter of the underlying optimizer"""
         return self.optimizer_builder.defaults()
