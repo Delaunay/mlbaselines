@@ -26,6 +26,7 @@ jobs:
             python3 -m venv venv
             . venv/bin/activate
             pip install -e .
+            pip install -e '.[rl]'
             pip install -r requirements.txt
             pip install -r docs/requirements.txt
             pip install -r tests/requirements.txt

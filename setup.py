@@ -47,7 +47,7 @@ if __name__ == '__main__':
         },
         extras_require={
             'geffnet': ['geffnet==0.9.3'],
-            'rl': ['gym'],
+            'rl': ['gym', 'atari_py'],
             'dash': ['plotly-express', 'dash'],
             # > pip install git+git://github.com/Delaunay/track
             # 'track': ['']
