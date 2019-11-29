@@ -28,7 +28,7 @@ lr_schedule = LRSchedule('exponential', optimizer=optimizer, gamma=0.99)
 
 # Dataloader
 loader = DataLoader(
-    'test-mnist',
+    'fake_mnist',
     seed=1,
     sampling_method={'name': 'original'},
     batch_size=32
@@ -41,6 +41,8 @@ event_handler.append(
 
 
 model = model.to(device=device)
+loss = 0
+
 for e in range(epochs):
     losses = []
 
@@ -62,3 +64,4 @@ for e in range(epochs):
     loss = sum(losses) / len(losses)
 
 event_handler.finish()
+print(loss)

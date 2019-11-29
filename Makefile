@@ -14,7 +14,7 @@ travis-classification: clean
 	COVERAGE_FILE=.coverage.classify coverage run --parallel-mode olympus/baselines/launch.py classification --batch-size 32 --epochs 5 --dataset test-mnist --model logreg
 
 travis-classification-fp16: clean
-	COVERAGE_FILE=.coverage.classify coverage run --parallel-mode olympus/baselines/launch.py classification --batch-size 32 --epochs 5 --dataset test-mnist --model logreg --half
+	COVERAGE_FILE=.coverage.classify_fp16 coverage run --parallel-mode olympus/baselines/launch.py classification --batch-size 32 --epochs 5 --dataset test-mnist --model logreg --half
 
 travis-detection: clean
 	COVERAGE_FILE=.coverage.dect coverage run --parallel-mode olympus/baselines/launch.py detection --batch-size 2 --epochs 5 --dataset pennfudan --model fasterrcnn_resnet18_fpn -vv
