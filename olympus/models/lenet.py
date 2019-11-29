@@ -1,9 +1,8 @@
 import logging
-
+import numpy
 import torch.nn as nn
 
-
-log = logging.getLogger(__name__)
+from olympus.utils import info
 
 
 class LeNet(nn.Module):
@@ -23,9 +22,13 @@ class LeNet(nn.Module):
     """
     def __init__(self, input_size, num_classes):
         super(LeNet, self).__init__()
+
+        if not isinstance(num_classes, int):
+            num_classes = numpy.product(num_classes)
+
         n_channels = input_size[0]
         if tuple(input_size) == (1, 28, 28):
-            log.info('Using LeNet architecture for MNIST')
+            info('Using LeNet architecture for MNIST')
             self.conv1 = nn.Conv2d(n_channels, 20, 5, 1)
             self.pool1 = nn.MaxPool2d(2, 2)
             self.conv2 = nn.Conv2d(20, 50, 5, 1)
@@ -33,7 +36,7 @@ class LeNet(nn.Module):
             self.fc1   = nn.Linear(50 * 4 * 4, 500)
             self.fc2   = nn.Linear(500, num_classes)
         elif tuple(input_size) == (3, 32, 32):
-            log.info('Using LeNet architecture for CIFAR10/100')
+            info('Using LeNet architecture for CIFAR10/100')
             self.conv1 = nn.Conv2d(n_channels, 20, 5, 1)
             self.pool1 = nn.MaxPool2d(2, 2)
             self.conv2 = nn.Conv2d(20, 50, 5, 1)
@@ -41,7 +44,7 @@ class LeNet(nn.Module):
             self.fc1   = nn.Linear(50 * 5 * 5, 500)
             self.fc2   = nn.Linear(500, num_classes)
         elif tuple(input_size) == (3, 64, 64):
-            log.info('Using LeNet architecture for TinyImageNet')
+            info('Using LeNet architecture for TinyImageNet')
             self.conv1 = nn.Conv2d(n_channels, 20, 5, 1)
             self.pool1 = nn.MaxPool2d(3, 3)
             self.conv2 = nn.Conv2d(20, 50, 5, 1)
