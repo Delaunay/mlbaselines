@@ -4,7 +4,7 @@ from olympus.datasets import DataLoader
 from olympus.optimizers.schedules import LRSchedule
 from olympus.optimizers import Optimizer
 from olympus.models import Model
-from olympus.metrics import MetricList, ProgressView
+from olympus.observers import ObserverList, ProgressView
 from olympus.utils import fetch_device
 
 
@@ -28,19 +28,21 @@ lr_schedule = LRSchedule('exponential', optimizer=optimizer, gamma=0.99)
 
 # Dataloader
 loader = DataLoader(
-    'test-mnist',
+    'fake_mnist',
     seed=1,
     sampling_method={'name': 'original'},
     batch_size=32
 )
 
 # event handler
-event_handler = MetricList()
+event_handler = ObserverList()
 event_handler.append(
     ProgressView(max_epoch=epochs, max_step=len(loader.train())).every(epoch=1, batch=1))
 
 
 model = model.to(device=device)
+loss = 0
+
 for e in range(epochs):
     losses = []
 
@@ -62,3 +64,4 @@ for e in range(epochs):
     loss = sum(losses) / len(losses)
 
 event_handler.finish()
+print(loss)

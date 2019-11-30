@@ -188,6 +188,11 @@ class Optimizer(TorchOptimizer):
 
         return self.hyper_parameters.missing_parameters()
 
+    @property
+    def defaults(self):
+        """Returns the default hyper parameter of the underlying optimizer"""
+        return self.optimizer_builder.defaults()
+
     def get_params(self, params: Dict[str, any]) -> Dict[str, any]:
         """Extract optimizer parameters from the dictionary, the resulting dictionary can be
         used to initialize the optimizer without worry.
@@ -250,13 +255,6 @@ class Optimizer(TorchOptimizer):
     @property
     def param_groups(self):
         return self.optimizer.param_groups
-
-    @property
-    def defaults(self):
-        if self.half:
-            return self.optimizer.optimizer.defaults
-
-        return self.optimizer.defaults
 
     @property
     def state(self):

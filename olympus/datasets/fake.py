@@ -2,14 +2,21 @@ import functools
 
 import numpy
 
+from torchvision import transforms
 from torchvision.datasets.fakedata import FakeData
 
 from olympus.datasets.dataset import AllDataset
 
 
+def default_transform():
+    return transforms.Compose([
+        transforms.ToTensor(),
+    ])
+
+
 class FakeDataset(AllDataset):
     """Generate random tensors as input data"""
-    def __init__(self, input_shape, target_shape, train_size=1024, valid_size=128, test_size=128):
+    def __init__(self, input_shape, target_shape, train_size=1024, valid_size=128, test_size=128, data_path=None):
         if not isinstance(target_shape, int):
             target_shape = numpy.product(target_shape)
 
@@ -22,7 +29,7 @@ class FakeDataset(AllDataset):
             test_size=test_size,
             train_size=train_size,
             valid_size=valid_size,
-            transforms=None,
+            transforms=default_transform(),
             input_shape=input_shape,
             target_shape=target_shape
         )

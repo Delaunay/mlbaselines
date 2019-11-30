@@ -1,7 +1,7 @@
 Progress
 ========
 
-.. automodule:: olympus.metrics.progress
+.. automodule:: olympus.observers.progress
     :members:
     :undoc-members:
     :show-inheritance:

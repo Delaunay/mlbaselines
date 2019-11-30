@@ -1,0 +1,81 @@
+# I setup my docker runner to cache those directories
+# So the environments are only updated when different
+variables:
+  XDG_CACHE_HOME: "/cache/pip"
+  PIP_CACHE_DIR:  "/cache/pip"
+  OLYMPUS_DATA_PATH: "/cache/data"
+  ENV_CACHE_DIR: "/cache/env"
+
+stages:
+  - tests
+  - doc
+
+job doc:
+  image: pytorch/pytorch:latest
+  stage: doc
+  script:
+    - python -m venv /cache/env/cpu
+    - . /cache/env/cpu/bin/activate
+    - make travis-install
+    - make travis-doc
+
+# CPU testing
+# This is the job that can run on Gitlab's own runners
+job cpu-tests:
+  image: pytorch/pytorch:latest
+  stage: tests
+  script:
+    - python -m venv /cache/env/cpu
+    - . /cache/env/cpu/bin/activate
+    - make travis-install
+    - make travis-unit
+    - make travis-custom
+    - make travis-minimalist
+    - make travis-hpo_simple
+    - make travis-classification
+    - make travis-end
+
+
+# nvidia-docker is a pain to setup
+# Can only run on a machine with an NVIDIA-GPU machine
+job nvidia-tests:
+  image: pytorch/pytorch:latest
+  tags:
+    - nvidia
+  stage: tests
+  when: manual
+  script:
+    - python3.6 -m venv --system-site-packages /cache/env/nvidia
+    - . /cache/env/nvidia/bin/activate
+    - make travis-install
+    - make travis-unit
+    - make travis-custom
+    - make travis-minimalist
+    - make travis-hpo_simple
+    - make travis-classification
+    - make travis-classification-fp16
+    - make travis-end
+
+# Tag your runner with rocm & add the devices below
+#  --device=/dev/kfd --device=/dev/dri --group-add video
+# Can only run on a AMD-GPU machine
+job rocm-tests:
+  image: rocm/pytorch:rocm2.9_ubuntu16.04_py3.6_pytorch
+  tags:
+    - rocm
+  stage: tests
+  when: manual
+  script:
+    - ln -f /usr/bin/python3.6 /usr/bin/python3
+    - ln -f /usr/bin/python3.6 /usr/bin/python
+    - pip install --upgrade pip
+    - pip install wheel
+    - pip install torchvision==0.2.2
+    - make travis-install
+    - make travis-unit
+    - make travis-custom
+    - make travis-minimalist
+    - make travis-hpo_simple
+    - make travis-classification
+    - make travis-classification-fp16
+    - make travis-end

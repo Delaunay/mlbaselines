@@ -117,14 +117,13 @@ class _ParallelEnvironmentCleaner(SignalHandler):
 class ParallelEnvironment:
     """A group of environment that are computed in parallel"""
 
-    def __init__(self, num_workers, state_transforms, env_factory, *env_args):
+    def __init__(self, num_workers, env_factory, *env_args):
         self.manager: Manager = Manager()
         self.unique_set = self.manager.dict()
 
         self.worker_stat = Value(WorkerStat, 0, 0, 0, 0, 0, 0)
         self.vector_stat = VectorStat()
         self.remotes, work_remotes = zip(*[Pipe() for _ in range(num_workers)])
-        self.transforms = state_transforms
 
         self.ps = []
         for (work_remote, remote) in zip(work_remotes, self.remotes):
@@ -165,7 +164,7 @@ class ParallelEnvironment:
         self.waiting = False
 
         obs, rewards, dones, infos = zip(*results)
-        return self.transforms(self._convert(np.stack(obs))),\
+        return self._convert(np.stack(obs)),\
                self._convert(np.stack(rewards)),\
                self._convert(np.stack(dones)), infos
 
@@ -227,15 +226,13 @@ class ParallelEnvironment:
         for remote in self.remotes:
             remote.send(('reset', None))
 
-        return self.transforms(self._convert(
-            np.stack([remote.recv() for remote in self.remotes])))
+        return self._convert(np.stack([remote.recv() for remote in self.remotes]))
 
     def reset_task(self):
         for remote in self.remotes:
             remote.send(('reset_task', None))
 
-        return self.transforms(self._convert(
-            np.stack([remote.recv() for remote in self.remotes])))
+        return self._convert(np.stack([remote.recv() for remote in self.remotes]))
 
     def get_spaces(self):
         return self.observation_space, self.action_space

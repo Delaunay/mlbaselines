@@ -141,4 +141,4 @@ def create_trials(dataset, model, optimizer, lr_scheduler, init, epochs,
 
 if __name__ == '__main__':
     for i in range(10):
-        create_trials('mnist', 'logreg', 'sgd', 'none', False, sampler_seed)
+        create_trials('mnist', 'logreg', 'sgd', 'none', False, i)

@@ -260,9 +260,10 @@ builders = {
 
 if __name__ == "__main__":
     from bvdl.utils.cov import ExpectationMeter, CovarianceMeter
+
     for num_workers in range(1, 9): # range(5, 6):  # 1, 9):
         print("\n-*- {} -*-\n".format(num_workers))
-        datasets = build(128, "/Tmp/data", num_workers)
+        datasets = build_dataset(128, "/Tmp/data", num_workers)
         std = CovarianceMeter()
         topmax = 0
         for x, y in tqdm(datasets['train'], desc='train'):

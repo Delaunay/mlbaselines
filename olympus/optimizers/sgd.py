@@ -20,5 +20,13 @@ class SGD(OptimizerBuilder):
                 'momentum': 'uniform(0, 1)',
                 'weight_decay': 'loguniform(1e-10, 1e-3)'}
 
+    @staticmethod
+    def defaults():
+        return {
+            'weight_decay': 0.001,
+            'lr': 0.001,
+            'momentum': 0.9,
+        }
+
 
 builders = {'sgd': SGD}

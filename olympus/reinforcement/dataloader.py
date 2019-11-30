@@ -16,7 +16,7 @@ class _RLIterator(GenericStateIterator):
         Max Frame / steps to generate. Once the max step is reached the iterator returns None
     """
 
-    def __init__(self, loader, env, max_steps: int = None):
+    def __init__(self, loader, env, max_steps: int = None, transforms=None):
         super(_RLIterator, self).__init__(loader)
 
         self.env = env
@@ -24,13 +24,17 @@ class _RLIterator(GenericStateIterator):
         self.init = False
         self.loader = loader
 
+        self.transforms = lambda x: x
+        if transforms:
+            self.transforms = transforms
+
     def next(self, action):
         if self.init is False:
             assert action is None
             self.init = True
 
             self.loader.batch_id += 1
-            return self.env.reset()
+            return self.transforms(self.env.reset())
 
         if self.max_steps is not None and self.loader.batch_id > self.max_steps:
             self.loader.epoch_id += 1
@@ -38,7 +42,9 @@ class _RLIterator(GenericStateIterator):
             return None
 
         self.loader.batch_id += 1
-        return self.env.step(action)
+        data = self.env.step(action)
+        r = self.transforms(data[0])
+        return (r,) + data[1:]
 
 
 class RLDataloader(DataLoader):
@@ -67,18 +73,17 @@ class RLDataloader(DataLoader):
         super(RLDataloader, self).__init__()
 
         if num_workers > 1:
-            self.env = ParallelEnvironment(num_workers, state_transforms, env_factory, *env_args)
+            self.env = ParallelEnvironment(num_workers, env_factory, *env_args)
         else:
-            # FIXME
-            print('num_workers=1 is broken')
             self.env = env_factory(*env_args)
 
         self._batch_shape = None
         self.batch_size = num_workers
         self.max_steps = max_steps
+        self.state_transforms = state_transforms
 
     def iterator(self):
-        return _RLIterator(self, self.env, self.max_steps)
+        return _RLIterator(self, self.env, self.max_steps, transforms=self.state_transforms)
 
     @property
     def batch_shape(self):
@@ -86,7 +91,7 @@ class RLDataloader(DataLoader):
             # Transform might modify the shape of the state so we have to compute the shape using a dummy state
             with torch.no_grad():
                 tracer = torch.randn((1,) + self.env.observation_space.shape)
-                tracer = self.env.transforms(tracer)
+                tracer = self.state_transforms(tracer)
                 self._batch_shape = (self.batch_size,) + tracer.shape[1:]
 
         return self._batch_shape

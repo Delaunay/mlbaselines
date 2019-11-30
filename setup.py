@@ -33,7 +33,8 @@ if __name__ == '__main__':
             'h5py',
             'psycopg2-binary',
             'gym',
-            'tqdm'
+            'tqdm',
+            'pandas'
         ],
         setup_requires=['setuptools'],
         tests_require=['pytest', 'flake8', 'codecov', 'pytest-cov'],
@@ -47,8 +48,8 @@ if __name__ == '__main__':
         },
         extras_require={
             'geffnet': ['geffnet==0.9.3'],
-            'rl': ['gym'],
-            'dash': ['plotly-express', 'dash'],
+            'rl': ['gym', 'atari_py'],
+            'dash': ['plotly', 'plotly-express', 'dash', 'altair'],
             # > pip install git+git://github.com/Delaunay/track
             # 'track': ['']
             # NVIDIA Apex would go there if there was a pip to give

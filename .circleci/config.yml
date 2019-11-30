@@ -25,10 +25,7 @@ jobs:
           command: |
             python3 -m venv venv
             . venv/bin/activate
-            pip install -e .
-            pip install -r requirements.txt
-            pip install -r docs/requirements.txt
-            pip install -r tests/requirements.txt
+            make travis-install
 
       - save_cache:
           paths:

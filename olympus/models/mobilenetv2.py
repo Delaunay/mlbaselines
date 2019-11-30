@@ -2,6 +2,8 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
+import numpy
+
 from olympus.utils import info
 
 
@@ -77,10 +79,13 @@ class MobileNetV2(nn.Module):
     SOFTWARE.
     """
     # (expansion, out_planes, num_blocks, stride)
-    def __init__(self, cfg, input_size, conv, avgpool, num_classes=10):
+    def __init__(self, cfg, input_size, conv, avgpool, num_classes=(10,)):
         super(MobileNetV2, self).__init__()
 
         self.cfg = cfg
+
+        if not isinstance(num_classes, int):
+            num_classes = numpy.product(num_classes)
 
         self.conv1 = nn.Conv2d(input_size[0], 32, **conv, bias=False)
         self.bn1 = nn.BatchNorm2d(32)

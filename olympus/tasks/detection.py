@@ -7,7 +7,8 @@ from olympus.utils import info, select
 from olympus.tasks.task import Task, BadResumeGuard
 from olympus.optimizers.schedules import LRSchedule
 from olympus.utils.storage import StateStorage, NoStorage
-from olympus.metrics import ElapsedRealTime, SampleCount, ProgressView, OnlineLoss
+from olympus.metrics import OnlineLoss
+from olympus.observers import ElapsedRealTime, SampleCount, ProgressView
 
 
 class ObjectDetection(Task):

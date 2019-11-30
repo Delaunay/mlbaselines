@@ -17,3 +17,7 @@ class OptimizerBuilder:
             optimizer_params[key] = params[key]
 
         return optimizer_params
+
+    @staticmethod
+    def defaults():
+        return {}

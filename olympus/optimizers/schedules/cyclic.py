@@ -28,7 +28,7 @@ class CyclicLR(LRScheduleAdapter):
         self.schedule.step()
 
     @staticmethod
-    def get_space(self):
+    def get_space():
         return {
             'base_lr': 'loguniform(1e-5, 1e-2)',
             'max_lr': 'loguniform(1e-2, 1)',
@@ -37,6 +37,18 @@ class CyclicLR(LRScheduleAdapter):
             'mode': 'choices(["triangular", "triangular2", "exp_range"])',
             'base_momentum': 'uniform(0.7, 0.9)',
             'max_momentum': 'loguniform(0.9, 0.99)',
+        }
+
+    @staticmethod
+    def defaults():
+        return {
+            'base_lr': 1e-5,
+            'max_lr': 1e-2,
+            'step_size_up': 2000,
+            'step_size_down': 1000,
+            'mode': 'triangular',
+            'base_momentum': 0.7,
+            'max_momentum': 0.99,
         }
 
 
