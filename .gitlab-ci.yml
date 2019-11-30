@@ -2,17 +2,6 @@
 default:
   image: pytorch/pytorch:latest
 
-rocm:
-  image: rocm/pytorch:rocm2.9_ubuntu18.04_py3.6
-  script: make
-
-nvidia:
-  image: pytorch/pytorch:latest
-
-# Not really necessary but for consistency
-cpu:
-  image: pytorch/pytorch:latest
-
 stages:
   - install
   - unit
