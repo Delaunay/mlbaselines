@@ -1,11 +1,3 @@
-# Use NVIDIA/CPU as default
-# Do not specify the image so the worker will use the default one
-# specified in the worker config
-default:
-  image: pytorch/pytorch:latest
-#        : rocm/pytorch:rocm2.9_ubuntu18.04_py3.6
-#        : ubuntu
-
 variables:
     PIP_CACHE_DIR: "$CI_PROJECT_DIR/.cache/pip"
     OLYMPUS_DATA_PATH: "$CI_PROJECT_DIR/data"
@@ -15,34 +7,34 @@ cache:
     - .cache/pip
     - olympe/
     - data/
-    - .coverage*
 
 stages:
-  - install
   - tests
-  - finish
 
-# Clean - Ubuntu
-# - apt install python3-pip
-# - pip3 install virtualenv
-
-job dependencies:
-  stage: install
+job doc:
+  image: ubuntu
+  stage: tests
   script:
+    - apt install python3-pip
+    - python3.6 -m venv --system-site-packages olympe
+    - . olympe/bin/activate
+    - pip install -e .
+    - pip install -r requirements.txt
+    - pip install -r docs/requirements.txt
+    - make travis-doc
+
+# CPU testing
+job generic-tests:
+  image: ubuntu
+  tags:
+    - ubuntu
+  stage: tests
+  script:
+    - apt update
+    - apt install python3-pip
     - python3.6 -m venv --system-site-packages olympe
     - . olympe/bin/activate
     - make travis-install
-
-job doc:
-  stage: tests
-  script:
-    - . olympe/bin/activate
-    - make travis-doc
-
-job unit:
-  stage: tests
-  script:
-    - . olympe/bin/activate
     - make travis-unit
     - make travis-custom
     - make travis-minimalist
@@ -50,8 +42,41 @@ job unit:
     - make travis-classification
     - make travis-end
 
-#job classification-fp16:
+# nvidia-docker is a pain to setup
+#job nvidia-tests:
+#  image: pytorch/pytorch:latest
+#  tags:
+#    - nvidia
 #  stage: tests
 #  script:
-#    - . venv/bin/activate
+#    - python3.6 -m venv --system-site-packages olympe
+#    - . olympe/bin/activate
+#    - make travis-install
+#    - make travis-unit
+#    - make travis-custom
+#    - make travis-minimalist
+#    - make travis-hpo_simple
+#    - make travis-classification
 #    - make travis-classification-fp16
+#    - make travis-end
+
+
+#  --device=/dev/kfd --device=/dev/dri --group-add video
+job rocm-tests:
+  image: rocm/pytorch:rocm2.9_ubuntu18.04_py3.6
+  tags:
+    - rocm
+  stage: tests
+  script:
+    - ln -f /usr/bin/python3.6 /usr/bin/python3
+    - ln -f /usr/bin/python3.6 /usr/bin/python
+    - curl https://bootstrap.pypa.io/get-pip.py -o get-pip.py
+    - python get-pip.py
+    - make travis-install
+    - make travis-unit
+    - make travis-custom
+    - make travis-minimalist
+    - make travis-hpo_simple
+    - make travis-classification
+    - make travis-classification-fp16
+    - make travis-end
