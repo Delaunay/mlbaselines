@@ -23,7 +23,7 @@ job dependencies:
   stage: install
   script:
     - pip install virtualenv
-    - python -m venv --system-site-packages olympe
+    - virtualenv --system-site-packages olympe
     - . venv/bin/olympe
     - make travis-install
 
