@@ -1,4 +1,5 @@
 # I setup my docker runner to cache those directories
+# So the environments are only updated when different
 variables:
   XDG_CACHE_HOME: "/cache/pip"
   PIP_CACHE_DIR:  "/cache/pip"
@@ -19,6 +20,7 @@ job doc:
     - make travis-doc
 
 # CPU testing
+# This is the job that can run on Gitlab's own runners
 job cpu-tests:
   image: pytorch/pytorch:latest
   stage: tests
@@ -35,6 +37,7 @@ job cpu-tests:
 
 
 # nvidia-docker is a pain to setup
+# Can only run on a machine with an NVIDIA-GPU machine
 job nvidia-tests:
   image: pytorch/pytorch:latest
   tags:
@@ -55,6 +58,7 @@ job nvidia-tests:
 
 # Tag your runner with rocm & add the devices below
 #  --device=/dev/kfd --device=/dev/dri --group-add video
+# Can only run on a AMD-GPU machine
 job rocm-tests:
   image: rocm/pytorch:rocm2.9_ubuntu16.04_py3.6_pytorch
   tags:
