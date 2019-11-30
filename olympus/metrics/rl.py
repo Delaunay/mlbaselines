@@ -54,10 +54,7 @@ class Validation(Metric):
 
             action, new_log_prob, entropy = task.actor_critic.act(states)
             values = task.actor_critic.critic(states)
-
-            new_states, reward, done = env.step(action)
-
-
+            new_states, reward, done = self.env.step(action)
 
 
 class ReinforcementTest(Metric):
