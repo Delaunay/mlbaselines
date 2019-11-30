@@ -2,6 +2,16 @@
 default:
   image: pytorch/pytorch:latest
 
+variables:
+    PIP_CACHE_DIR: "$CI_PROJECT_DIR/.cache/pip"
+    OLYMPUS_DATA_PATH: "$CI_PROJECT_DIR/data"
+
+cache:
+  paths:
+    - .cache/pip
+    - venv/
+    - data
+
 stages:
   - install
   - tests
@@ -9,17 +19,53 @@ stages:
 
 job 0:
   stage: install
-  script: make travis-install
+  script:
+    - python3 -m venv venv
+    - . venv/bin/activate
+    - make travis-install
 
-job 1:
+job 1.0:
   stage: tests
   script:
+    - . venv/bin/activate
     - make travis-unit
+
+job 1.1:
+  stage: tests
+  script:
+    - . venv/bin/activate
     - make travis-custom
+
+job 1.2:
+  stage: tests
+  script:
+    - . venv/bin/activate
     - make travis-minimalist
+
+job 1.3:
+  stage: tests
+  script:
+    - . venv/bin/activate
     - make travis-hpo_simple
+
+job 1.4:
+  stage: tests
+  script:
+    - . venv/bin/activate
     - make travis-classification
+
+job 1.5:
+  stage: tests
+  script:
+    - . venv/bin/activate
     - make travis-classification-fp16
-    - make travis-end
+
+job 1.6:
+  stage: tests
+  script:
+    - . venv/bin/activate
     - make travis-doc
 
+job 2:
+  stage: finish
+  script: make travis-end
