@@ -71,6 +71,7 @@ job rocm-tests:
     - ln -f /usr/bin/python3.6 /usr/bin/python
     - curl https://bootstrap.pypa.io/get-pip.py -o get-pip.py
     - python get-pip.py
+    - pip install torchvision=0.2.2
     - make travis-install
     - make travis-unit
     - make travis-custom
