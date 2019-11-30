@@ -31,6 +31,7 @@ job generic-tests:
     - apt update
     - apt install python3-pip -y
     - apt install python3-venv -y
+    - pip install wheel
     - python3.6 -m venv /cache/env/ubuntu
     - . /cache/env/ubuntu/bin/activate
     - make travis-install
@@ -71,6 +72,7 @@ job rocm-tests:
     - ln -f /usr/bin/python3.6 /usr/bin/python
     - curl https://bootstrap.pypa.io/get-pip.py -o get-pip.py
     - python get-pip.py
+    - pip install wheel
     - pip install torchvision==0.2.2
     - make travis-install
     - make travis-unit
