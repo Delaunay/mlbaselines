@@ -13,8 +13,8 @@ variables:
 cache:
   paths:
     - ../.cache/pip
-    - ../olympe/
     - ../data
+    - olympe/
 
 stages:
   - install
@@ -28,38 +28,38 @@ stages:
 job dependencies:
   stage: install
   script:
-    - python3.6 -m venv --system-site-packages ../olympe
-    - . ../olympe/bin/activate
+    - python3.6 -m venv --system-site-packages olympe
+    - . olympe/bin/activate
     - make travis-install
 
 job unit:
   stage: tests
   script:
-    - . venv/bin/olympe
+    - . olympe/bin/activate
     - make travis-unit
 
 job custom:
   stage: tests
   script:
-    - . venv/bin/olympe
+    - . olympe/bin/activate
     - make travis-custom
 
 job minimalist:
   stage: tests
   script:
-    - . venv/bin/olympe
+    - . olympe/bin/activate
     - make travis-minimalist
 
 job hpo-simple:
   stage: tests
   script:
-    - . venv/bin/olympe
+    - . olympe/bin/activate
     - make travis-hpo_simple
 
 job classification:
   stage: tests
   script:
-    - . venv/bin/olympe
+    - . olympe/bin/activate
     - make travis-classification
 
 #job classification-fp16:
@@ -71,11 +71,11 @@ job classification:
 job doc:
   stage: tests
   script:
-    - . venv/bin/olympe
+    - . olympe/bin/activate
     - make travis-doc
 
 job upload-coverage:
   stage: finish
   script:
-    - . venv/bin/olympe
+    - . olympe/bin/activate
     - make travis-end
