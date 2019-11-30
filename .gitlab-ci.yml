@@ -1,6 +1,8 @@
 # Use NVIDIA/CPU as default
-default:
-  image: pytorch/pytorch:latest
+# Do not specify the image so the worker will use the default one
+# specified in the worker config
+# default:
+#   image: pytorch/pytorch:latest
 
 variables:
     PIP_CACHE_DIR: "$CI_PROJECT_DIR/.cache/pip"
