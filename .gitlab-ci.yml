@@ -7,14 +7,15 @@ default:
 #        : ubuntu
 
 variables:
-    PIP_CACHE_DIR: "$CI_PROJECT_DIR/../.cache/pip"
-    OLYMPUS_DATA_PATH: "$CI_PROJECT_DIR/../data"
+    PIP_CACHE_DIR: "$CI_PROJECT_DIR/.cache/pip"
+    OLYMPUS_DATA_PATH: "$CI_PROJECT_DIR/data"
 
 cache:
   paths:
-    - ../.cache/pip
-    - ../data
+    - .cache/pip
     - olympe/
+    - data/
+    - .coverage*
 
 stages:
   - install
