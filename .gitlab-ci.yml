@@ -9,29 +9,21 @@ stages:
   - doc
 
 job doc:
-  image: ubuntu
+  image: pytorch/pytorch:latest
   stage: doc
   script:
-    - apt update
-    - apt install python3-pip -y
-    - python3.6 -m venv --system-site-packages /cache/env/ubuntu
-    - . /cache/env/ubuntu/bin/activate
-    - pip install -e .
-    - pip install -r requirements.txt
-    - pip install -r docs/requirements.txt
+    - python -m venv /cache/env/cpu
+    - . /cache/env/cpu/bin/activate
+    - make travis-install
     - make travis-doc
 
 # CPU testing
-job generic-tests:
-  image: ubuntu
+job cpu-tests:
+  image: pytorch/pytorch:latest
   stage: tests
   script:
-    - apt update
-    - apt install git python3-pip -y
-    - apt install python3-venv -y
-    - python3.6 -m venv /cache/env/ubuntu
-    - . /cache/env/ubuntu/bin/activate
-    - pip install wheel
+    - python -m venv /cache/env/cpu
+    - . /cache/env/cpu/bin/activate
     - make travis-install
     - make travis-unit
     - make travis-custom
@@ -39,6 +31,7 @@ job generic-tests:
     - make travis-hpo_simple
     - make travis-classification
     - make travis-end
+
 
 # nvidia-docker is a pain to setup
 job nvidia-tests:
