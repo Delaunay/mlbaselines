@@ -68,4 +68,6 @@ job doc:
 
 job upload-coverage:
   stage: finish
-  script: make travis-end
+  script:
+    - . venv/bin/activate
+    - make travis-end
