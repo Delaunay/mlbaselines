@@ -67,6 +67,8 @@ jobs:
         make travis-classification
 
     - name: upload-coverage
+      env:
+        CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
       run: |
         . venv/bin/activate
         travis-end
