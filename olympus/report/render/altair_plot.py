@@ -9,7 +9,6 @@ from olympus.report.base import DOMComponent
 from olympus.report.render.utils import prettify_name
 
 import altair as alt
-from vega_datasets import data
 
 
 class AltairPlot(DOMComponent):
