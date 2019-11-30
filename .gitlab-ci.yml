@@ -17,55 +17,55 @@ stages:
   - tests
   - finish
 
-job 0:
+job dependencies:
   stage: install
   script:
     - python3 -m venv venv
     - . venv/bin/activate
     - make travis-install
 
-job 1.0:
+job unit:
   stage: tests
   script:
     - . venv/bin/activate
     - make travis-unit
 
-job 1.1:
+job custom:
   stage: tests
   script:
     - . venv/bin/activate
     - make travis-custom
 
-job 1.2:
+job minimalist:
   stage: tests
   script:
     - . venv/bin/activate
     - make travis-minimalist
 
-job 1.3:
+job hpo-simple:
   stage: tests
   script:
     - . venv/bin/activate
     - make travis-hpo_simple
 
-job 1.4:
+job classification:
   stage: tests
   script:
     - . venv/bin/activate
     - make travis-classification
 
-job 1.5:
+job classification-fp16:
   stage: tests
   script:
     - . venv/bin/activate
     - make travis-classification-fp16
 
-job 1.6:
+job doc:
   stage: tests
   script:
     - . venv/bin/activate
     - make travis-doc
 
-job 2:
+job upload-coverage:
   stage: finish
   script: make travis-end
