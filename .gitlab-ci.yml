@@ -13,7 +13,7 @@ job doc:
   stage: doc
   script:
     - apt update
-    - apt install python3-pip
+    - apt install python3-pip -y
     - python3.6 -m venv --system-site-packages /cache/env/ubuntu
     - . /cache/env/ubuntu/bin/activate
     - pip install -e .
@@ -29,7 +29,7 @@ job generic-tests:
   stage: tests
   script:
     - apt update
-    - apt install python3-pip
+    - apt install python3-pip -y
     - python3.6 -m venv /cache/env/ubuntu
     - . /cache/env/ubuntu
     - make travis-install
