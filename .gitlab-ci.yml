@@ -1,3 +1,4 @@
+# I setup my docker runner to cache those directories
 variables:
   XDG_CACHE_HOME: "/cache/pip"
   PIP_CACHE_DIR:  "/cache/pip"
@@ -39,6 +40,7 @@ job nvidia-tests:
   tags:
     - nvidia
   stage: tests
+  when: manual
   script:
     - python3.6 -m venv --system-site-packages /cache/env/nvidia
     - . /cache/env/nvidia/bin/activate
@@ -58,9 +60,11 @@ job rocm-tests:
   tags:
     - rocm
   stage: tests
+  when: manual
   script:
     - ln -f /usr/bin/python3.6 /usr/bin/python3
     - ln -f /usr/bin/python3.6 /usr/bin/python
+    - pip install --upgrade pip
     - pip install wheel
     - pip install torchvision==0.2.2
     - make travis-install
