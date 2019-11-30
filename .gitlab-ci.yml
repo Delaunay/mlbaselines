@@ -42,22 +42,22 @@ job generic-tests:
     - make travis-end
 
 # nvidia-docker is a pain to setup
-#job nvidia-tests:
-#  image: pytorch/pytorch:latest
-#  tags:
-#    - nvidia
-#  stage: tests
-#  script:
-#    - python3.6 -m venv --system-site-packages /cache/env/nvidia
-#    - . /cache/env/nvidia/bin/activate
-#    - make travis-install
-#    - make travis-unit
-#    - make travis-custom
-#    - make travis-minimalist
-#    - make travis-hpo_simple
-#    - make travis-classification
-#    - make travis-classification-fp16
-#    - make travis-end
+job nvidia-tests:
+  image: pytorch/pytorch:latest
+  tags:
+    - nvidia
+  stage: tests
+  script:
+    - python3.6 -m venv --system-site-packages /cache/env/nvidia
+    - . /cache/env/nvidia/bin/activate
+    - make travis-install
+    - make travis-unit
+    - make travis-custom
+    - make travis-minimalist
+    - make travis-hpo_simple
+    - make travis-classification
+    - make travis-classification-fp16
+    - make travis-end
 
 # Tag your runner with rocm & add the devices below
 #  --device=/dev/kfd --device=/dev/dri --group-add video
