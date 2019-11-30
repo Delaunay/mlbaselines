@@ -37,7 +37,7 @@ travis-custom:
 
 travis-end:
 	coverage combine
-	coverage report -m olympus
+	coverage report -m
 	coverage xml
 	codecov
 

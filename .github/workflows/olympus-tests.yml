@@ -3,7 +3,7 @@ name: Olympus-CI
 on: [push]
 
 jobs:
-  install-dependencies:
+  olympus-ci:
     runs-on: ubuntu-latest
 
     steps:
