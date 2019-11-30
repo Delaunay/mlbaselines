@@ -54,11 +54,11 @@ job classification:
     - . venv/bin/activate
     - make travis-classification
 
-job classification-fp16:
-  stage: tests
-  script:
-    - . venv/bin/activate
-    - make travis-classification-fp16
+#job classification-fp16:
+#  stage: tests
+#  script:
+#    - . venv/bin/activate
+#    - make travis-classification-fp16
 
 job doc:
   stage: tests
