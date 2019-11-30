@@ -24,16 +24,14 @@ job doc:
 # CPU testing
 job generic-tests:
   image: ubuntu
-  tags:
-    - ubuntu
   stage: tests
   script:
     - apt update
     - apt install python3-pip -y
     - apt install python3-venv -y
-    - pip install wheel
     - python3.6 -m venv /cache/env/ubuntu
     - . /cache/env/ubuntu/bin/activate
+    - pip install wheel
     - make travis-install
     - make travis-unit
     - make travis-custom
