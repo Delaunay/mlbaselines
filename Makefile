@@ -2,6 +2,14 @@ export OLYMPUS_DATA_PATH=/tmp
 
 travis: travis-doc travis-minimalist travis-hpo_simple travis-classification travis-classification-fp16 travis-unit travis-custom travis-end
 
+travis-install:
+	pip install -e .
+	pip install -e '.[rl]'
+	pip install -e '.[dash]'
+	pip install -r requirements.txt
+	pip install -r docs/requirements.txt
+	pip install -r tests/requirements.txt
+
 travis-doc: build-doc
 
 travis-minimalist: clean

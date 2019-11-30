@@ -1,0 +1,61 @@
+# Use NVIDIA/CPU as default
+default:
+  image: pytorch/pytorch:latest
+
+rocm:
+  image: rocm/pytorch:rocm2.9_ubuntu18.04_py3.6
+  script: make
+
+nvidia:
+  image: pytorch/pytorch:latest
+
+# Not really necessary but for consistency
+cpu:
+  image: pytorch/pytorch:latest
+
+stages:
+  - install
+  - unit
+  - doc
+  - api
+  - mini
+  - hpo
+  - classification
+  - classification-fp16
+  - finish
+
+job 0:
+  stage: install
+  script: make travis-install
+
+job 1:
+  stage: unit
+  script: make travis-unit
+
+job 2:
+  stage: doc
+  script: make travis-doc
+
+job 3:
+  stage: api
+  script: travis-custom
+
+job 4:
+  stage: mini
+  script: make travis-minimalist
+
+job 5:
+  stage: hpo
+  script: make travis-hpo_simple
+
+job 6:
+  stage: classification
+  script: make travis-classification
+
+job 7:
+  stage: classification-fp16
+  script: make travis-classification-fp16
+
+job 8:
+  stage: finish
+  script: make travis-end
