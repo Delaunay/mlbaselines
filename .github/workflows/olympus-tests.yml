@@ -15,7 +15,11 @@ jobs:
     - name: Install dependencies
       run: |
         python -m pip install --upgrade pip
+        pip install virtualenv
+        python -m venv venv
+        . venv/bin/activate
         make travis-install
+        pip install flake8
 
   linting:
     runs-on: ubuntu-latest
@@ -23,7 +27,7 @@ jobs:
     steps:
     - name: Lint with flake8
       run: |
-        pip install flake8
+        . venv/bin/activate
         # stop the build if there are Python syntax errors or undefined names
         flake8 . --count --select=E9,F63,F7,F82 --show-source --statistics
         # exit-zero treats all errors as warnings. The GitHub editor is 127 chars wide
@@ -36,23 +40,35 @@ jobs:
       max-parallel: 2
     steps:
     - name: unit
-      run: make travis-unit
+      run: |
+        . venv/bin/activate
+        make travis-unit
 
     - name: api-test
-      run: make travis-custom
+      run: |
+        . venv/bin/activate
+        make travis-custom
 
     - name: minimalist
-      run: make travis-minimalist
+      run: |
+        . venv/bin/activate
+        make travis-minimalist
 
     - name: hpo-simple
-      run: make travis-hpo_simple
+      run: |
+        . venv/bin/activate
+        make travis-hpo_simple
 
     - name: classification
-      run: make travis-classification
+      run: |
+        . venv/bin/activate
+        make travis-classification
 
   coverage:
     runs-on: ubuntu-latest
     needs: build
     steps:
     - name: upload-coverage
-      run: travis-end
+      run: |
+        . venv/bin/activate
+        travis-end
