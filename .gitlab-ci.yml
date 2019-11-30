@@ -22,31 +22,39 @@ stages:
 job dependencies:
   stage: install
   script:
+    - pip install virtualenv
+    - python -m venv olympe
+    - . venv/bin/olympe
     - make travis-install
 
 job unit:
   stage: tests
   script:
+    - . venv/bin/olympe
     - make travis-unit
 
 job custom:
   stage: tests
   script:
+    - . venv/bin/olympe
     - make travis-custom
 
 job minimalist:
   stage: tests
   script:
+    - . venv/bin/olympe
     - make travis-minimalist
 
 job hpo-simple:
   stage: tests
   script:
+    - . venv/bin/olympe
     - make travis-hpo_simple
 
 job classification:
   stage: tests
   script:
+    - . venv/bin/olympe
     - make travis-classification
 
 #job classification-fp16:
@@ -58,9 +66,11 @@ job classification:
 job doc:
   stage: tests
   script:
+    - . venv/bin/olympe
     - make travis-doc
 
 job upload-coverage:
   stage: finish
   script:
+    - . venv/bin/olympe
     - make travis-end
