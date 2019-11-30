@@ -27,6 +27,7 @@ jobs:
             . venv/bin/activate
             pip install -e .
             pip install -e '.[rl]'
+            pip install -e '.[dash]'
             pip install -r requirements.txt
             pip install -r docs/requirements.txt
             pip install -r tests/requirements.txt
