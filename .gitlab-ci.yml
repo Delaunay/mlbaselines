@@ -3,28 +3,33 @@
 # specified in the worker config
 # default:
 #   image: pytorch/pytorch:latest
+#        : rocm/pytorch:rocm2.9_ubuntu18.04_py3.6
+#        : ubuntu
 
 variables:
-    PIP_CACHE_DIR: "$CI_PROJECT_DIR/.cache/pip"
-    OLYMPUS_DATA_PATH: "$CI_PROJECT_DIR/data"
+    PIP_CACHE_DIR: "$CI_PROJECT_DIR/../.cache/pip"
+    OLYMPUS_DATA_PATH: "$CI_PROJECT_DIR/../data"
 
 cache:
   paths:
-    - .cache/pip
-    - venv/
-    - data
+    - ../.cache/pip
+    - ../olympe/
+    - ../data
 
 stages:
   - install
   - tests
   - finish
 
+# Clean - Ubuntu
+# - apt install python3-pip
+# - pip3 install virtualenv
+
 job dependencies:
   stage: install
   script:
-    - pip install virtualenv
-    - virtualenv --system-site-packages olympe
-    - . venv/bin/olympe
+    - python3.6 -m venv --system-site-packages ../olympe
+    - . ../olympe/bin/activate
     - make travis-install
 
 job unit:
