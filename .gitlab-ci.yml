@@ -59,10 +59,10 @@ job generic-tests:
 #    - make travis-classification-fp16
 #    - make travis-end
 
-
+# Tag your runner with rocm & add the devices below
 #  --device=/dev/kfd --device=/dev/dri --group-add video
 job rocm-tests:
-  image: rocm/pytorch:rocm2.9_ubuntu18.04_py3.6
+  image: rocm/pytorch:rocm2.9_ubuntu16.04_py3.6_pytorch
   tags:
     - rocm
   stage: tests
