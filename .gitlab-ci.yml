@@ -1,23 +1,21 @@
 variables:
-    PIP_CACHE_DIR: "$CI_PROJECT_DIR/.cache/pip"
-    OLYMPUS_DATA_PATH: "$CI_PROJECT_DIR/data"
-
-cache:
-  paths:
-    - .cache/pip
-    - olympe/
-    - data/
+  XDG_CACHE_HOME: "/cache/pip"
+  PIP_CACHE_DIR:  "/cache/pip"
+  OLYMPUS_DATA_PATH: "/cache/data"
+  ENV_CACHE_DIR: "/cache/env"
 
 stages:
   - tests
+  - doc
 
 job doc:
   image: ubuntu
-  stage: tests
+  stage: doc
   script:
+    - apt update
     - apt install python3-pip
-    - python3.6 -m venv --system-site-packages olympe
-    - . olympe/bin/activate
+    - python3.6 -m venv --system-site-packages /cache/env/ubuntu
+    - . /cache/env/ubuntu/bin/activate
     - pip install -e .
     - pip install -r requirements.txt
     - pip install -r docs/requirements.txt
@@ -32,8 +30,8 @@ job generic-tests:
   script:
     - apt update
     - apt install python3-pip
-    - python3.6 -m venv --system-site-packages olympe
-    - . olympe/bin/activate
+    - python3.6 -m venv /cache/env/ubuntu
+    - . /cache/env/ubuntu
     - make travis-install
     - make travis-unit
     - make travis-custom
@@ -49,8 +47,8 @@ job generic-tests:
 #    - nvidia
 #  stage: tests
 #  script:
-#    - python3.6 -m venv --system-site-packages olympe
-#    - . olympe/bin/activate
+#    - python3.6 -m venv --system-site-packages /cache/env/nvidia
+#    - . /cache/env/nvidia/bin/activate
 #    - make travis-install
 #    - make travis-unit
 #    - make travis-custom
