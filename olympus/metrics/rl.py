@@ -26,9 +26,8 @@ class Validation(Metric):
         actions = []
 
         for _ in range(trajectory_length):
-
             action = np.random.randint(0, action_space)
-            state, reward, done  = env.step(action)
+            state, reward, done = env.step(action)
 
             actions.append(action)
             states.append(state)
@@ -37,7 +36,7 @@ class Validation(Metric):
         self.actions = torch.cat(actions)
         self.states = torch.cat(states)
         self.masks = 1 - torch.cat(dones)
-
+        self.env = env
         self.sampler = BatchSampler(
             sampler=SequentialSampler(range(len(self.states))),
             batch_size=batch_size,
@@ -45,8 +44,8 @@ class Validation(Metric):
         )
 
     def compute_rewards(self, task):
-        env.seed(seeds)
-        state = env.reset()
+        self.env.seed(self.seeds)
+        state = self.env.reset()
 
         for batch in self.sampler:
             states = self.states[batch]
