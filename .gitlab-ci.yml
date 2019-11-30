@@ -27,7 +27,7 @@ job generic-tests:
   stage: tests
   script:
     - apt update
-    - apt install python3-pip -y
+    - apt install git python3-pip -y
     - apt install python3-venv -y
     - python3.6 -m venv /cache/env/ubuntu
     - . /cache/env/ubuntu/bin/activate
