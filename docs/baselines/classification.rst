@@ -1,5 +1,5 @@
-olympus.baselines.classification module
-=======================================
+Classification
+==============
 
 .. automodule:: olympus.baselines.classification
     :members:

@@ -52,6 +52,7 @@ class TrackLogger:
                 warning(f'trial id is now (trial_id: {self.client.trial.uid})')
                 return
 
+        # Try to use an existing trial
         try:
             self.client.set_trial(trial, force=True)
             info('Appending to Track Trial')

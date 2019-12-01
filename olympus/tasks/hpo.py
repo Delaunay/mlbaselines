@@ -40,6 +40,7 @@ class HPO(Task):
     """
     def __init__(self, experiment_name, task, algo,
                  storage='legacy:pickleddb:test.pkl', max_trials=50, folder=options('state.storage', '/tmp'), **kwargs):
+        super(HPO, self).__init__()
         self.experiment_name = experiment_name
         self.task_maker = task
         self.experiment = None
@@ -113,6 +114,7 @@ class HPO(Task):
             storage=get_storage(self.storage_uri, objective)
         )
 
+        self.metrics.start(self)
         iterator = TrialIterator(self.experiment)
         for idx, trial in enumerate(iterator):
             new_task = self.task_maker()
@@ -139,6 +141,7 @@ class HPO(Task):
 
             self.experiment.observe(trial, results)
 
+        self.metrics.finish(self)
         return self.get_best_trial()
 
     def get_best_trial(self):

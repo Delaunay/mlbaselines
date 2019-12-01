@@ -1,15 +1,18 @@
 Metrics
 =======
 
-Submodules
-----------
+Metrics are implemented through :class:`~olympus.observers.observer.Observer` objects
+
+
+Available Metrics
+-----------------
 
 .. toctree::
 
-   metric
    rl
    accuracy
    adversary
+
 
 Module contents
 ---------------

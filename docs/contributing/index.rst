@@ -9,6 +9,11 @@ To insert them you simply need to create a new file inside their respective mode
 ``olympus/models/..`` for Moldes and register the model constructor
 
 
+Models
+~~~~~~
+
+Create a new ``olympus/models/<my_model>.py``
+
 .. code-block:: python
 
     import torch.nn as nn
@@ -23,14 +28,52 @@ To insert them you simply need to create a new file inside their respective mode
     builders = {'my_model': MyCustomModel}
 
 
+Initialization
+~~~~~~~~~~~~~~
+
+Create a new ``olympus/models/inits/<my_init>.py``
+
+
+Optimizer
+~~~~~~~~~
+
+Create a new ``olympus/optimizers/<my_optimizer>.py``
+
+.. code-block:: python
+
+    import torch.optim as optim
+
+    class MyCustomOptimizer(optim.Optimizer):
+        pass
+
+    builders = {'my_optimizer': MyCustomOptimizer}
+
+Schedule
+~~~~~~~~
+
+Create a new ``olympus/optimizers/schedules/<my_optimizer>.py``
 
 Tasks
 -----
 
 Create a new ``olympus/tasks/<my_task>.py``
 
-
 Baselines
 ---------
 
-Create a new ``olympus/scripts/<my_baseline>.py``
+Create a new ``olympus/baselines/<my_baseline>.py``
+
+Datasets
+--------
+
+Create a new ``olympus/datasets/<my_baseline>.py``
+
+Sampling
+--------
+
+Create a new ``olympus/datasets/sampling/<my_sampler>.py``
+
+Metrics
+--------
+
+Create a new ``olympus/metrics/<my_metric>.py``

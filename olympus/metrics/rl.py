@@ -1,4 +1,4 @@
-from olympus.metrics.metric import Metric
+from olympus.observers.observer import Metric
 from typing import List
 
 import numpy as np

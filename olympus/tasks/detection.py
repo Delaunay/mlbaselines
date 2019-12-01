@@ -8,7 +8,7 @@ from olympus.tasks.task import Task, BadResumeGuard
 from olympus.optimizers.schedules import LRSchedule
 from olympus.utils.storage import StateStorage, NoStorage
 from olympus.metrics import OnlineLoss
-from olympus.observers import ElapsedRealTime, SampleCount, ProgressView
+from olympus.observers import ElapsedRealTime, SampleCount, ProgressView, Speed
 
 
 class ObjectDetection(Task):
@@ -34,7 +34,9 @@ class ObjectDetection(Task):
 
         self.metrics.append(ElapsedRealTime().every(batch=1))
         self.metrics.append(SampleCount().every(batch=1, epoch=1))
-        self.metrics.append(ProgressView())
+        speed = Speed()
+        self.metrics.append(speed)
+        self.metrics.append(ProgressView(speed_observer=speed))
         self.metrics.append(OnlineLoss())
 
     @property
@@ -186,6 +188,8 @@ class ObjectDetection(Task):
         self.detector.init(
             **model
         )
+
+        self.set_device(self.device)
         self.optimizer.init(
             self.detector.parameters(),
             override=True, **optimizer

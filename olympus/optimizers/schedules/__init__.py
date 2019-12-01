@@ -108,7 +108,10 @@ class LRSchedule:
         if optimizer is None:
             raise MissingArgument('Missing optimizer argument!')
 
-        self._schedule = self._schedule_builder(optimizer, **kwargs)
+        self.hyper_parameters.add_parameters(**kwargs)
+        self._schedule = self._schedule_builder(
+            optimizer,
+            **self.hyper_parameters.parameters(strict=True))
 
         return self
 

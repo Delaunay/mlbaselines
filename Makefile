@@ -1,6 +1,7 @@
 export OLYMPUS_DATA_PATH=/tmp
+export CORES=4
 
-travis: travis-doc travis-minimalist travis-hpo_simple travis-classification travis-classification-fp16 travis-detection travis-unit travis-custom travis-end
+travis: travis-doc travis-minimalist travis-hpo_simple travis-classification travis-classification-parallel travis-classification-fp16 travis-unit travis-custom travis-end
 
 travis-install:
 	pip install -e .
@@ -19,11 +20,17 @@ travis-hpo_simple: clean
 travis-classification: clean
 	COVERAGE_FILE=.coverage.classify coverage run --parallel-mode olympus/baselines/launch.py classification --batch-size 32 --epochs 5 --dataset test-mnist --model logreg
 
+travis-classification-parallel: clean
+	COVERAGE_FILE=.coverage.classify.parallel coverage run --parallel-mode olympus/baselines/launch.py --workers $${CORES} --device-sharing classification --batch-size 32 --epochs 5 --dataset test-mnist --model logreg
+
 travis-classification-fp16: clean
 	COVERAGE_FILE=.coverage.classify_fp16 coverage run --parallel-mode olympus/baselines/launch.py classification --batch-size 32 --epochs 5 --dataset test-mnist --model logreg --half
 
 travis-detection: clean
 	COVERAGE_FILE=.coverage.dect coverage run --parallel-mode olympus/baselines/launch.py detection --batch-size 2 --epochs 5 --dataset pennfudan --model fasterrcnn_resnet18_fpn -vv
+
+travis-detection-short: clean
+	COVERAGE_FILE=.coverage.dect coverage run --parallel-mode examples/detection_simple.py
 
 travis-unit:
 	COVERAGE_FILE=.coverage.unit coverage run --parallel-mode -m pytest --cov=olympus tests/unit
@@ -89,9 +96,11 @@ kill-zombies:
 	bash -c "kill -9 $$(ps -e | grep make | awk '{print $$1}' | paste -s -d ' ')" | true
 
 clean:
+	rm -rf /tmp/olympus | true
 	rm -rf /tmp/classification | true
+	rm -rf /tmp/objectdetection | true
 	rm my_data.pkl my_data.pkl.lock | true
 	rm test.pkl test.pkl.lock | true
 	rm track_test.json track_test.json.lock | true
 	rm simple.json | true
-	rm -rf /tmp/olympus | true
+

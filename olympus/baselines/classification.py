@@ -2,14 +2,20 @@ from argparse import ArgumentParser, Namespace
 
 from olympus.datasets import DataLoader, known_datasets
 from olympus.metrics import Accuracy
+from olympus.observers import ElapsedRealTime
+
 from olympus.models import Model, known_models
 from olympus.models.inits import known_initialization
+
 from olympus.optimizers import Optimizer, known_optimizers
 from olympus.optimizers.schedules import LRSchedule, known_schedule
+
 from olympus.tasks import Classification
 from olympus.tasks.hpo import HPO, fidelity
-from olympus.utils import fetch_device, Chrono, set_verbose_level, select
-from olympus.utils.options import options
+
+from olympus.utils import fetch_device, Chrono, set_verbose_level, select, show_dict
+from olympus.utils.functional import flatten
+from olympus.utils.options import option
 from olympus.utils.storage import StateStorage
 from olympus.utils.tracker import TrackLogger
 
@@ -141,7 +147,7 @@ def main(**kwargs):
     client = TrackLogger(experiment_name, storage_uri=args.database)
 
     # save partial results here
-    state_storage = StateStorage(folder=options('state.storage', '/tmp/olympus'), time_buffer=30)
+    state_storage = StateStorage(folder=option('state.storage', '/tmp/olympus'), time_buffer=30)
 
     def main_task():
         return classification_baseline(device=device, logger=client, storage=state_storage, **kwargs)
@@ -156,24 +162,34 @@ def main(**kwargs):
         max_trials=300,
         storage=select(args.orion_database, f'track:{args.database}')    # 'legacy:pickleddb:my_data.pkl'
     )
+    hpo.metrics.append(ElapsedRealTime())
 
     hpo.fit(epochs=fidelity(args.epochs), objective='validation_accuracy')
 
     # Train using train+valid for the final result
     final_task = classification_baseline(device=device, logger=client, storage=state_storage, **kwargs, hpo_done=True)
 
-    params = hpo.best_trial.params
-    task_args = params.pop('task')
+    # FIXME: In case of multiple workers, only one worker should compute this
+    # But are we sure that all trials finished when we arrive at that point
+    # could some worker still be working on the last trial ?
+    if option('worker.id', 0, type=int) == 0:
+        params = hpo.best_trial.params
+        task_args = params.pop('task')
 
-    final_task.init(**params)
-    final_task.fit(**task_args)
+        final_task.init(**params)
+        final_task.fit(**task_args)
 
-    final_task.finish()
+        final_task.finish()
 
-    print('=' * 40)
-    print('Results')
+        print('=' * 40)
+        print('Final Trial Results')
+        show_dict(flatten(params))
+        final_task.report(pprint=True, print_fun=print)
+        print('=' * 40)
+
+    print('HPO Report')
     print('-' * 40)
-    final_task.report(pprint=True, print_fun=print)
+    hpo.metrics.report()
     print('=' * 40)
 
 

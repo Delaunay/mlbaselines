@@ -5,7 +5,7 @@ from typing import List
 import torch
 from torch.utils.data import DataLoader
 
-from olympus.metrics.metric import Metric
+from olympus.observers.observer import Metric
 from olympus.utils.stat import StatStream
 
 

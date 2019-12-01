@@ -1,6 +1,6 @@
 from dataclasses import dataclass, field
 
-from olympus.metrics.metric import Observer
+from olympus.observers.observer import Observer
 from olympus.utils.stat import StatStream
 from olympus.utils.options import option
 
@@ -98,12 +98,14 @@ class ProgressView(Observer):
     max_epoch: int = 0
     max_step: int = 0
     step_length: int = 0
+    epoch: int = 0
 
     frequency_epoch: int = option('progress.frequency_epoch', 1, type=int)
     frequency_batch: int = option('progress.frequency_batch', 1, type=int)
     frequency_trial: int = 0
 
     orion_handle = None
+    worker_id: int = option('worker.id', -1, type=int)
 
     def show_progress(self, epoch, step=None):
         if step is None:
@@ -117,8 +119,16 @@ class ProgressView(Observer):
             hpo_completion = self.overall_progress()
             hpo = f'HPO [{hpo_completion:6.2f}%] '
 
+        worker = ''
+        if self.worker_id >= 0:
+            worker = f'[W: {self.worker_id:2d}] '
+
+        eta = ''
+        if self.speed_observer:
+            eta = self.eta(self.speed_observer, epoch)
+
         self.print_fun(
-            f'\r{hpo}Epoch [{epoch:3d}/{self.max_epoch:3d}] {step} {self.eta(self.speed_observer, epoch)}', end='')
+            f'\r{worker}{hpo}Epoch [{epoch:3d}/{self.max_epoch:3d}] {step} {eta}', end='')
 
     def overall_progress(self):
         """Return the overall HPO progress in % completion"""
@@ -153,17 +163,22 @@ class ProgressView(Observer):
         return ''
 
     def on_new_epoch(self, epoch, task, context):
+        self.epoch = epoch
+
         if self.speed_observer:
-            self.print_fun()
             self.max_epoch = max(self.speed_observer.epoch, self.max_epoch)
-            self.show_progress(epoch)
-            self.print_fun()
+
+        self.print_fun()
+        self.show_progress(epoch)
+        self.print_fun()
 
     def on_new_batch(self, step, task, input, context):
         if self.speed_observer:
             step = self.speed_observer.step
             self.max_step = max(step, self.max_step)
-            self.show_progress(self.speed_observer.epoch, step)
+            self.epoch = self.speed_observer.epoch
+
+        self.show_progress(self.epoch, step)
 
     def start(self, task=None):
         pass

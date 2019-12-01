@@ -4,7 +4,7 @@ import sys
 from typing import Callable
 from dataclasses import dataclass
 
-from olympus.metrics.metric import Metric
+from olympus.observers.observer import Metric
 from olympus.baselines.classification import classification_baseline
 from olympus.utils import fetch_device, BadResume
 from olympus.utils.storage import StateStorage, NoStorage

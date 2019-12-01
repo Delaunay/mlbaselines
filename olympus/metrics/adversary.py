@@ -5,7 +5,7 @@ import torch
 from torch.utils.data import DataLoader
 from torch.autograd import Variable
 
-from olympus.metrics.metric import Metric
+from olympus.observers.observer import Metric
 from olympus.utils.stat import StatStream
 
 
