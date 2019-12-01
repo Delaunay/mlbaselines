@@ -38,6 +38,39 @@ def default_index():
     ])
 
 
+def router(app, pathname):
+    # Have to do route caching because of Dash sending too many similar requests
+    # for no reasons
+    global _route_cache
+
+    if pathname is None:
+        return ''
+
+    if pathname in _routing:
+        info(f'Route {pathname}')
+        return _routing[pathname](app)
+
+    if pathname in _route_cache:
+        return _route_cache[pathname]()
+
+    # Apply REGEX routes
+    for regex, handler in _regex_routing.items():
+        result = re.match(regex, pathname)
+
+        if result is not None:
+            args = result.groupdict()
+            info(f'Route {pathname} matched with {regex.pattern} and (args: {args})')
+
+            lazy = lambda: handler(app, **args)
+            _route_cache[pathname] = lazy
+            return lazy()
+
+    if pathname == '/':
+        return default_index()
+
+    return '404 Page not found'
+
+
 def _make_dashboard():
     """Make a multi-page dashboard"""
     app = dash.Dash(
@@ -54,39 +87,10 @@ def _make_dashboard():
         html.Div(id='page-content')
     ])
 
-    @app.callback(Output('page-content', 'children'), [Input('url', 'pathname')])
-    def router(pathname):
-        # Have to do route caching because of Dash sending too many similar requests
-        # for no reasons
-        global _route_cache
+    def app_router(pathname):
+        return router(app, pathname)
 
-        if pathname is None:
-            return ''
-
-        if pathname in _routing:
-            info(f'Route {pathname}')
-            return _routing[pathname](app)
-
-        if pathname in _route_cache:
-            return _route_cache[pathname]()
-
-        # Apply REGEX routes
-        for regex, handler in _regex_routing.items():
-            result = re.match(regex, pathname)
-
-            if result is not None:
-                args = result.groupdict()
-                info(f'Route {pathname} matched with {regex.pattern} and (args: {args})')
-
-                lazy = lambda: handler(app, **args)
-                _route_cache[pathname] = lazy
-                return lazy()
-
-        if pathname == '/':
-            return default_index()
-
-        return '404 Page not found'
-
+    app.callback(Output('page-content', 'children'), [Input('url', 'pathname')])(app_router)
     return app
 
 
@@ -116,10 +120,11 @@ def add_regex_route(route_regex, route_handler):
     """
     global _regex_routing
 
-    if route_regex in _regex_routing:
+    compiled = re.compile(route_regex)
+    if compiled in _regex_routing:
         raise DuplicateRoute(route_regex)
 
-    _regex_routing[re.compile(route_regex)] = route_handler
+    _regex_routing[compiled] = route_handler
 
 
 def register_events(app, obj):

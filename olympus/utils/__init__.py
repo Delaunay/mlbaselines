@@ -9,7 +9,6 @@ import numpy
 
 import torch
 
-from olympus.utils.arguments import task_arguments
 from olympus.utils.options import option, set_option
 from olympus.utils.chrono import Chrono
 from olympus.utils.functional import select

@@ -10,6 +10,7 @@ from olympus.tasks.hpo import HPO, fidelity
 from olympus.tasks import Classification
 from olympus.utils.storage import StateStorage
 from olympus.utils import fetch_device
+from olympus.utils.tracker import TrackLogger
 
 
 parser = ArgumentParser()
@@ -37,7 +38,8 @@ def make_task():
         lr_scheduler=lr_schedule,
         dataloader=dataset.train(),
         device=device,
-        storage=StateStorage(folder='/tmp', time_buffer=0))
+        storage=StateStorage(folder='/tmp', time_buffer=0),
+        logger=client)
 
     main_task.metrics.append(
         Accuracy(name='validation', loader=dataset.valid())
@@ -46,6 +48,10 @@ def make_task():
     return main_task
 
 
+client = TrackLogger(
+    'hpo_simple',
+    storage_uri='file://simple.json')
+
 hpo = HPO(
     'minimalist_hpo',
     task=make_task,
@@ -53,7 +59,8 @@ hpo = HPO(
     seed=1,
     num_rungs=3,
     num_brackets=1,
-    max_trials=500
+    max_trials=500,
+    storage=f'track:file://simple.json'
 )
 
 hpo.fit(epochs=fidelity(args.epochs), objective='validation_accuracy')

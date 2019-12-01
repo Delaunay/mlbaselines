@@ -13,7 +13,6 @@ Submodules
 
 .. toctree::
 
-   arguments
    dataloader
    dtypes
    factory

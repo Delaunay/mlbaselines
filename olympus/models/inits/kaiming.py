@@ -53,3 +53,4 @@ class KaimingNormal(Initialization):
 builders = {
     'kinit_uniform': KaimingUniform,
     'kinit_normal': KaimingNormal}
+

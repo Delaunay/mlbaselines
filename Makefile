@@ -1,6 +1,6 @@
 export OLYMPUS_DATA_PATH=/tmp
 
-travis: travis-doc travis-minimalist travis-hpo_simple travis-classification travis-classification-fp16 travis-unit travis-custom travis-end
+travis: travis-doc travis-minimalist travis-hpo_simple travis-classification travis-classification-fp16 travis-detection travis-unit travis-custom travis-end
 
 travis-install:
 	pip install -e .
@@ -93,3 +93,5 @@ clean:
 	rm my_data.pkl my_data.pkl.lock | true
 	rm test.pkl test.pkl.lock | true
 	rm track_test.json track_test.json.lock | true
+	rm simple.json | true
+	rm -rf /tmp/olympus | true

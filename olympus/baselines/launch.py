@@ -72,7 +72,7 @@ def simple_launch(task_name, script_args, job_env, device_id, rank, world_size, 
     parser = module.arguments()
     args = parser.parse_args(script_args)
     module.main(**vars(args))
-    return subprocess.Popen('echo')  # Do nothing...
+    return None
 
 
 def single_gpu_launch(task_name, script_args, job_env, device_id, rank, world_size, port):
@@ -112,7 +112,9 @@ def main(argv=None):
             for rank, device_id in enumerate(args.devices):
                 process = launcher(
                     args.task, script_args, job_env, device_id, rank, world_size, port)
-                processes.append(process)
+
+                if process:
+                    processes.append(process)
 
             errors = []
             for process in processes:

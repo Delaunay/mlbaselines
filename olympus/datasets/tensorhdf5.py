@@ -8,8 +8,8 @@ from torch.utils.data import Dataset
 class HDF5Dataset(Dataset):
     """Dataset wrapping HDF5 tensors."""
 
-    def __init__(self, file_name, transform=None, target_transform=None):
-        self.file_name = file_name
+    def __init__(self, data_path, transform=None, target_transform=None):
+        self.file_name = data_path
 
         self.transform = transform
         self.target_transform = target_transform
@@ -42,7 +42,6 @@ class HDF5Dataset(Dataset):
     def __getitem__(self, index):
         # This is only necessary if there is a concurrent writer.
         # self.data.id.refresh()
-
         sample = self.data[index]
         sample = sample.astype(numpy.uint8)
 
@@ -56,4 +55,20 @@ class HDF5Dataset(Dataset):
         return sample, target
 
     def __len__(self):
-        return len(h5py.File(self.file_name, 'r', libver='latest', swmr=True)['labels'])
+        return h5py.File(self.file_name, 'r', libver='latest', swmr=True)['data'].shape[0]
+
+
+def generate_hdf5_dataset(file_name, shape=(3, 224, 224), num_class=1000, samples=192):
+    """Generate a Fake HDF5 Dataset for testing and benchmarking purposes"""
+    from olympus.datasets.fake import FakeDataset
+
+    fake = FakeDataset(shape, num_class, samples, 0, 0)
+    fake_shape = shape[1:] + (shape[0],)
+
+    with h5py.File(file_name, 'w', libver='latest', swmr=True) as h5file:
+        data = h5file.create_dataset("data", (samples,) + fake_shape, dtype='i')
+        labels = h5file.create_dataset("labels", (samples,), dtype='i')
+
+        for i, (image, target) in enumerate(fake):
+            data[i, :] = image
+            labels[i] = target

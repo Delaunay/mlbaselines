@@ -7,8 +7,7 @@ from olympus.models.inits import known_initialization
 from olympus.optimizers import Optimizer, known_optimizers
 from olympus.optimizers.schedules import LRSchedule, known_schedule
 from olympus.tasks import Classification
-from olympus.tasks.hpo import HPO, fidelity
-from olympus.utils import fetch_device, Chrono, set_verbose_level, select
+from olympus.utils import fetch_device, Chrono, set_verbose_level
 from olympus.utils.options import options
 from olympus.utils.storage import StateStorage
 from olympus.utils.tracker import TrackLogger
@@ -64,118 +63,74 @@ def arguments():
     parser.add_argument(
         '--database', type=str, default='file://track_test.json',
         help='where to store metrics and intermediate results')
-    parser.add_argument(
-        '--orion-database', type=str, default=None,
-        help='where to store Orion data')
 
     return parser
 
 
-chrono = Chrono()
+def main():
+    args, kwargs = arguments().parse_known_args()
+    set_verbose_level(args.verbose)
 
+    device = fetch_device()
+    experiment_name = args.experiment_name.format(**(vars(args)))
 
-def classification_baseline(model, weight_init,
-                            optimizer, lr_scheduler,
-                            dataset, batch_size, device,
-                            sampling_method=None,
-                            sampler_seed=0, model_seed=0, storage=None, half=False, hpo_done=False,
-                            logger=None, validate=True, **config):
-
-    if sampling_method is None:
-        sampling_method = {'name': 'original'}
+    client = TrackLogger(experiment_name, storage_uri=args.database)
+    state_storage = StateStorage(folder=options('state.storage', '/tmp/olympus'), time_buffer=30)
+    chrono = Chrono()
 
     with chrono.time('loader'):
         dataset = DataLoader(
-            dataset,
-            seed=sampler_seed,
-            sampling_method=sampling_method,
-            batch_size=batch_size)
+            args.dataset,
+            seed=args.sampler_seed,
+            sampling_method=args.sampling_method,
+            batch_size=args.batch_size)
 
     with chrono.time('get_shapes'):
         input_size, target_size = dataset.get_shapes()
 
     with chrono.time('model'):
         model = Model(
-            model,
+            args.model,
             input_size=input_size,
             output_size=target_size[0],
-            weight_init=weight_init,
-            seed=model_seed,
-            half=half)
+            weight_init=args.weight_init,
+            seed=args.model_seed,
+            half=args.half)
 
     with chrono.time('optimizer'):
-        optimizer = Optimizer(optimizer, half=half)
+        optimizer = Optimizer(args.optimizer, half=args.half)
 
     with chrono.time('lr'):
-        lr_schedule = LRSchedule(lr_scheduler)
+        lr_schedule = LRSchedule(args.lr_scheduler)
 
     with chrono.time('get_loaders'):
-        train, valid = dataset.get_train_valid_loaders(hpo_done)
+        train, valid = dataset.get_train_valid_loaders()
 
     with chrono.time('task'):
-        main_task = Classification(
+        classify = Classification(
             classifier=model,
             optimizer=optimizer,
             lr_scheduler=lr_schedule,
             dataloader=train,
             device=device,
-            storage=storage,
-            logger=logger)
+            storage=state_storage,
+            logger=client)
 
-    if validate:
-        with chrono.time('metric'):
-            main_task.metrics.append(
-                Accuracy(name='validation', loader=valid)
-            )
+    with chrono.time('metric'):
+        classify.metrics.append(
+            Accuracy(name='validation', loader=valid)
+        )
 
-    return main_task
-
-
-def main(**kwargs):
-    args = Namespace(**kwargs)
-    set_verbose_level(args.verbose)
-
-    device = fetch_device()
-    experiment_name = args.experiment_name.format(**kwargs)
-
-    client = TrackLogger(experiment_name, storage_uri=args.database)
-
-    # save partial results here
-    state_storage = StateStorage(folder=options('state.storage', '/tmp/olympus'), time_buffer=30)
-
-    def main_task():
-        return classification_baseline(device=device, logger=client, storage=state_storage, **kwargs)
-
-    hpo = HPO(
-        experiment_name,
-        task=main_task,
-        algo='ASHA',
-        seed=1,
-        num_rungs=5,
-        num_brackets=1,
-        max_trials=300,
-        storage=select(args.orion_database, f'track:{args.database}')    # 'legacy:pickleddb:my_data.pkl'
-    )
-
-    hpo.fit(epochs=fidelity(args.epochs), objective='validation_accuracy')
-
-    # Train using train+valid for the final result
-    final_task = classification_baseline(device=device, logger=client, storage=state_storage, **kwargs, hpo_done=True)
-
-    params = hpo.best_trial.params
-    task_args = params.pop('task')
-
-    final_task.init(**params)
-    final_task.fit(**task_args)
-
-    final_task.finish()
+    classify.init(**kwargs)
+    classify.fit(epoch=args.epochs)
+    classify.finish()
 
     print('=' * 40)
     print('Results')
     print('-' * 40)
-    final_task.report(pprint=True, print_fun=print)
+    classify.report(pprint=True, print_fun=print)
     print('=' * 40)
 
 
 if __name__ == '__main__':
-    main(**vars(arguments().parse_args()))
+    main()

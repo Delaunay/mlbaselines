@@ -1,7 +1,7 @@
 Group
 =====
 
-.. automodule:: olympus.datasets.group
+.. automodule:: olympus.datasets.sampling.group
     :members:
     :undoc-members:
     :show-inheritance:

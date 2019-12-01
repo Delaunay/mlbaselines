@@ -105,3 +105,18 @@ builders = {
     'imagenet': ImagetNet,
     'imagenet_zip': functools.partial(ImagetNet, image_folder=ZipDataset),
 }
+
+
+def generate_jpeg_dataset(folder, shape=(3, 224, 224), num_class=1000, samples=192):
+    """Generate a Fake JPEG Dataset for testing and benchmarking purposes"""
+    from olympus.datasets.fake import FakeDataset
+    import os
+
+    fake = FakeDataset(shape, num_class, samples, 0, 0)
+    os.makedirs(folder, exist_ok=True)
+
+    for i, (img, target) in enumerate(fake):
+        class_folder = f'{folder}/{target}'
+        os.makedirs(class_folder, exist_ok=True)
+
+        img.save(f'{class_folder}/{i}.jpg')

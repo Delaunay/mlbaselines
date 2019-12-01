@@ -21,7 +21,6 @@ Submodules
    emnist
    fashionmnist
    gaussian
-   group
    mnist
    svhn
    tensorhdf5

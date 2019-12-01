@@ -125,7 +125,6 @@ def create_train_loader(dirpath):
 
 
 def create_hdf5_file(dirpath, file_path, n, dataloader):
-
     f = h5py.File(file_path, 'w', libver='latest')
 
     data = f.create_dataset(
@@ -217,8 +216,9 @@ class TinyImageNet(AllDataset):
             transforms.ToTensor()])
 
         transformations = [
-            transforms.Normalize(mean=[0.4194, 0.3898, 0.3454],
-                                 std=[0.303, 0.291, 0.293])]
+            transforms.Normalize(
+                mean=[0.4194, 0.3898, 0.3454],
+                std=[0.303, 0.291, 0.293])]
 
         train_transform = [
             to_pil_image,
@@ -228,9 +228,9 @@ class TinyImageNet(AllDataset):
             ] + transformations
 
         transformations = dict(
-            train = transforms.Compose(train_transform),
-            valid = transforms.Compose(transformations),
-            test = transforms.Compose(transformations))
+            train=transforms.Compose(train_transform),
+            valid=transforms.Compose(transformations),
+            test=transforms.Compose(transformations))
 
         train_dataset = HDF5Dataset(
             os.path.join(data_path, TRAIN_FILENAME),
@@ -246,7 +246,7 @@ class TinyImageNet(AllDataset):
             torch.utils.data.ConcatDataset([train_dataset, test_dataset]),
             test_size=len(test_dataset),
             transforms=transformations,
-            output_shape=(200, ),
+            target_shape=(200, ),
         )
 
     @staticmethod
@@ -256,20 +256,3 @@ class TinyImageNet(AllDataset):
 
 builders = {
     'tinyimagenet': TinyImageNet}
-
-
-if __name__ == "__main__":
-    from bvdl.utils.cov import ExpectationMeter, CovarianceMeter
-
-    for num_workers in range(1, 9): # range(5, 6):  # 1, 9):
-        print("\n-*- {} -*-\n".format(num_workers))
-        datasets = build_dataset(128, "/Tmp/data", num_workers)
-        std = CovarianceMeter()
-        topmax = 0
-        for x, y in tqdm(datasets['train'], desc='train'):
-            flattened = x.permute(0, 2, 3, 1).contiguous().view(-1, 3)
-            std.add(flattened, n=flattened.size(0))
-            topmax = max(topmax, y.max())
-        print(topmax)
-        print(std.expectation_meter.value())
-        print(std.value())
