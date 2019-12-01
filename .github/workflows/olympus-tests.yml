@@ -66,11 +66,6 @@ jobs:
         . venv/bin/activate
         make travis-classification
 
-    - name: detection
-      run: |
-        . venv/bin/activate
-        make travis-detection-short
-
     - name: upload-coverage
       env:
         CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
