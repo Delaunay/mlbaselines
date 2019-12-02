@@ -48,6 +48,12 @@ travis-end:
 	coverage xml
 	codecov
 
+
+test-parallel: clean
+	rm rc_check.pkl rc_check.pkl.lock
+	rm -rf /tmp/classification
+	olympus --workers 4 --device-sharing classification --batch-size 32 --epochs 5 --dataset test-mnist --model logreg --orion-database legacy:pickleddb:rc_check.pkl
+
 tests: clean
 	python -m pytest --cov=olympus tests/unit
 	python -m pytest --cov-append --cov=olympus tests/integration

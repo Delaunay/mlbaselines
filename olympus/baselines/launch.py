@@ -152,6 +152,10 @@ def get_device_count(devices):
 
 
 def make_device_groups(worker_count, devices, shared, cpu_mode):
+    if not devices or cpu_mode:
+        print('Warning no devices detected, It will run in CPU mode')
+        devices = [0]
+
     if shared or cpu_mode:
         return [devices for _ in range(worker_count)]
 
@@ -188,7 +192,8 @@ def main(argv=None):
         args.workers, args.devices, args.device_sharing, args.cpu)
 
     # If we can do not spawn another python interpreter
-    if args.devices == [0] and args.workers <= 1:
+    # One GPU or no GPU and a single worker
+    if (args.devices == [0] or args.devices == []) and args.workers <= 1:
         single_worker_single_gpu(args.task, script_args, args.no_mon)
         return
 

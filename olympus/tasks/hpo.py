@@ -1,6 +1,7 @@
 import json
 import os
 import hashlib
+import time
 
 from olympus.tasks.task import Task
 from olympus.utils import warning
@@ -167,3 +168,13 @@ class HPO(Task):
     @property
     def best_trial(self):
         return self.get_best_trial()
+
+    def is_done(self):
+        return self.experiment.is_done
+
+    def is_broken(self):
+        return self.experiment.is_broken
+
+    def wait_done(self):
+        while not self.is_broken() and not self.is_done():
+            time.sleep(0.1)

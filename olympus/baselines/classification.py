@@ -169,10 +169,12 @@ def main(**kwargs):
     # Train using train+valid for the final result
     final_task = classification_baseline(device=device, logger=client, storage=state_storage, **kwargs, hpo_done=True)
 
-    # FIXME: In case of multiple workers, only one worker should compute this
-    # But are we sure that all trials finished when we arrive at that point
-    # could some worker still be working on the last trial ?
     if option('worker.id', 0, type=int) == 0:
+        print('Waiting for other workers to finish')
+        hpo.wait_done()
+        if hpo.is_broken():
+            return
+
         params = hpo.best_trial.params
         task_args = params.pop('task')
 
