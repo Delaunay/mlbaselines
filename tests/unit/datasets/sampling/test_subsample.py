@@ -1,6 +1,6 @@
 import numpy
 
-from olympus.datasets.sampling.subsample import subsample_random_indices
+from olympus.datasets.split.subsample import subsample_random_indices
 
 
 def test_subsample(base_indices, rng, N_TRAIN, N_VALID, N_TEST):

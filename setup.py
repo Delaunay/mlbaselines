@@ -13,7 +13,7 @@ if __name__ == '__main__':
             'olympus',
             'olympus.accumulators',
             'olympus.datasets',
-            'olympus.datasets.sampling',
+            'olympus.datasets.split',
             'olympus.distributed',
             'olympus.hpo',
             'olympus.metrics',
@@ -48,7 +48,7 @@ if __name__ == '__main__':
         },
         extras_require={
             'geffnet': ['geffnet==0.9.3'],
-            'rl': ['gym', 'atari_py'],
+            'rl': ['gym', 'procgen', 'atari_py'],
             'dash': ['plotly', 'plotly-express', 'dash', 'altair'],
             # > pip install git+git://github.com/Delaunay/track
             # 'track': ['']

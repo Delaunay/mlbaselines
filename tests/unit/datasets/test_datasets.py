@@ -1,6 +1,6 @@
 import pytest
 
-from olympus.datasets import DataLoader
+from olympus.datasets import Dataset, SplitDataset, DataLoader
 from olympus.datasets.gaussian import Gaussian, Multivariate
 from olympus.datasets.tensorhdf5 import HDF5Dataset, generate_hdf5_dataset
 from olympus.datasets.imagenet import generate_jpeg_dataset, ImagetNet
@@ -28,11 +28,13 @@ datasets = [
 
 @pytest.mark.parametrize('dataset', datasets)
 def test_build_dataset(dataset):
+    data = Dataset(dataset, path='/tmp/olympus')
+    splits = SplitDataset(data, split_method='original')
     loader = DataLoader(
-        dataset,
-        seed=0,
-        sampling_method={'name': 'original'},
-        batch_size=1)
+        splits,
+        sampler_seed=1,
+        batch_size=1
+    )
 
     for i, b in enumerate(loader.train()):
         if i > 10:

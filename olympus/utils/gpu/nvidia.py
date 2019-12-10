@@ -1,6 +1,8 @@
 import subprocess
 import torch.cuda
+
 from olympus.utils.stat import StatStream
+
 
 nvidia_smi = 'nvidia-smi'
 metrics = [
@@ -39,6 +41,11 @@ class NvGpuMonitor:
         self.streams = {
             k: [StatStream(drop_first_obs=2)] * self.n_gpu for k in metrics[1:]
         }
+
+        self.ts = {}
+        for k in metrics[1:]:
+            for i in range(self.n_gpu):
+                self.ts[f'{k}{i}'] = []
 
     def to_json(self, overall=True, extended=False):
         to_json = lambda x: x.to_json()
@@ -94,6 +101,7 @@ class NvGpuMonitor:
     def process_value(self, metric_name, gpu_index, value):
         self.streams[metric_name][gpu_index] += float(value)
         self.overall[metric_name] += float(value)
+        self.ts[f'{metric_name}{gpu_index}'].append(float(value))
 
     def process_ignore(self, metric_name, gpu_index, value):
         pass

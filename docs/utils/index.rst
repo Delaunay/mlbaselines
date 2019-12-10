@@ -1,16 +1,6 @@
 Utilities
 =========
 
-Subpackages
------------
-
-.. toctree::
-
-    gpu/index
-
-Submodules
-----------
-
 .. toctree::
 
    dataloader
@@ -22,6 +12,13 @@ Submodules
    signals
    stat
    storage
+
+Subpackages
+-----------
+
+.. toctree::
+
+    gpu/index
 
 Module contents
 ---------------

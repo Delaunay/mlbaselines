@@ -1,5 +1,5 @@
-olympus.tasks.detection module
-==============================
+Object Detection
+================
 
 .. automodule:: olympus.tasks.detection
     :members:

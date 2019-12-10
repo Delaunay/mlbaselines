@@ -1,5 +1,5 @@
-olympus.utils.network module
-============================
+Network
+=======
 
 .. automodule:: olympus.utils.network
     :members:

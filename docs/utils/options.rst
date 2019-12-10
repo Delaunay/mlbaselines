@@ -1,5 +1,5 @@
-olympus.utils.options module
-============================
+Options
+=======
 
 .. automodule:: olympus.utils.options
     :members:

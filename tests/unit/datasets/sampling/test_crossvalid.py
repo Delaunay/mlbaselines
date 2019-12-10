@@ -1,6 +1,6 @@
 import numpy
 
-from olympus.datasets.sampling.crossvalid import crossvalid_random_indices
+from olympus.datasets.split.crossvalid import crossvalid_random_indices
 
 
 def test_crossvalid(base_indices, N_TRAIN, N_VALID, N_TEST):
@@ -9,13 +9,13 @@ def test_crossvalid(base_indices, N_TRAIN, N_VALID, N_TEST):
     new_indices = crossvalid_random_indices(
         numpy.random.RandomState(1), base_indices, N_TRAIN, N_VALID, N_TEST)
 
-    for key in new_indices:
+    for key in new_indices.keys():
         assert all(new_indices[key] == indices[key])
 
     new_indices = crossvalid_random_indices(
         numpy.random.RandomState(2), base_indices, N_TRAIN, N_VALID, N_TEST)
 
-    for key in new_indices:
+    for key in new_indices.keys():
         assert any(new_indices[key] != indices[key])
 
 

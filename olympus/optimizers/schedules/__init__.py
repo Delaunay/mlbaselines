@@ -96,6 +96,7 @@ class LRSchedule:
         self.hyper_parameters.add_parameters(**kwargs)
 
     def init(self, optimizer=None, override=False, **kwargs):
+        """Initialize the LR schedule with the given hyper parameters"""
         if self._schedule:
             warning('LRSchedule is already set, use override=True to force re initialization')
 
@@ -116,22 +117,15 @@ class LRSchedule:
         return self
 
     def get_space(self):
+        """Return the missing hyper parameters required to initialize the LR schedule"""
         if self._schedule:
             warning('LRSchedule is already set')
 
         return self.hyper_parameters.missing_parameters()
 
-    def get_params(self, params):
-        if self._schedule:
-            warning('Optimizer is already set!')
-
-        if self._schedule_builder:
-            return self._schedule_builder.get_params(params)
-
-        return {}
-
     @property
     def defaults(self):
+        """Return default hyper parameters"""
         return self._schedule_builder.defaults()
 
     @property
@@ -141,16 +135,18 @@ class LRSchedule:
 
         return self._schedule
 
-    def state_dict(self):
+    def state_dict(self, destination=None, prefix='', keep_vars=False):
         return self.lr_scheduler.state_dict()
 
-    def load_state_dict(self, state_dict):
+    def load_state_dict(self, state_dict, strict=True):
         self.lr_scheduler.load_state_dict(state_dict)
 
     def epoch(self, epoch, metrics=None):
+        """Called after every epoch to update LR"""
         self.lr_scheduler.epoch(epoch, metrics)
 
     def step(self, step, metrics=None):
+        """Called every step/batch to update LR"""
         self.lr_scheduler.step(step, metrics)
 
     def get_lr(self):

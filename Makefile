@@ -1,7 +1,8 @@
 export OLYMPUS_DATA_PATH=/tmp
+export OLYMPUS_STATE_STORAGE_TIME=0
 export CORES=4
 
-travis: travis-doc travis-minimalist travis-hpo_simple travis-classification travis-classification-parallel travis-classification-fp16 travis-unit travis-custom travis-end
+travis: travis-doc travis-minimalist travis-hpo_simple travis-classification travis-classification-parallel travis-detection travis-classification-fp16 travis-unit travis-custom travis-end
 
 travis-install:
 	pip install -e .
@@ -18,7 +19,7 @@ travis-hpo_simple: clean
 	COVERAGE_FILE=.coverage.hpo_simple coverage run examples/hpo_simple.py
 
 travis-classification: clean
-	COVERAGE_FILE=.coverage.classify coverage run --parallel-mode olympus/baselines/launch.py classification --batch-size 32 --epochs 5 --dataset test-mnist --model logreg
+	COVERAGE_FILE=.coverage.classify coverage run --parallel-mode olympus/baselines/launch.py classification -v 10 --batch-size 32 --epochs 5 --dataset test-mnist --model logreg
 
 travis-classification-parallel: clean
 	COVERAGE_FILE=.coverage.classify.parallel coverage run --parallel-mode olympus/baselines/launch.py --workers $${CORES} --device-sharing classification --batch-size 32 --epochs 5 --dataset test-mnist --model logreg
@@ -27,7 +28,7 @@ travis-classification-fp16: clean
 	COVERAGE_FILE=.coverage.classify_fp16 coverage run --parallel-mode olympus/baselines/launch.py classification --batch-size 32 --epochs 5 --dataset test-mnist --model logreg --half
 
 travis-detection: clean
-	COVERAGE_FILE=.coverage.dect coverage run --parallel-mode olympus/baselines/launch.py detection --batch-size 2 --epochs 5 --dataset pennfudan --model fasterrcnn_resnet18_fpn -vv
+	COVERAGE_FILE=.coverage.dect_short coverage run --parallel-mode olympus/baselines/launch.py detection --batch-size 2 --epochs 5 --dataset pennfudan --model fasterrcnn_resnet18_fpn -v
 
 travis-detection-short: clean
 	COVERAGE_FILE=.coverage.dect coverage run --parallel-mode examples/detection_simple.py
@@ -48,6 +49,8 @@ travis-end:
 	coverage xml
 	codecov
 
+travis-a2c: clean
+	COVERAGE_FILE=.coverage.a2c coverage run olympus/baselines/launch.py a2c --verbose 10 --epochs 5 --weight-init glorot_uniform --env-name SpaceInvaders-v0 --parallel-sim 4 --max-steps 32 --optimizer sgd --model toy_rl_convnet --num-steps 32 --gamma 0.99 --orion-database legacy:pickleddb:rc_check.pkl
 
 test-parallel: clean
 	rm rc_check.pkl rc_check.pkl.lock
@@ -105,8 +108,10 @@ clean:
 	rm -rf /tmp/olympus | true
 	rm -rf /tmp/classification | true
 	rm -rf /tmp/objectdetection | true
+	rn -rf /tmp/a2c | true
 	rm my_data.pkl my_data.pkl.lock | true
 	rm test.pkl test.pkl.lock | true
 	rm track_test.json track_test.json.lock | true
 	rm simple.json | true
+	rm rc_check.pkl* | true
 

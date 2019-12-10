@@ -6,3 +6,18 @@ __author_short__ = u'Delaunay'
 __author_email__ = ('xavier.bouthillier@umontreal.ca', 'pierre@delaunay.io')
 __copyright__ = u'2017-2019 Pierre Delaunay'
 __url__ = 'https://github.com/mila-iqia/olympus'
+
+
+from olympus.datasets import Dataset, SplitDataset, DataLoader
+from olympus.metrics import Accuracy
+from olympus.models import Model
+from olympus.optimizers import Optimizer, LRSchedule
+
+from olympus.tasks.hpo import HPO, fidelity
+from olympus.tasks import Classification
+
+
+from olympus.utils import fetch_device
+from olympus.utils.storage import StateStorage
+from olympus.utils.tracker import TrackLogger
+

@@ -1,5 +1,5 @@
-olympus.distributed.multigpu module
-===================================
+Multi GPU
+=========
 
 .. automodule:: olympus.distributed.multigpu
     :members:

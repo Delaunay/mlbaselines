@@ -6,6 +6,7 @@ from torch.utils.data import DataLoader
 
 from olympus.observers.observer import Metric
 from olympus.utils.stat import StatStream
+from olympus.utils.cuda import Stream, stream
 
 
 @dataclass
@@ -18,6 +19,7 @@ class Accuracy(Metric):
     name: str = 'validation'
     eval_time: StatStream = field(default_factory=lambda: StatStream(drop_first_obs=0))
     total_time: int = 0
+    metric_stream: Stream = field(default_factory=Stream)
 
     def state_dict(self):
         return dict(accuracies=self.accuracies, losses=self.losses)
@@ -26,23 +28,41 @@ class Accuracy(Metric):
         self.accuracies = state_dict['accuracies']
         self.losses = state_dict['losses']
 
-    def on_new_epoch(self, epoch, task, context):
-        acc = 0
-        loss_acc = 0
-
+    def compute_accuracy(self, task):
         start = datetime.utcnow()
+        losses = []
+        accs = []
 
         count = len(self.loader)
-        for data, target in self.loader:
-            accuracy, loss = task.accuracy(data, target)
 
-            acc += accuracy.item()
-            loss_acc += loss.item()
+        with stream(self.metric_stream):
+            with torch.no_grad():
+                for data, target in self.loader:
+                    accuracy, loss = task.accuracy(data, target)
+
+                    accs.append(accuracy.detach())
+                    losses.append(loss.detach())
+
+                acc = sum([a.item() for a in accs])
+                loss_acc = sum([l.item() for l in losses])
 
         end = datetime.utcnow()
-        self.eval_time += (end - start).total_seconds()
-        self.accuracies.append(acc / count)
-        self.losses.append(loss_acc / count)
+
+        eval_time = (end - start).total_seconds()
+        acc = (acc / count)
+        loss = (loss_acc / count)
+
+        return eval_time, acc, loss
+
+    def on_new_epoch(self, epoch, task, context):
+        # I would like to make this completely async
+        # but I do not think I can do it easily
+        # Good enough for now
+        eval_time, acc, loss = self.compute_accuracy(task)
+
+        self.eval_time += eval_time
+        self.accuracies.append(acc)
+        self.losses.append(loss)
 
     def start(self, task=None):
         self.on_new_epoch(None, task, None)

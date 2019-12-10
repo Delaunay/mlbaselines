@@ -1,6 +1,6 @@
 import numpy
 
-from olympus.datasets.sampling.split import split_random_indices
+from olympus.datasets.split.split import split_random_indices
 
 
 def test_split_deterministic(base_indices, N_TRAIN, N_VALID, N_TEST):
@@ -9,13 +9,13 @@ def test_split_deterministic(base_indices, N_TRAIN, N_VALID, N_TEST):
     new_indices = split_random_indices(
         numpy.random.RandomState(1), base_indices, N_TRAIN, N_VALID, N_TEST, index=0)
 
-    for key in new_indices:
+    for key in new_indices.keys():
         assert all(new_indices[key] == indices[key])
 
     new_indices = split_random_indices(
         numpy.random.RandomState(2), base_indices, N_TRAIN, N_VALID, N_TEST, index=0)
 
-    for key in new_indices:
+    for key in new_indices.keys():
         assert any(new_indices[key] != indices[key])
 
 

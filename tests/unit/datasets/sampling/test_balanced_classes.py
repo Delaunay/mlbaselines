@@ -1,6 +1,6 @@
 import pytest
 
-from olympus.datasets.sampling.balanced_classes import balanced_random_indices
+from olympus.datasets.split.balanced_classes import balanced_random_indices
 
 
 def _dummy_indices_method(rng, indices, n_train, n_valid, n_test):
@@ -57,12 +57,12 @@ def test_balanced_random_deterministic(classes, N_POINTS):
     indices = balanced_random_indices(_dummy_indices_method, classes, N_POINTS, seed=1)
     new_indices = balanced_random_indices(_dummy_indices_method, classes, N_POINTS, seed=1)
 
-    for key in new_indices:
+    for key in new_indices.keys():
         assert all(new_indices[key] == indices[key])
 
     new_indices = balanced_random_indices(_dummy_indices_method, classes, N_POINTS, seed=2)
 
-    for key in new_indices:
+    for key in new_indices.keys():
         assert any(new_indices[key] != indices[key])
 
 

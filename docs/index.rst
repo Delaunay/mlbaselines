@@ -5,6 +5,7 @@
    :caption: Getting Started
 
    start/start.rst
+   start/aspect.rst
 
 .. toctree::
    :caption: Examples
@@ -30,15 +31,18 @@
    :maxdepth: 1
 
    accumulators/index
+   baselines/index
    datasets/index
    distributed/index
    hpo/index
    metrics/index
-   observers/index
    models/index
+   observers/index
    optimizers/index
    reinforcement/index
-   baselines/index
+   sampling/index
+   schedules/index
+   split/index
    tasks/index
    utils/index
 

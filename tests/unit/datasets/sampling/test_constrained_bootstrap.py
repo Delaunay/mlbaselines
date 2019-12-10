@@ -1,6 +1,6 @@
 import numpy
 
-from olympus.datasets.sampling.constrained_bootstrap import constrained_bootstrap_random_indices
+from olympus.datasets.split.constrained_bootstrap import constrained_bootstrap_random_indices
 
 
 def test_constrained_bootstrap_deterministic(base_indices, N_TRAIN, N_VALID, N_TEST):
@@ -9,13 +9,13 @@ def test_constrained_bootstrap_deterministic(base_indices, N_TRAIN, N_VALID, N_T
     new_indices = constrained_bootstrap_random_indices(
         numpy.random.RandomState(1), base_indices, N_TRAIN, N_VALID, N_TEST)
 
-    for key in new_indices:
+    for key in new_indices.keys():
         assert all(new_indices[key] == indices[key])
 
     new_indices = constrained_bootstrap_random_indices(
         numpy.random.RandomState(2), base_indices, N_TRAIN, N_VALID, N_TEST)
 
-    for key in new_indices:
+    for key in new_indices.keys():
         assert any(new_indices[key] != indices[key])
 
 

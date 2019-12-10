@@ -1,4 +1,4 @@
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from olympus.utils import warning
 
 
@@ -20,10 +20,10 @@ class Observer:
     priority: int
         Controls which metric is called first
     """
-    frequency_epoch: int = 0
-    frequency_batch: int = 0
-    frequency_trial: int = 0
-    priority: int = 0
+    frequency_epoch: int = field(default=0)
+    frequency_batch: int = field(default=0)
+    frequency_trial: int = field(default=0)
+    priority: int = field(default=0)
 
     def on_new_epoch(self, epoch, task, context):
         """Called at the end of an epoch, before a new epoch starts"""
@@ -33,7 +33,7 @@ class Observer:
         """Called after a batch has been processed"""
         pass
 
-    def on_new_trial(self, task):
+    def on_new_trial(self, task, parameters, trial_id):
         """Called after a trial has been processed"""
         pass
 

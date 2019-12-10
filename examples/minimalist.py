@@ -1,8 +1,7 @@
 import torch.nn.functional as F
-from olympus.datasets import DataLoader
+from olympus.datasets import Dataset, SplitDataset, DataLoader
+from olympus.optimizers import Optimizer, LRSchedule
 
-from olympus.optimizers.schedules import LRSchedule
-from olympus.optimizers import Optimizer
 from olympus.models import Model
 from olympus.observers import ObserverList, ProgressView
 from olympus.utils import fetch_device
@@ -26,11 +25,14 @@ optimizer = Optimizer('sgd', params=model.parameters(), weight_decay=0.001, lr=1
 # Schedule
 lr_schedule = LRSchedule('exponential', optimizer=optimizer, gamma=0.99)
 
+data = Dataset('fake_mnist', path='/tmp/olympus')
+
+splits = SplitDataset(data, split_method='original')
+
 # Dataloader
 loader = DataLoader(
-    'fake_mnist',
-    seed=1,
-    sampling_method={'name': 'original'},
+    splits,
+    sampler_seed=1,
     batch_size=32
 )
 

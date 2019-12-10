@@ -2,7 +2,6 @@ Extending Olympus
 =================
 
 
-
 .. toctree::
    :caption: Writing custom blocks
    :maxdepth: 1

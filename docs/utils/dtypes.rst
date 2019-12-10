@@ -1,5 +1,5 @@
-olympus.utils.dtypes module
-===========================
+dtypes
+======
 
 .. automodule:: olympus.utils.dtypes
     :members:

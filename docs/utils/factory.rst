@@ -1,5 +1,5 @@
-olympus.utils.factory module
-============================
+Factory
+=======
 
 .. automodule:: olympus.utils.factory
     :members:

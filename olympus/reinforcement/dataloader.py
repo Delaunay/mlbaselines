@@ -82,6 +82,9 @@ class RLDataloader(DataLoader):
         self.max_steps = max_steps
         self.state_transforms = state_transforms
 
+    def __len__(self):
+        return self.max_steps
+
     def iterator(self):
         return _RLIterator(self, self.env, self.max_steps, transforms=self.state_transforms)
 
@@ -103,3 +106,13 @@ class RLDataloader(DataLoader):
     @property
     def action_vector_size(self):
         return self.env.action_space.n
+
+    def state_dict(self):
+        return {}
+
+    def load_state_dict(self, data):
+        pass
+
+    def close(self):
+        if hasattr(self.env, 'close'):
+            self.env.close()

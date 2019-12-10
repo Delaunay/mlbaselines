@@ -1,27 +1,19 @@
 Datasets
 ========
 
-Subpackages
------------
-
-.. toctree::
-
-    sampling/index
-
-Submodules
-----------
-
 .. toctree::
 
    archive
    cifar10
    cifar100
    dataset
-   pennfudan
    emnist
+   fake
    fashionmnist
    gaussian
+   imagenet
    mnist
+   pennfudan
    svhn
    tensorhdf5
    tinyimagenet

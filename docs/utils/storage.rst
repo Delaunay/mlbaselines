@@ -1,5 +1,5 @@
-olympus.utils.storage module
-============================
+Storage
+=======
 
 .. automodule:: olympus.utils.storage
     :members:

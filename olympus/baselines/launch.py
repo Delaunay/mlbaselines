@@ -182,6 +182,63 @@ def single_worker_single_gpu(task, args, no_mon):
     with GpuMonitor(enabled=not no_mon) as mon:
         simple_launch(task, args)
         print(json.dumps(mon.to_json(), indent=2))
+        show_resource_stats(mon)
+
+
+def show_resource_stats(monitor):
+    return
+
+    import numpy as np
+    import pandas as pd
+    import altair as alt
+
+    ds = monitor.monitor.ts
+
+    print(ds)
+    df = pd.DataFrame(ds)
+    print(df)
+    df.to_csv('data.csv')
+    df['index'] = np.arange(len(ds['utilization.gpu0']))
+
+    chart = (alt.Chart(df)
+                .mark_line()
+                .encode(x='index', y='utilization.memory0'))
+
+    chart.save('utilization_memory0.png')
+
+
+def run(workers, all_processes, task, script_args):
+    for worker in workers:
+        processes = worker.launch(task, script_args)
+        all_processes.extend(processes)
+
+    errors = []
+    for process in all_processes:
+        process.wait()
+
+        if process.returncode != 0:
+            errors.append((
+                process.returncode,
+                process.args
+            ))
+
+    for return_code, cmd in errors:
+        print(f'Command {cmd} failed with return code {return_code}')
+
+
+def cleanup(all_processes):
+    # propagate the signal to children
+    for process in all_processes:
+        process.send_signal(signal=signal.SIGINT)
+
+    # wait 5 seconds for them to die
+    for process in all_processes:
+        try:
+            process.wait(timeout=5)
+
+        # kill them if time out
+        except subprocess.TimeoutExpired:
+            process.terminate()
 
 
 def main(argv=None):
@@ -207,38 +264,12 @@ def main(argv=None):
     all_processes = []
     with GpuMonitor(enabled=not args.no_mon) as mon:
         try:
-            for worker in workers:
-                processes = worker.launch(args.task, script_args)
-                all_processes.extend(processes)
-
-            errors = []
-            for process in all_processes:
-                process.wait()
-
-                if process.returncode != 0:
-                    errors.append((
-                        process.returncode,
-                        process.args
-                    ))
-
-            for return_code, cmd in errors:
-                print(f'Command {cmd} failed with return code {return_code}')
-
+            run(workers, all_processes, args.task, script_args)
+            show_resource_stats(mon)
             print(json.dumps(mon.to_json(), indent=2))
 
         except KeyboardInterrupt:
-            # propagate the signal to children
-            for process in all_processes:
-                process.send_signal(signal=signal.SIGINT)
-
-            # wait 5 seconds for them to die
-            for process in all_processes:
-                try:
-                    process.wait(timeout=5)
-
-                # kill them if time out
-                except subprocess.TimeoutExpired:
-                    process.terminate()
+            cleanup(all_processes)
 
 
 if __name__ == '__main__':

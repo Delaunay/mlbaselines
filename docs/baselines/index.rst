@@ -1,9 +1,6 @@
 Baselines
 =========
 
-Submodules
-----------
-
 .. toctree::
 
    classification

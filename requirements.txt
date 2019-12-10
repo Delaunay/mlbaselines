@@ -1,6 +1,7 @@
 git+git://github.com/Epistimio/orion.git@develop#egg=orion
 git+git://github.com/Delaunay/track.git@master#egg=track
 gym
+procgen
 atari_py
 plotly
 plotly-express

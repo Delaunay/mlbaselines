@@ -1,5 +1,5 @@
-olympus.utils.dataloader module
-===============================
+Dataloader
+==========
 
 .. automodule:: olympus.utils.dataloader
     :members:

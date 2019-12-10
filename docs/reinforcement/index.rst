@@ -1,9 +1,6 @@
 Reinforcement Learning
 ======================
 
-Submodules
-----------
-
 .. toctree::
 
    dataloader

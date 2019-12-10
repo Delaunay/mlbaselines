@@ -5,6 +5,7 @@ from torch.optim.optimizer import Optimizer as TorchOptimizer
 
 from olympus.utils import MissingArgument, warning, HyperParameters
 from olympus.utils.factory import fetch_factories
+from olympus.optimizers.schedules import LRSchedule
 
 
 registered_optimizers = fetch_factories('olympus.optimizers', __file__)
@@ -140,8 +141,6 @@ class Optimizer(TorchOptimizer):
             if not self.optimizer_builder:
                 raise RegisteredOptimizerNotFound(name)
 
-            self.optimizer_builder = self.optimizer_builder()
-
             if hasattr(self.optimizer_builder, 'get_space'):
                 self.hyper_parameters.space = self.optimizer_builder.get_space()
 
@@ -193,18 +192,6 @@ class Optimizer(TorchOptimizer):
         """Returns the default hyper parameter of the underlying optimizer"""
         return self.optimizer_builder.defaults()
 
-    def get_params(self, params: Dict[str, any]) -> Dict[str, any]:
-        """Extract optimizer parameters from the dictionary, the resulting dictionary can be
-        used to initialize the optimizer without worry.
-        """
-        if self._optimizer:
-            warning('Optimizer is already set!')
-
-        if self.optimizer_builder:
-            return self.optimizer_builder.get_params(params)
-
-        return {}
-
     def init(self, params=None, override=False, **kwargs):
         """instantiate the underlying optimizer
 
@@ -246,8 +233,8 @@ class Optimizer(TorchOptimizer):
 
         return self.optimizer
 
-    def step(self):
-        return self.optimizer.step()
+    def step(self, closure=None):
+        return self.optimizer.step(closure)
 
     def zero_grad(self):
         return self.optimizer.zero_grad()
@@ -260,17 +247,20 @@ class Optimizer(TorchOptimizer):
     def state(self):
         return self.optimizer.state
 
-    def state_dict(self):
-        return self.optimizer.state_dict()
-
-    def load_state_dict(self, state_dict, device=None):
-        self.optimizer.load_state_dict(state_dict)
-
-        # Dirty fix found here:
-        # https://github.com/pytorch/pytorch/issues/2830#issuecomment-336194949
-        if device:
+    def to(self, device):
+        if self._optimizer:
             for state in self.state.values():
                 for k, v in state.items():
                     if torch.is_tensor(v):
                         state[k] = v.to(device=device)
+        return self
 
+    def state_dict(self, destination=None, prefix='', keep_vars=False):
+        s = self.optimizer.state_dict()
+        return s
+
+    def load_state_dict(self, state_dict, strict=True, device=None):
+        self.optimizer.load_state_dict(state_dict)
+
+        if device:
+            self.to(device)

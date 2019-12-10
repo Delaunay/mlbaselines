@@ -1,9 +1,9 @@
 from torch.optim.lr_scheduler import _LRScheduler
 
 
-class LRScheduleI(_LRScheduler):
+class LRScheduleInterface(_LRScheduler):
     def __init__(self, optimizer, last_epoch=-1):
-        super(LRScheduleI, self).__init__(optimizer, last_epoch)
+        super(LRScheduleInterface, self).__init__(optimizer, last_epoch)
 
     def state_dict(self):
         raise NotImplementedError()
@@ -12,7 +12,7 @@ class LRScheduleI(_LRScheduler):
         raise NotImplementedError()
 
     def epoch(self, epoch, metrics=None):
-        super(LRScheduleI, self).step(epoch)
+        super(LRScheduleInterface, self).step(epoch)
 
     def step(self, step, metrics=None):
         pass
@@ -29,7 +29,7 @@ class LRScheduleI(_LRScheduler):
         return {}
 
 
-class LRScheduleAdapter:
+class LRScheduleAdapter(LRScheduleInterface):
     def __init__(self, builder, optimizer, last_epoch=-1, **kwargs):
         self.schedule = builder(optimizer=optimizer, last_epoch=last_epoch, **kwargs)
 
@@ -54,4 +54,4 @@ class LRScheduleAdapter:
 
     @staticmethod
     def defaults():
-        return {}
+        raise NotImplementedError()

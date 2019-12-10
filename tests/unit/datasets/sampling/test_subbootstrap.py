@@ -1,6 +1,6 @@
 import numpy
 
-from olympus.datasets.sampling.subbootstrap import subbootstrap_random_indices
+from olympus.datasets.split.subbootstrap import subbootstrap_random_indices
 
 
 def test_subbootstrap_deterministic(base_indices, N_TRAIN, N_VALID, N_TEST):
@@ -9,13 +9,13 @@ def test_subbootstrap_deterministic(base_indices, N_TRAIN, N_VALID, N_TEST):
     new_indices = subbootstrap_random_indices(
         numpy.random.RandomState(1), base_indices, N_TRAIN, N_VALID, N_TEST)
 
-    for key in new_indices:
+    for key in new_indices.keys():
         assert all(new_indices[key] == indices[key])
 
     new_indices = subbootstrap_random_indices(
         numpy.random.RandomState(2), base_indices, N_TRAIN, N_VALID, N_TEST)
 
-    for key in new_indices:
+    for key in new_indices.keys():
         assert new_indices[key].shape[0] != indices[key].shape[0]
 
 

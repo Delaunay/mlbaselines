@@ -40,7 +40,7 @@ class HPO(Task):
         task to do hyper parameter optimization on
     """
     def __init__(self, experiment_name, task, algo,
-                 storage='legacy:pickleddb:test.pkl', max_trials=50, folder=options('state.storage', '/tmp'), **kwargs):
+                 storage='legacy:pickleddb:test.pkl', max_trials=50, **kwargs):
         super(HPO, self).__init__()
         self.experiment_name = experiment_name
         self.task_maker = task
@@ -48,7 +48,6 @@ class HPO(Task):
         self._missing_parameters = []
         self.fidelities = {}
         self.max_trials = max_trials
-        self.folder = folder
         self.storage_uri = storage
         self.hpo_config = {
             algo: kwargs
@@ -62,20 +61,6 @@ class HPO(Task):
                 new_space[key] = val
 
         return new_space
-
-    @staticmethod
-    def unique_trial_id(trial, experiment):
-        params = trial.params
-        # task has the fidelities
-        params.pop('task')
-
-        hash = hashlib.sha256()
-        hash.update(experiment.encode('utf8'))
-        for k, v in flatten.flatten(params).items():
-            hash.update(k.encode('utf8'))
-            hash.update(str(v).encode('utf8'))
-
-        return hash.hexdigest()
 
     def fit(self, objective, step=None, input=None, context=None, **fidelities):
         """Train the model a few times and return a best trial/set of parameters"""
@@ -94,19 +79,12 @@ class HPO(Task):
         #  256 trial =>   1
 
         task = self.task_maker()
-
         space = HPO._drop_empty_group(task.get_space(**self.fidelities))
 
         print('Research Space')
         print('-' * 40)
         print(json.dumps(space, indent=2))
 
-        task_name = type(task).__name__.lower()
-        experiment_folder = os.path.join(self.folder, task_name, self.experiment_name)
-
-        # task.summary()
-        # force early Garbage collect
-        task = None
         self.experiment = create_experiment(
             name=self.experiment_name,
             max_trials=self.max_trials,
@@ -120,18 +98,15 @@ class HPO(Task):
         for idx, trial in enumerate(iterator):
             new_task = self.task_maker()
             self._set_orion_progress(new_task)
-
-            # Get a unique ID for the trial checkpointing
-            trial_id = HPO.unique_trial_id(trial, experiment_folder)
-            new_task.storage.folder = os.path.join(experiment_folder, trial_id)
-
             show_dict(flatten.flatten(trial.params))
 
             params = trial.params
             task_arguments = params.pop('task')
 
-            new_task.init(trial_id=trial.id, **params)
+            # FIXME: should not use a trial object, should be an ID
+            new_task.init(trial=trial, **params)
             new_task.fit(**task_arguments)
+            new_task.finish()
 
             metrics = new_task.metrics.value()
             val = metrics[objective]

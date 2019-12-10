@@ -99,6 +99,7 @@ class ProgressView(Observer):
     max_step: int = 0
     step_length: int = 0
     epoch: int = 0
+    multiplier: int = 0
 
     frequency_epoch: int = option('progress.frequency_epoch', 1, type=int)
     frequency_batch: int = option('progress.frequency_batch', 1, type=int)
@@ -135,6 +136,7 @@ class ProgressView(Observer):
         return len(self.orion_handle.fetch_trials_by_status('completed')) * 100 / self.number_of_trials()
 
     def number_of_trials(self):
+        # FIXME: Get max trials for the algo itself
         return self.orion_handle.max_trials
 
     def estimate_time_trial_finish(self, obs, epoch):
@@ -262,31 +264,3 @@ class ElapsedRealTime(Observer):
         return {
             'elapsed_time': self.elapsed_time
         }
-
-
-@dataclass
-class CheckPointer(Observer):
-    time_buffer: int = option('checkpoint.time_buffer', 5 * 60, type=int)
-    last_save: datetime = None
-    epoch: int = 0
-
-    frequency_epoch: int = option('checkpoint.frequency_epoch', 1, type=int)
-    frequency_batch: int = option('checkpoint.frequency_batch', 0, type=int)
-
-    # checkpoint is done last after all other metrics have finished computing their statistics
-    priority = -10
-
-    def save(self, task, epoch, step):
-        if (datetime.utcnow() - self.last_save).total_seconds() > self.time_buffer:
-            task.checkpoint(epoch)
-            self.last_save = datetime.utcnow()
-
-    def on_new_batch(self, step, task, input, context):
-        self.save(task, self.epoch, step)
-
-    def on_new_epoch(self, epoch, task, context):
-        self.epoch = epoch
-        self.save(task, epoch, 0)
-
-    def value(self):
-        return {}

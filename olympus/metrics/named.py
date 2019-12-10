@@ -10,6 +10,12 @@ class NamedMetric(Metric):
     accumulator = 0
     count = 0
 
+    frequency_batch: int = 1
+    frequency_epoch: int = 1
+
+    def start(self, task=None):
+        pass
+
     def on_new_epoch(self, epoch, task, context):
         self.metrics.append(self.accumulator / self.count)
         self.accumulator = 0
@@ -17,18 +23,32 @@ class NamedMetric(Metric):
 
     def on_new_batch(self, step, task, input, context):
         value = context.get(self.name)
+
         if value is not None:
             self.accumulator += value
             self.count += 1
 
-    def finish(self, task):
+    def finish(self, task=None):
         if self.count > 0:
             self.on_new_epoch(None, None, None)
 
     def value(self):
+        if not self.metrics:
+            return {}
+
         return {
             self.name: self.metrics[-1]
         }
+
+    def state_dict(self):
+        return {
+            self.name: self.metrics
+        }
+
+    def load_state_dict(self, state_dict):
+        self.metrics = state_dict[self.name]
+        self.accumulator = 0
+        self.count = 0
 
 
 NamedObserver = NamedMetric

@@ -1,9 +1,6 @@
 Distributed
 ===========
 
-Submodules
-----------
-
 .. toctree::
 
    multigpu

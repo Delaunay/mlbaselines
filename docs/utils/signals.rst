@@ -1,5 +1,5 @@
-olympus.utils.signals module
-============================
+Signals
+=======
 
 .. automodule:: olympus.utils.signals
     :members:

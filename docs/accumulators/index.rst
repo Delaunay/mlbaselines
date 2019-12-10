@@ -1,9 +1,6 @@
 Accumulators
 ============
 
-Submodules
-----------
-
 .. toctree::
 
    smoothing

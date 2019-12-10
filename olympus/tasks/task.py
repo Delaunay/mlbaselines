@@ -1,33 +1,14 @@
 import torch
 from olympus.metrics import MetricList
-from olympus.utils.tracker import BaseTrackLogger
-from olympus.utils import BadResume
-
-
-class BadResumeGuard:
-    """Make sure we do not reuse a task with a bad state"""
-
-    def __init__(self, task):
-        self.task = task
-
-    def __enter__(self):
-        if self.task.bad_state:
-            raise BadResume('Cannot resume from bad state! '
-                            'You need to create a new task than can resume the previous state')
-
-    def __exit__(self, exc_type, exc_val, exc_tb):
-        if exc_type is not None:
-            self.task.bad_state = True
 
 
 class Task:
-    def __init__(self, device=None, logger=None):
+    def __init__(self, device=None):
         self._device = device if device else torch.device('cpu')
-        self._logger = logger
-        if not self._logger:
-            self._logger = BaseTrackLogger()
+        self._first_epoch = 0
         self._metrics = MetricList()
         self.bad_state = False
+        self.dataloader = None
 
     @property
     def device(self):
@@ -37,26 +18,34 @@ class Task:
     def device(self, device):
         self.set_device(device)
 
-    @property
-    def logger(self):
-        return self._logger
-
-    @logger.setter
-    def logger(self, logger):
-        self._logger = logger
-
     def set_device(self, device):
         for name in dir(self):
             attr = getattr(self, name)
 
             if hasattr(attr, 'to'):
-                setattr(self, name, attr.to(device=device))
+                try:
+                    setattr(self, name, attr.to(device=device))
+                except:
+                    print(f'Cant set attribute on {name} {attr}')
+                    raise
 
         self._device = device
 
     def eval_loss(self, batch):
         """This is used to compute validation and test loss"""
         raise NotImplementedError()
+
+    def _start(self, epochs):
+        progress = self.metrics.get('ProgressView')
+        if progress:
+            # in case of a resume
+            progress.epoch = self._first_epoch
+            progress.max_epoch = epochs
+            progress.max_step = len(self.dataloader)
+
+        if not self.resumed():
+            self.metrics.start(self)
+            self.report(pprint=True, print_fun=print)
 
     def fit(self, epoch, context=None):
         """Execute a single batch
@@ -105,7 +94,10 @@ class Task:
         """Used to initialize the hyperparameters is any"""
         raise NotImplementedError()
 
-    def resume(self):
+    def resumed(self):
+        return self._first_epoch > 0
+
+    def load_state_dict(self, state, strict=True):
         """Try to load a previous unfinished state to resume
 
         Notes
@@ -118,7 +110,7 @@ class Task:
         """
         raise NotImplementedError()
 
-    def checkpoint(self, step):
+    def state_dict(self, destination=None, prefix='', keep_vars=False):
         """Save a state the task can go back to if an error occur"""
         raise NotImplementedError()
 

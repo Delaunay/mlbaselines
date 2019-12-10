@@ -64,7 +64,7 @@ extensions = [
 autodoc_inherit_docstrings = True
 
 # General information about the project.
-project = u'olympus'
+project = u'Olympus'
 _full_version = olympus.__version__
 author = olympus.__author__
 copyright = olympus.__copyright__

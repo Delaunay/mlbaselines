@@ -81,6 +81,7 @@ def worker(remote, parent_remote, env_factory, stat: WorkerStat, unique_set):
 
         elif cmd == 'close':
             stat.close += 1
+            env.close()
             remote.close()
             break
 
@@ -211,6 +212,9 @@ class ParallelEnvironment:
 
         for p in self.ps:
             p.join()
+
+        for remote in self.remotes:
+            remote.close()
 
         self.closed = True
 

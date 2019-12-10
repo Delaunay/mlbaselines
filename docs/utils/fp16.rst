@@ -1,5 +1,5 @@
-olympus.utils.fp16 module
-=========================
+Mixed Precision
+===============
 
 .. automodule:: olympus.utils.fp16
     :members:

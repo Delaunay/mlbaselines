@@ -4,6 +4,7 @@ import io
 import tempfile
 import torch
 
+from olympus.utils import info
 from olympus.utils.options import options
 
 
@@ -57,7 +58,8 @@ class StateStorage(BaseStorage):
     Mio = 1024 * 1024
     USE_IN_MEMORY_CACHE = False
 
-    def __init__(self, folder=options('state.storage', '/tmp'), time_buffer=options('state.storage.time', 5 * 60)):
+    def __init__(self, folder=options('state.storage', '/tmp'),
+                 time_buffer=options('state.storage.time', 5 * 60, type=int)):
         # typically root/task_name/experiment_name/trial_id
         self.folder = None
         self.set_base(folder)
@@ -136,6 +138,8 @@ class StateStorage(BaseStorage):
         return os.path.exists(self._file(filename))
 
     def save(self, filename, state):
+        from olympus.utils import info
+
         path = self._file(filename)
         dirname = os.path.dirname(path)
         if dirname:
@@ -147,7 +151,8 @@ class StateStorage(BaseStorage):
         buffer = buffer.getbuffer()
 
         # if it has been a while write it to disk
-        if (datetime.utcnow() - self.last_save).total_seconds() > self.time_buffer:
+        elapsed_time = (datetime.utcnow() - self.last_save).total_seconds()
+        if elapsed_time > self.time_buffer:
             # write it inside a temporary file
             fd, name = tempfile.mkstemp('state', dir=self.folder)
 
@@ -157,13 +162,15 @@ class StateStorage(BaseStorage):
 
             # move temporary file to right spot
             os.rename(name, path)
+            info(f'State was written to {path}')
 
             # Remove from cache it is in
             self._pop_from_cache(filename)
             self._insert_disk(filename, buffer.nbytes)
-
             self.last_save = datetime.utcnow()
             return True
+        else:
+            info(f'{elapsed_time} > {self.time_buffer} skipping checkpoint')
 
         self._insert_cache(filename, buffer)
         return False
@@ -224,6 +231,7 @@ class StateStorage(BaseStorage):
                 raise KeyboardInterrupt('Job got scheduled on bad node.') from e
 
         except FileNotFoundError:
+            info(f'State file {name} was not found')
             return None
 
 

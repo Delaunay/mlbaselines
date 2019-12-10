@@ -1,16 +1,13 @@
 from argparse import ArgumentParser
 import json
 
-from olympus.datasets import DataLoader
+from olympus import fetch_device, StateStorage, TrackLogger
+from olympus.datasets import Dataset, SplitDataset, DataLoader
 from olympus.metrics import Accuracy
 from olympus.models import Model
-from olympus.optimizers import Optimizer
-from olympus.optimizers.schedules import LRSchedule
-from olympus.tasks.hpo import HPO, fidelity
+from olympus.optimizers import Optimizer, LRSchedule
 from olympus.tasks import Classification
-from olympus.utils.storage import StateStorage
-from olympus.utils import fetch_device
-from olympus.utils.tracker import TrackLogger
+from olympus.tasks.hpo import HPO, fidelity
 
 
 parser = ArgumentParser()
@@ -30,19 +27,27 @@ def make_task():
 
     lr_schedule = LRSchedule('exponential')
 
-    dataset = DataLoader('test-mnist', {'name': 'original'})
+    data = Dataset('test-mnist', path='/tmp/olympus')
+
+    splits = SplitDataset(data, split_method='original')
+
+    loader = DataLoader(
+        splits,
+        sampler_seed=1,
+        batch_size=32
+    )
 
     main_task = Classification(
         classifier=model,
         optimizer=optimizer,
         lr_scheduler=lr_schedule,
-        dataloader=dataset.train(),
+        dataloader=loader.train(),
         device=device,
         storage=StateStorage(folder='/tmp', time_buffer=0),
         logger=client)
 
     main_task.metrics.append(
-        Accuracy(name='validation', loader=dataset.valid())
+        Accuracy(name='validation', loader=loader.valid(batch_size=64))
     )
 
     return main_task
@@ -57,9 +62,9 @@ hpo = HPO(
     task=make_task,
     algo='ASHA',
     seed=1,
-    num_rungs=3,
+    num_rungs=2,
     num_brackets=1,
-    max_trials=500,
+    max_trials=20,
     storage=f'track:file://simple.json'
 )
 

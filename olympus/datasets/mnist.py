@@ -82,7 +82,7 @@ class MNIST(AllDataset):
 builders = {
     'mnist': MNIST,
     'mini-mnist': functools.partial(MNIST, mini=True),
-    # Technically this should be in the sampler logic but we want to test the usual sampling method
+    # Technically this should be in the sampler logic but we want to test the usual split method
     'test-mnist': functools.partial(MNIST,
                                     train_size=128, valid_size=64, test_size=64,
                                     input_shape=(28, 28), target_shape=(10,)),

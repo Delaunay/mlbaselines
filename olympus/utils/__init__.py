@@ -270,6 +270,7 @@ class LazyCall:
             self.is_processing = True
             self.obj = self.fun(*self.args, **self.kwargs, **kwargs)
             self.is_processing = False
+            return self.obj
 
     def __getattr__(self, item):
         if self.obj is None and self.is_processing:
@@ -332,5 +333,3 @@ class HyperParameters:
         return self.current_parameters
 
 
-class BadResume(Exception):
-    pass

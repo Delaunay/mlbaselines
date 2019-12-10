@@ -1,6 +1,7 @@
 import torch
 import torch.nn as nn
 
+from olympus.models.module import Module
 from olympus.models.inits import initialize_weights, known_initialization
 from olympus.utils import MissingArgument, warning, LazyCall, HyperParameters
 from olympus.utils.factory import fetch_factories
@@ -27,16 +28,6 @@ def register_model(name, factory, override=False):
 
 class RegisteredModelNotFound(Exception):
     pass
-
-
-class Module(nn.Module):
-    """Olympus Module interface to guide new users when doing NAS"""
-    def __init__(self, input_size=None, output_size=None):
-        super(Module, self).__init__()
-
-    @staticmethod
-    def get_space():
-        raise NotImplemented
 
 
 def try_convert(x, device, dtype):
@@ -137,7 +128,7 @@ class Model(nn.Module):
             if hasattr(model_fun, 'get_space'):
                 self.hyper_parameters.space.update(model_fun.get_space())
         else:
-            raise MissingArgument('Model or Name needs to be set')
+            raise MissingArgument('Model or Name need to be set')
 
     @property
     def dtype(self):
@@ -152,8 +143,7 @@ class Model(nn.Module):
         return self.hyper_parameters.missing_parameters()
 
     def init(self, override=False, weight_init=None, **model_hyperparams):
-        self.model_builder.invoke(**model_hyperparams)
-        self._model = self.model_builder.obj
+        self._model = self.model_builder.invoke(**model_hyperparams)
 
         parameters = self.hyper_parameters.parameters(strict=False)
         if weight_init is not None:
@@ -201,3 +191,9 @@ class Model(nn.Module):
         self._device, self._dtype, non_blocking = torch._C._nn._parse_to(*args, **kwargs)
         super().to(*args, **kwargs)
         return self
+
+    def act(self, *args, **kwargs):
+        return self.model.act(*args, **kwargs)
+
+    def critic(self, *args, **kwargs):
+        return self.model.critic(*args, **kwargs)

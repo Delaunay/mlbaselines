@@ -1,12 +1,12 @@
 import copy
-import os
+from collections import defaultdict
 import torch
+from torch.utils.data import DataLoader as TorchDataLoader, Dataset as TorchDataset, Subset, ConcatDataset
 
-from torch.utils.data import DataLoader as TorchDataLoader
-from olympus.utils import warning
+from olympus.utils import warning, option, MissingArgument
 from olympus.utils.factory import fetch_factories
 from olympus.datasets.transform import TransformedSubset
-from olympus.datasets.sampling import generate_indices
+from olympus.datasets.split import generate_splits
 from olympus.datasets.sampling import RandomSampler
 
 
@@ -44,103 +44,258 @@ def register_dataset(name, factory, override=False):
     registered_datasets[name] = factory
 
 
-def set_data_path(config):
-    if "OLYMPUS_DATA_PATH" not in os.environ:
-        print('WARNING: Environment variable OLYMPUS_DATA_PATH is not set. '
-              'Data will be downloaded in {}'.format(os.getcwd()))
-
-    config['data_path'] = os.environ.get('OLYMPUS_DATA_PATH', os.getcwd())
+class RegisteredDatasetNotFound(Exception):
+    pass
 
 
-# TODO refactor this into something readable
-def split_data(datasets, seed, batch_size, sampling_method, num_workers=0):
+class Dataset(TorchDataset):
+    """Public Interface of the Dataset"""
+    def __init__(self, name=None, dataset=None, path=option('data.path', default='/tmp/olympus/data'), **kwargs):
+        if dataset is not None:
+            self.dataset = dataset
 
-    sampling_method = copy.deepcopy(sampling_method)
-    indices = generate_indices(datasets, sampling_method.pop('name'), **sampling_method)
+        elif name is not None:
+            dataset_ctor = registered_datasets.get(name)
 
-    data_loaders = dict()
+            if dataset_ctor is None:
+                raise RegisteredDatasetNotFound(name)
 
-    for split_name, split_indices in indices.items():
-        dataset = TransformedSubset(datasets, split_indices, datasets.transforms[split_name])
-        sampler = RandomSampler(dataset, seed)
+            self.dataset = dataset_ctor(data_path=path, **kwargs)
 
-        data_loaders[split_name] = torch.utils.data.DataLoader(
-            dataset=dataset,
-            batch_size=batch_size,
-            sampler=sampler,
-            num_workers=num_workers,
-            collate_fn=type(datasets).collate_fn)
+        else:
+            raise MissingArgument('Dataset or Name need to be set')
 
-    return data_loaders
+    def __getitem__(self, index):
+        return self.dataset[index]
+
+    def __len__(self):
+        return len(self.dataset)
+
+    @property
+    def transforms(self):
+        if hasattr(self.dataset, 'transforms'):
+            return self.dataset.transforms
+        return {}
+
+    @property
+    def input_shape(self):
+        if hasattr(self.dataset, 'input_shape'):
+            return self.dataset.input_shape
+
+    @property
+    def target_shape(self):
+        if hasattr(self.dataset, 'target_shape'):
+            return self.dataset.target_shape
+
+    @property
+    def collate_fn(self):
+        if hasattr(type(self.dataset), 'collate_fn'):
+            return self.dataset.collate_fn
+        return None
+
+    @property
+    def train_size(self):
+        """Size of the training set"""
+        if hasattr(self.dataset, 'train_size'):
+            return self.dataset.train_size
+
+    @property
+    def valid_size(self):
+        """Size of the validation set"""
+        if hasattr(self.dataset, 'valid_size'):
+            return self.dataset.valid_size
+
+    @property
+    def test_size(self):
+        """Size of the test set"""
+        if hasattr(self.dataset, 'test_size'):
+            return self.dataset.test_size
+
+    @property
+    def classes(self):
+        """Return the mapping between samples index and their class"""
+        classes = defaultdict(list)
+
+        for index, [_, y] in enumerate(self.dataset):
+            classes[y].append(index)
+
+        return [classes[i] for i in sorted(classes.keys())]
+
+    def categories(self):
+        """Dataset tags so we can filter what we want depending on the task"""
+        if hasattr(self.dataset, 'categories'):
+            return self.dataset.categories
+
+        return set()
 
 
-def merge_data_loaders(*data_loaders):
-    # data_loaders are torch loaders
-    for loader in data_loaders:
-        assert isinstance(loader, TorchDataLoader)
+class SplitDataset(TorchDataset):
+    """Split the main dataset into 3 subsets using the split_method"""
+    def __init__(self, dataset, split_method, data_size=None, seed=1, ratio=0.1, index=0):
+        self.dataset = dataset
+        self.splits = generate_splits(dataset, split_method, seed, ratio, index, data_size)
 
-    # torch loaders have a dataset of TransformedSubset and a sampler of RandomSampler
-    data_source = data_loaders[0].dataset.dataset
+    # This function is not compliant with the Dataset Interface on purpose
+    # we do not want people to use this class as a normal dataset because it is not
+    # def __getitem__(self, subset_name, index):
+    #   raise getattr(self, subset_name)[index]
 
-    # RandomSampler does not have the need the sampler backend have
-    seed = data_loaders[0].sampler.sampler.seed
+    @property
+    def train(self) -> Subset:
+        return Subset(self.dataset, self.splits.train)
 
-    indices = sum((list(data_loader.dataset.indices) for data_loader in data_loaders), [])
+    @property
+    def valid(self) -> Subset:
+        return Subset(self.dataset, self.splits.valid)
 
-    transform = data_loaders[0].dataset.transform
-    batch_size = data_loaders[0].batch_size
-    num_workers = data_loaders[0].num_workers
+    @property
+    def test(self) -> Subset:
+        return Subset(self.dataset, self.splits.test)
 
-    dataset = TransformedSubset(data_source, indices, transform)
-    sampler = RandomSampler(dataset, seed)
-    data_loader = torch.utils.data.DataLoader(
-        dataset=dataset, batch_size=batch_size, sampler=sampler, num_workers=num_workers)
+    @property
+    def extended_train(self):
+        import numpy as np
+        merged_indices = np.concatenate([self.splits.train, self.splits.valid])
+        return Subset(self.dataset, merged_indices)
 
-    return data_loader
+    @property
+    def train_indices(self):
+        return self.splits.train
+
+    @property
+    def test_indices(self):
+        return self.splits.test
+
+    @property
+    def valid_indices(self):
+        return self.splits.valid
+
+    def __getattr__(self, item):
+        if hasattr(self.dataset, item):
+            return getattr(self.dataset, item)
+
+        raise AttributeError(f'Attribute {item} was not found')
 
 
-def build_loaders(name, sampling_method, seed=1, batch_size=128, num_workers=0, **kwargs):
-    set_data_path(kwargs)
-    datasets = registered_datasets[name](**kwargs)
+class ResumableDataLoader:
+    def __init__(self, *args, **kwargs):
+        self.loader = torch.utils.data.DataLoader(
+            *args, **kwargs
+        )
 
-    loaders = split_data(
-        datasets, seed=seed, batch_size=batch_size, sampling_method=sampling_method,
-        num_workers=num_workers)
+    def load_state_dict(self, states, strict=False):
+        self.loader.sampler.load_state_dict(states['sampler'])
 
-    return datasets, loaders
+    def state_dict(self, destination=None, prefix='', keep_vars=False):
+        return {
+            'sampler': self.loader.sampler.state_dict()
+        }
+
+    def __iter__(self):
+        return iter(self.loader)
+
+    def __len__(self):
+        return len(self.loader)
 
 
 class DataLoader:
-    def __init__(self, name, sampling_method, seed=1, batch_size=128, num_workers=0, **kwargs):
-        self.datasets, self.loaders = build_loaders(
-            name,
-            sampling_method,
-            seed=seed,
-            batch_size=batch_size,
-            num_workers=num_workers,
-            **kwargs
-        )
+    """Initialize multiple pyTorch DataLoader using a split data set
 
-    def train(self):
-        return self.loaders.get('train')
+    Notes
+    -----
+    While Olympus could make this DataLoader fall back to the expected pytorch DataLoader behaviour.
+    It might be risky to do so as ``train``, ``valid`` and ``test`` would return the same set every time.
 
-    def valid(self):
-        return self.loaders.get('valid')
+    Examples
+    --------
+    >>> datasets = SplitDataset(
+    >>>     Dataset('mnist', path='/tmp/mnist'),
+    >>>     split_method='original')
+    >>>
+    >>> loader = DataLoader(datasets, sampler_seed=0, batch_size=128)
+    >>>
+    >>> # Use the constructor default arguments
+    >>> train_loader = loader.train()
+    >>> print(train_loader.batch_size)  # 128
+    >>>
+    >>> # Override DataLoader attribute for a specific loader
+    >>> test_loader = loader.test(batch_size=256)
+    >>> print(test_loader.batch_size)   #  256
+    >>>
+    >>> # Specify a specific transform per loader
+    >>> valid_loader = loader.valid(batch_size=256, transforms=...)
+    """
+    def __init__(self, split_dataset: SplitDataset, sampler_seed, **kwargs):
+        self.split_dataset = split_dataset
+        self.sampler_seed = sampler_seed
+        self.default_dataloader_args = kwargs
+        self.loaders = {}
 
-    def test(self):
-        return self.loaders.get('test')
+    def train(self, *args, **kwargs):
+        """The arguments provided to this function will override the arguments provided in the constructor"""
+        return self._get_dataloader('train', *args, **kwargs)
+
+    def valid(self, *args, **kwargs):
+        """The arguments provided to this function will override the arguments provided in the constructor"""
+        return self._get_dataloader('valid', *args, **kwargs)
+
+    def test(self, *args, **kwargs):
+        """The arguments provided to this function will override the arguments provided in the constructor"""
+        return self._get_dataloader('test', *args, **kwargs)
+
+    def extended_train(self, *args, **kwargs):
+        """The arguments provided to this function will override the arguments provided in the constructor"""
+        return self._get_dataloader('extended_train', *args, **kwargs)
 
     def get_shapes(self):
-        ishape = self.datasets.input_shape
-        oshape = self.datasets.target_shape
+        ishape = self.split_dataset.input_shape
+        oshape = self.split_dataset.target_shape
         return ishape, oshape
 
-    def get_train_valid_loaders(self, hpo_done=False):
-        train_loader = self.train()
-        valid_loader = self.valid()
-
+    def get_train_valid_loaders(self, hpo_done=False, transform=None, collate_fn=None, **kwargs):
+        """For the final train session we merge train and valid together
+        This is an helper function to get the splits needed depending on the context
+        """
         if hpo_done:
-            train_loader = merge_data_loaders(train_loader, valid_loader)
-            valid_loader = self.test()
+            train_loader = self.extended_train(transform, collate_fn, **kwargs)
+            valid_loader = self.test(transform, collate_fn, **kwargs)
+        else:
+            train_loader = self.train(transform, collate_fn, **kwargs)
+            valid_loader = self.valid(transform, collate_fn, **kwargs)
 
         return train_loader, valid_loader
+
+    def _get_dataloader(self, subset_name, transform=None, collate_fn=None, **kwargs):
+        """Only create them when necessary"""
+        if subset_name not in self.loaders:
+            self.loaders[subset_name] = self._make_dataloader(subset_name, transform, collate_fn, **kwargs)
+
+        return self.loaders[subset_name]
+
+    def _make_dataloader(self, subset_name, transform, collate_fn, **kwargs):
+        arguments = copy.deepcopy(self.default_dataloader_args)
+        arguments.update(kwargs)
+
+        if transform is None:
+            transform = self.split_dataset.transforms.get(subset_name, None)
+
+        if transform is None:
+            transform = lambda x: x
+
+        if collate_fn is None and hasattr(self.split_dataset, 'collate_fn'):
+            collate_fn = self.split_dataset.collate_fn
+
+        dataset_subset = TransformedSubset(
+            # Use the original dataset which has a compliant Dataset interface
+            self.split_dataset.dataset,
+            getattr(self.split_dataset, subset_name).indices,
+            transform)
+
+        sampler = RandomSampler(dataset_subset, self.sampler_seed)
+
+        return ResumableDataLoader(
+            dataset=dataset_subset,
+            sampler=sampler,
+            collate_fn=collate_fn,
+            **arguments
+        )

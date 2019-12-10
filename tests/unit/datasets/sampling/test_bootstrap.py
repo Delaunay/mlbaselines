@@ -1,6 +1,6 @@
 import numpy
 
-from olympus.datasets.sampling.bootstrap import bootstrap_random_indices
+from olympus.datasets.split.bootstrap import bootstrap_random_indices
 
 
 def test_bootstrap_deterministic(base_indices, N_TRAIN, N_VALID, N_TEST):
@@ -9,13 +9,13 @@ def test_bootstrap_deterministic(base_indices, N_TRAIN, N_VALID, N_TEST):
     new_indices = bootstrap_random_indices(
         numpy.random.RandomState(1), base_indices, N_TRAIN, N_VALID, N_TEST)
 
-    for key in new_indices:
+    for key, _ in new_indices.items():
         assert all(new_indices[key] == indices[key])
 
     new_indices = bootstrap_random_indices(
         numpy.random.RandomState(2), base_indices, N_TRAIN, N_VALID, N_TEST)
 
-    for key in new_indices:
+    for key, _ in new_indices.items():
         assert any(new_indices[key] != indices[key])
 
 

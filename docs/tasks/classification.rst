@@ -1,5 +1,5 @@
-olympus.tasks.classification module
-===================================
+Classification
+==============
 
 .. automodule:: olympus.tasks.classification
     :members:

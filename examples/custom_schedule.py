@@ -3,10 +3,10 @@ import torch
 from olympus.optimizers import Optimizer
 from olympus.models import Model
 from olympus.optimizers.schedules import LRSchedule
-from olympus.optimizers.schedules.base import LRScheduleI
+from olympus.optimizers.schedules.base import LRScheduleInterface
 
 
-class MyExponentialLR(LRScheduleI):
+class MyExponentialLR(LRScheduleInterface):
     def __init__(self, optimizer, gamma):
         super(MyExponentialLR, self).__init__(optimizer)
         self.gamma = gamma

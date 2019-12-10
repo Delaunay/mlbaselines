@@ -75,3 +75,6 @@ class GpuMonitor:
             return self.monitor.to_json()
         return ['monitor disabled']
 
+    def to_df(self):
+        return self.monitor.ts()
+

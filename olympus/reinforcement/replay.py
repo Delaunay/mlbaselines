@@ -30,6 +30,37 @@ class ReplayVector:
 
     grad_batch:
         Total number of states in this object `grad_batch = simulation_batch * len(transitions)`
+
+
+     >>> * <------------------- steps --------------------------------->
+     >>> ^ [states 0] [states 1] [states 2] [states 3]
+     >>> | [states 0] [states 1] [states 2]
+     >>> | [states 0] [states 1] [states 2] [states 3]
+     >>> v [states 0] [states 1] [states 2] [states 3] [states 4]
+     >>> * <------------------- steps --------------------------------->
+     >>>     Batch 0    Batch 1    Batch 2    Batch 3    Batch 4
+
+    Notes
+    -----
+    Steps:
+        Number of Simulation Steps
+
+    Simulation:
+        Number of parallel simulation
+
+    Examples
+    --------
+    The output below shows the size of each fields with ``num_steps=32``
+    ``num_simulation=4`` and with a state size of ``3, 210, 160`` (images of the simulation)
+
+    >>> replay.describe()
+    >>> rewards      : torch.Size([32, 4])
+    >>> states       : torch.Size([32, 4, 3, 210, 160])
+    >>> next_states  : torch.Size([32, 4, 3, 210, 160])
+    >>> critic_values: torch.Size([32, 4])
+    >>> actions      : torch.Size([32, 4])
+    >>> log_probs    : torch.Size([32, 4])
+    >>> mask         : torch.Size([32, 4])
     """
 
     __slots__ = (
@@ -54,6 +85,16 @@ class ReplayVector:
     def __reversed__(self):
         return reversed(self.transitions)
 
+    def describe(self):
+        print('rewards      :', self.rewards().shape)
+        print('states       :', self.states().shape)
+        print('next_states  :', self.next_states().shape)
+        print('critic_values:', self.critic_values().shape)
+        print('actions      :', self.actions().shape)
+        print('log_probs    :', self.log_probs().shape)
+        print('mask         :', self.masks().shape)
+        print('entropy      :', self.entropies().shape)
+
     def append(self, transition: Transition):
         self.state_size = transition.state.shape[1]
         self.simulation_batch = transition.state.shape[0]
@@ -63,27 +104,42 @@ class ReplayVector:
         return [getattr(t, by) for t in self.transitions]
 
     def actions(self):
-        return torch.cat(self._accumulate_transitions('action')).view(-1, 1)
+        """
+        Returns
+        -------
+        A tensor of the action that was taken (Steps, Sim, 1)
+        """
+        return torch.stack(self._accumulate_transitions('action'))
 
     def rewards(self):
-        r = torch.cat(self._accumulate_transitions('reward')).view(-1, 1)
+        r = torch.stack(self._accumulate_transitions('reward'))
         self.grad_batch = r.shape[0]
         return r
 
     def log_probs(self):
-        return torch.cat(self._accumulate_transitions('log_prob')).view(-1, 1)
+        return torch.stack(self._accumulate_transitions('log_prob'))
 
     def entropies(self):
-        return torch.cat(self._accumulate_transitions('entropy')).view(-1, 1)
+        return torch.stack(self._accumulate_transitions('entropy'))
 
     def critic_values(self):
-        return torch.cat(self._accumulate_transitions('critic')).view(-1, 1)
+        return torch.stack(self._accumulate_transitions('critic'))
 
     def masks(self):
-        return torch.cat(self._accumulate_transitions('mask')).view(-1, 1)
+        return torch.stack(self._accumulate_transitions('mask'))
 
     def states(self):
-        return torch.cat(self._accumulate_transitions('state'))
+        """
+        Returns
+        -------
+        A tensor of the simulation states (Steps, Sim, State size...)
+        """
+        return torch.stack(self._accumulate_transitions('state'))
 
     def next_states(self):
-        return torch.cat(self._accumulate_transitions('next_state'))
+        """
+        Returns
+        -------
+        A tensor of the simulation states (Steps, Sim, State size...)
+        """
+        return torch.stack(self._accumulate_transitions('next_state'))

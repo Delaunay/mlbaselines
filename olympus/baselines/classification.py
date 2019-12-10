@@ -1,6 +1,6 @@
 from argparse import ArgumentParser, Namespace
 
-from olympus.datasets import DataLoader, known_datasets
+from olympus.datasets import DataLoader, known_datasets, Dataset, SplitDataset
 from olympus.metrics import Accuracy
 from olympus.observers import ElapsedRealTime
 
@@ -22,7 +22,7 @@ from olympus.utils.tracker import TrackLogger
 DEFAULT_EXP_NAME = 'classification_{dataset}_{model}_{optimizer}_{lr_scheduler}_{weight_init}'
 
 
-def arguments():
+def arguments(task=None):
     parser = ArgumentParser(prog='classification', description='Classification Baseline')
 
     parser.add_argument(
@@ -74,6 +74,13 @@ def arguments():
         '--orion-database', type=str, default=None,
         help='where to store Orion data')
 
+    if task is not None:
+        hyperparameters = flatten(task.get_space())
+
+        for name, space in hyperparameters.items():
+            name = name.replace('.', '-')
+            parser.add_argument('--' + name, help=space)
+
     return parser
 
 
@@ -83,50 +90,45 @@ chrono = Chrono()
 def classification_baseline(model, weight_init,
                             optimizer, lr_scheduler,
                             dataset, batch_size, device,
-                            sampling_method=None,
+                            split_method='original',
                             sampler_seed=0, model_seed=0, storage=None, half=False, hpo_done=False,
                             logger=None, validate=True, **config):
 
-    if sampling_method is None:
-        sampling_method = {'name': 'original'}
+    dataset = SplitDataset(
+        Dataset(dataset),
+        split_method=split_method
+    )
 
-    with chrono.time('loader'):
-        dataset = DataLoader(
-            dataset,
-            seed=sampler_seed,
-            sampling_method=sampling_method,
-            batch_size=batch_size)
+    loader = DataLoader(
+        dataset,
+        sampler_seed=sampler_seed,
+        batch_size=batch_size
+    )
 
-    with chrono.time('get_shapes'):
-        input_size, target_size = dataset.get_shapes()
+    input_size, target_size = loader.get_shapes()
 
-    with chrono.time('model'):
-        model = Model(
-            model,
-            input_size=input_size,
-            output_size=target_size[0],
-            weight_init=weight_init,
-            seed=model_seed,
-            half=half)
+    model = Model(
+        model,
+        input_size=input_size,
+        output_size=target_size[0],
+        weight_init=weight_init,
+        seed=model_seed,
+        half=half)
 
-    with chrono.time('optimizer'):
-        optimizer = Optimizer(optimizer, half=half)
+    optimizer = Optimizer(optimizer, half=half)
 
-    with chrono.time('lr'):
-        lr_schedule = LRSchedule(lr_scheduler)
+    lr_schedule = LRSchedule(lr_scheduler)
 
-    with chrono.time('get_loaders'):
-        train, valid = dataset.get_train_valid_loaders(hpo_done)
+    train, valid = loader.get_train_valid_loaders(hpo_done=hpo_done)
 
-    with chrono.time('task'):
-        main_task = Classification(
-            classifier=model,
-            optimizer=optimizer,
-            lr_scheduler=lr_schedule,
-            dataloader=train,
-            device=device,
-            storage=storage,
-            logger=logger)
+    main_task = Classification(
+        classifier=model,
+        optimizer=optimizer,
+        lr_scheduler=lr_schedule,
+        dataloader=train,
+        device=device,
+        storage=storage,
+        logger=logger)
 
     if validate:
         with chrono.time('metric'):
@@ -147,7 +149,7 @@ def main(**kwargs):
     client = TrackLogger(experiment_name, storage_uri=args.database)
 
     # save partial results here
-    state_storage = StateStorage(folder=option('state.storage', '/tmp/olympus'), time_buffer=30)
+    state_storage = StateStorage(folder=option('state.storage', '/tmp/olympus/classification'))
 
     def main_task():
         return classification_baseline(device=device, logger=client, storage=state_storage, **kwargs)
@@ -179,7 +181,7 @@ def main(**kwargs):
         task_args = params.pop('task')
 
         final_task.init(**params)
-        final_task.fit(**task_args)
+        final_task.fit(epochs=args.epochs)
 
         final_task.finish()
 

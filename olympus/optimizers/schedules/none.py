@@ -1,7 +1,7 @@
-from olympus.optimizers.schedules.base import LRScheduleI
+from olympus.optimizers.schedules.base import LRScheduleInterface
 
 
-class NoLR(LRScheduleI):
+class NoLR(LRScheduleInterface):
     def __init__(self, optimizer):
         super(NoLR, self).__init__(optimizer)
 

@@ -1,9 +1,9 @@
 import torch.optim
 
-from olympus.optimizers.base import OptimizerBuilder
+from olympus.optimizers.base import OptimizerAdapter
 
 
-class AMSGrad(OptimizerBuilder):
+class AMSGrad(OptimizerAdapter):
     """Variant of Adam
 
     See also :class`.Adam`
@@ -30,16 +30,25 @@ class AMSGrad(OptimizerBuilder):
     ----------
     .. [1] Tran Thi Phuong, Le Trieu Phong. "On the Convergence Proof of AMSGrad and a New Version", 7 Apr 2019
     """
+    def __init__(self, model_parameters, weight_decay, lr, beta1, beta2, eps=1e-8):
+        super(AMSGrad, self).__init__(
+            torch.optim.Adam,
+            model_parameters,
+            lr=lr,
+            betas=[beta1, beta2],
+            weight_decay=weight_decay,
+            eps=eps,
+            amsgrad=True
+        )
 
-    def build(self, model_parameters, weight_decay, lr, beta1, beta2, eps=1e-8):
-        return torch.optim.Adam(
-            model_parameters, lr=lr, betas=[beta1, beta2], weight_decay=weight_decay, eps=eps, amsgrad=True)
-
-    def get_space(self):
-        return {'lr': 'loguniform(1e-5, 1)',
-                'beta1': 'loguniform(0.9, 1)',
-                'beta2': 'loguniform(0.99, 1)',
-                'weight_decay': 'loguniform(1e-10, 1e-3)'}
+    @staticmethod
+    def get_space():
+        return {
+            'lr': 'loguniform(1e-5, 1)',
+            'beta1': 'loguniform(0.9, 1)',
+            'beta2': 'loguniform(0.99, 1)',
+            'weight_decay': 'loguniform(1e-10, 1e-3)'
+        }
 
     @staticmethod
     def defaults():

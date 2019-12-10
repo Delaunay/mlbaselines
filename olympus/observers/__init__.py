@@ -2,6 +2,8 @@ import json
 
 from olympus.observers.observer import Observer
 from olympus.observers.progress import *
+from olympus.observers.checkpointer import CheckPointer
+from olympus.observers.tracking import Tracker
 
 
 class ObserverList:
@@ -18,11 +20,11 @@ class ObserverList:
         self._epoch: int = 0
         self._previous_step = 0
 
-    def state_dict(self):
+    def state_dict(self, destination=None, prefix='', keep_vars=False):
         """Save all the children states"""
         return [m.state_dict() for m in self.metrics]
 
-    def load_state_dict(self, state_dict):
+    def load_state_dict(self, state_dict, strict=True):
         """Resume all children metrics using a state_dict"""
         for m, m_state_dict in zip(self.metrics, state_dict):
             m.load_state_dict(m_state_dict)
@@ -79,7 +81,7 @@ class ObserverList:
             self._metrics_mapping[key] = m
 
         self.metrics.append(m)
-        self.metrics.sort(key=lambda met: met.priority)
+        self.metrics.sort(key=lambda met: met.priority, reverse=True)
 
     def on_new_epoch(self, epoch, task=None, context=None):
         """Broadcast a `new_epoch` event to all metrics"""
@@ -103,12 +105,12 @@ class ObserverList:
         self.batch_id += 1
         self._previous_step = step
 
-    def on_new_trial(self, task):
+    def on_new_trial(self, task, parameters, trial_id):
         """Broadcast a `new_trial` event"""
 
         for m in self.metrics:
             if m.frequency_trial > 0 and self.trial_id % m.frequency_trial == 0:
-                m.on_new_trial(task)
+                m.on_new_trial(task, parameters, trial_id)
 
         self.trial_id += 1
 

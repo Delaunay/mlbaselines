@@ -1,5 +1,5 @@
-olympus.utils.stat module
-=========================
+Statistics
+==========
 
 .. automodule:: olympus.utils.stat
     :members:
