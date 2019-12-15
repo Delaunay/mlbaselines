@@ -9,6 +9,7 @@ import time
 import numpy as np
 import torch
 
+from olympus.utils import debug
 from olympus.utils.signals import SignalHandler
 
 
@@ -81,8 +82,7 @@ def worker(remote, parent_remote, env_factory, stat: WorkerStat, unique_set):
 
         elif cmd == 'close':
             stat.close += 1
-            env.close()
-            remote.close()
+            debug('closing env')
             break
 
         elif cmd == 'get_spaces':
@@ -91,6 +91,10 @@ def worker(remote, parent_remote, env_factory, stat: WorkerStat, unique_set):
 
         else:
             raise NotImplementedError
+
+    debug('cleaning up')
+    env.close()
+    remote.close()
 
 
 class VectorStat(Structure):
@@ -115,11 +119,20 @@ class _ParallelEnvironmentCleaner(SignalHandler):
         return self.env.close()
 
 
+# Create a manager for everybody
+# Because it opens socket and does not close them
+_manager = None
+
+
 class ParallelEnvironment:
     """A group of environment that are computed in parallel"""
 
     def __init__(self, num_workers, env_factory, *env_args):
-        self.manager: Manager = Manager()
+        global _manager
+        if _manager is None:
+            _manager = Manager()
+
+        self.manager: Manager = _manager
         self.unique_set = self.manager.dict()
 
         self.worker_stat = Value(WorkerStat, 0, 0, 0, 0, 0, 0)
@@ -212,6 +225,7 @@ class ParallelEnvironment:
 
         for p in self.ps:
             p.join()
+            p.close()
 
         for remote in self.remotes:
             remote.close()

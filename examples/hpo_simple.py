@@ -8,12 +8,14 @@ from olympus.models import Model
 from olympus.optimizers import Optimizer, LRSchedule
 from olympus.tasks import Classification
 from olympus.tasks.hpo import HPO, fidelity
+from olympus.utils import option
 
 
 parser = ArgumentParser()
 parser.add_argument('--epochs', type=int, default=3)
 args = parser.parse_args()
 device = fetch_device()
+base = option('base_path', '/tmp/olympus')
 
 
 def make_task():
@@ -27,7 +29,7 @@ def make_task():
 
     lr_schedule = LRSchedule('exponential')
 
-    data = Dataset('test-mnist', path='/tmp/olympus')
+    data = Dataset('test-mnist', path=f'{base}/data')
 
     splits = SplitDataset(data, split_method='original')
 
@@ -43,7 +45,7 @@ def make_task():
         lr_scheduler=lr_schedule,
         dataloader=loader.train(),
         device=device,
-        storage=StateStorage(folder='/tmp', time_buffer=0),
+        storage=StateStorage(folder=f'{base}/hpo_simple', time_buffer=0),
         logger=client)
 
     main_task.metrics.append(
@@ -55,7 +57,7 @@ def make_task():
 
 client = TrackLogger(
     'hpo_simple',
-    storage_uri='file://simple.json')
+    storage_uri=f'file:{base}/hpo_simple.json')
 
 hpo = HPO(
     'minimalist_hpo',
@@ -64,8 +66,7 @@ hpo = HPO(
     seed=1,
     num_rungs=2,
     num_brackets=1,
-    max_trials=20,
-    storage=f'track:file://simple.json'
+    max_trials=20
 )
 
 hpo.fit(epochs=fidelity(args.epochs), objective='validation_accuracy')

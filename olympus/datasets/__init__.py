@@ -87,10 +87,10 @@ class Dataset(TorchDataset):
         if hasattr(self.dataset, 'target_shape'):
             return self.dataset.target_shape
 
-    @property
-    def collate_fn(self):
+    def get_collate_fn(self):
         if hasattr(type(self.dataset), 'collate_fn'):
-            return self.dataset.collate_fn
+            return type(self.dataset).collate_fn
+
         return None
 
     @property
@@ -170,11 +170,14 @@ class SplitDataset(TorchDataset):
     def valid_indices(self):
         return self.splits.valid
 
+    def get_collate_fn(self):
+        return self.dataset.get_collate_fn()
+
     def __getattr__(self, item):
         if hasattr(self.dataset, item):
             return getattr(self.dataset, item)
 
-        raise AttributeError(f'Attribute {item} was not found')
+        raise AttributeError(f'Attribute {item} was not found in SplitDataset')
 
 
 class ResumableDataLoader:
@@ -268,7 +271,8 @@ class DataLoader:
     def _get_dataloader(self, subset_name, transform=None, collate_fn=None, **kwargs):
         """Only create them when necessary"""
         if subset_name not in self.loaders:
-            self.loaders[subset_name] = self._make_dataloader(subset_name, transform, collate_fn, **kwargs)
+            self.loaders[subset_name] = self._make_dataloader(
+                subset_name, transform, collate_fn, **kwargs)
 
         return self.loaders[subset_name]
 
@@ -282,8 +286,8 @@ class DataLoader:
         if transform is None:
             transform = lambda x: x
 
-        if collate_fn is None and hasattr(self.split_dataset, 'collate_fn'):
-            collate_fn = self.split_dataset.collate_fn
+        if collate_fn is None and hasattr(self.split_dataset, 'get_collate_fn'):
+            collate_fn = self.split_dataset.get_collate_fn()
 
         dataset_subset = TransformedSubset(
             # Use the original dataset which has a compliant Dataset interface

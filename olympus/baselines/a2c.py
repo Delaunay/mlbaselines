@@ -20,6 +20,7 @@ from olympus.utils.tracker import TrackLogger
 import gym
 
 DEFAULT_EXP_NAME = 'reinforcement_{env_name}_{model}_{optimizer}_{lr_scheduler}_{weight_init}'
+base = option('base_path', '/tmp/olympus')
 
 
 def arguments():
@@ -78,7 +79,7 @@ def arguments():
              '1 enables progress output, '
              'higher enable higher level logging')
     parser.add_argument(
-        '--database', type=str, default='file://track_test.json',
+        '--database', type=str, default=f'file:{base}/a2c_baseline.json',
         help='where to store metrics and intermediate results')
     parser.add_argument(
         '--orion-database', type=str, default=None,
@@ -140,7 +141,7 @@ def main(**kwargs):
     client = TrackLogger(experiment_name, storage_uri=args.database)
 
     # save partial results here
-    state_storage = StateStorage(folder=option('state.storage', '/tmp/olympus'), time_buffer=30)
+    state_storage = StateStorage(folder=option('state.storage', f'{base}/a2c'), time_buffer=30)
 
     def main_task():
         return a2c_baseline(device=device, logger=client, storage=state_storage, **kwargs)
@@ -173,7 +174,6 @@ def main(**kwargs):
 
         final_task.init(**params)
         final_task.fit(**task_args)
-
         final_task.finish()
 
         print('=' * 40)

@@ -1,7 +1,7 @@
 from datetime import datetime
 
 from olympus.distributed.multigpu import rank
-from olympus.utils import get_storage
+from olympus.utils import get_storage, error, info, warning, debug
 from olympus.utils.options import option
 from olympus.utils.stat import StatStream
 
@@ -22,15 +22,29 @@ class TrialIterator:
     experiment: ExperimentClient
         Orion Experiment
     """
-    def __init__(self, experiment):
+    def __init__(self, experiment, retries=2):
         self.experiment = experiment
         self.time = StatStream(drop_first_obs=1)
+        self.retries = retries
 
     def __iter__(self):
         return self
 
-    def __next__(self):
-        if self.experiment.is_done or self.experiment.is_broken:
+    @property
+    def is_finished(self):
+        return self.experiment.is_done or self.experiment.is_broken
+
+    def __next__(self, _depth=0):
+        if _depth >= self.retries:
+            debug(f'Retried {_depth} times without success')
+            raise StopIteration
+
+        if self.experiment.is_broken:
+            error('Experiment is broken and cannot continue')
+            raise StopIteration
+
+        if self.experiment.is_done:
+            info('Orion does not have more trials to suggest')
             raise StopIteration
 
         start = datetime.utcnow()
@@ -38,7 +52,12 @@ class TrialIterator:
         self.time += (datetime.utcnow() - start).total_seconds()
 
         if trial is None:
-            raise StopIteration
+            if not self.experiment.is_done:
+                warning('No additional trials were found but experiment is not done')
+                return self.__next__(_depth + 1)
+            else:
+                info(f'Orion did not suggest more trials (is_done: {self.experiment.is_done}')
+                raise StopIteration
 
         return trial
 

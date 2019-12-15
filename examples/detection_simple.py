@@ -1,18 +1,19 @@
 from argparse import ArgumentParser
 
-from olympus.datasets import DataLoader
+from olympus.datasets import DataLoader, Dataset, SplitDataset
 from olympus.models import Model
 from olympus.optimizers import Optimizer
 from olympus.optimizers.schedules import LRSchedule
 from olympus.tasks import ObjectDetection
 from olympus.utils.storage import StateStorage
-from olympus.utils import fetch_device
+from olympus.utils import fetch_device, option
 
 
 parser = ArgumentParser()
 parser.add_argument('--epochs', type=int, default=3)
 args = parser.parse_args()
 device = fetch_device()
+base = option('base_path', '/tmp/olympus')
 
 
 def reduce_loss(loss_dict):
@@ -20,18 +21,23 @@ def reduce_loss(loss_dict):
 
 
 def make_detection_task(client=None):
-    dataset = DataLoader(
-        'pennfudan',
-        seed=0,
-        sampling_method={'name': 'original'},
-        batch_size=1)
+    dataset = SplitDataset(
+        Dataset('test_pennfudan', path=f'{base}/data'),
+        split_method='original'
+    )
 
-    input_size, target_size = dataset.get_shapes()
+    loader = DataLoader(
+        dataset,
+        sampler_seed=0,
+        batch_size=1
+    )
+
+    input_size, target_size = loader.get_shapes()
 
     model = Model(
         'fasterrcnn_resnet18_fpn',
         input_size=input_size,
-        output_size=dataset.datasets.num_classes,
+        output_size=dataset.dataset.dataset.num_classes,
         weight_init='glorot_uniform'
     )
 
@@ -51,10 +57,10 @@ def make_detection_task(client=None):
         detector=model,
         optimizer=optimizer,
         lr_scheduler=lr_schedule,
-        dataloader=dataset.train(),
+        dataloader=loader.train(),
         device=device,
         criterion=reduce_loss,
-        storage=StateStorage(folder='/tmp/olympus/detection', time_buffer=0),
+        storage=StateStorage(folder=f'{base}/detection_short', time_buffer=0),
         logger=client)
 
     return main_task

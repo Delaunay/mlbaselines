@@ -239,6 +239,20 @@ class PennFudanDataset(AllDataset):
     collate_fn = penn_collate_fn
 
 
+def _test_PennFudanDataset(*args, **kwargs):
+    from torch.utils.data import Subset
+    dataset = PennFudanDataset(*args, **kwargs)
+    dataset.dataset = Subset(
+        dataset.dataset,
+        indices=list(range(0, 16))
+    )
+    dataset._train_size = 8
+    dataset._test_size = 4
+    dataset._valid_size = 4
+    return dataset
+
+
 builders = {
     'pennfudan': PennFudanDataset,
+    'test_pennfudan': _test_PennFudanDataset,
 }

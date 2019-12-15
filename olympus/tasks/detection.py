@@ -4,6 +4,7 @@ from torch.nn import Module
 from olympus.utils import info, select
 from olympus.tasks.task import Task
 from olympus.metrics import OnlineLoss
+from olympus.resuming import state_dict, load_state_dict, BadResumeGuard
 from olympus.observers import ProgressView, Speed, ElapsedRealTime, CheckPointer, Tracker, SampleCount
 
 
@@ -13,6 +14,7 @@ class ObjectDetection(Task):
         super(ObjectDetection, self).__init__(device=device)
 
         self._first_epoch = 0
+        self.current_epoch = 0
         self.detector = detector
         self.optimizer = optimizer
         self.lr_scheduler = lr_scheduler
@@ -33,45 +35,62 @@ class ObjectDetection(Task):
         if logger is not None:
             self.metrics.append(Tracker(logger=logger))
 
-    @property
-    def model(self) -> Module:
-        return self.detector
+    # Hyper Parameter Settings
+    # ---------------------------------------------------------------------
+    def get_space(self, **fidelities):
+        """Return hyper parameter space"""
+        return {
+            'task': {       # fidelity(min, max, base logarithm)
+                'epochs': fidelities.get('epochs')
+            },
+            'optimizer': self.optimizer.get_space(),
+            'lr_schedule': self.lr_scheduler.get_space(),
+            'model': self.model.get_space()
+        }
 
-    @model.setter
-    def model(self, model):
-        self.detector = model
+    def init(self, optimizer=None, lr_schedule=None, model=None, trial=None):
+        optimizer = select(optimizer, {})
+        lr_schedule = select(lr_schedule, {})
+        model = select(model, {})
 
-    def eval_loss(self, batch):
-        # Will be fixed in the next-next torchvision release
-        self.model.train()
+        self.detector.init(
+            **model
+        )
 
-        with torch.no_grad():
-            images, targets = batch
+        self.set_device(self.device)
+        self.optimizer.init(
+            self.detector.parameters(),
+            override=True, **optimizer
+        )
+        self.lr_scheduler.init(
+            self.optimizer,
+            override=True, **lr_schedule
+        )
 
-            images = list(image.to(self.device) for image in images)
-            targets = [{k: v.to(self.device) for k, v in t.items()} for t in targets]
+        parameters = {}
+        parameters.update(optimizer)
+        parameters.update(lr_schedule)
+        parameters.update(model)
 
-            loss_dict = self.model(images, targets)
-            loss = self.criterion(loss_dict)
+        # Trial Creation and Trial resume
+        self.metrics.on_new_trial(self, parameters, trial)
+        self.set_device(self.device)
 
-        self.model.train()
-
-        # do not use item() in the loop it forces cuda to sync
-        if hasattr(loss, 'detach'):
-            return loss.detach()
-
-        return torch.Tensor(loss)
-
+    # Training
+    # --------------------------------------------------------------------
     def fit(self, epochs, context=None):
-        self._start(epochs)
+        with BadResumeGuard(self):
+            self._start(epochs)
 
-        for epoch in range(self._first_epoch, epochs):
-            self.epoch(epoch + 1, context)
+            for epoch in range(self._first_epoch, epochs):
+                self.epoch(epoch + 1, context)
 
-        self.report(pprint=True, print_fun=print)
-        self.metrics.finish(self)
+            self.report(pprint=True, print_fun=print)
+            self.metrics.finish(self)
 
     def epoch(self, epoch, context):
+        self.current_epoch = epoch
+
         for step, batch in enumerate(self.dataloader):
             self.step(step, batch, context)
 
@@ -101,85 +120,46 @@ class ObjectDetection(Task):
         self.metrics.on_new_batch(step, self, input, results)
         self.lr_scheduler.step(step)
         return results
+    # ---------------------------------------------------------------------
 
-    def resume(self, storage):
-        state_dict = storage.safe_load('checkpoint', device=self.device)
+    def load_state_dict(self, state, strict=True):
+        load_state_dict(self, state, strict, force_default=True)
+        self._first_epoch = state['epoch']
+        self.current_epoch = state['epoch']
 
-        if not state_dict:
-            info('Starting from scratch')
-            return False
+    def state_dict(self, destination=None, prefix='', keep_vars=False):
+        state = state_dict(self, destination, prefix, keep_vars, force_default=True)
+        state['epoch'] = self.current_epoch
+        return state
 
-        try:
-            self._first_epoch = state_dict['epoch']
-            info(f"Resuming from (epoch: {self._first_epoch})")
+    def eval_loss(self, batch):
+        # Will be fixed in the next-next torchvision release
+        self.model.train()
 
-            self.model.load_state_dict(state_dict['model'])
-            self.optimizer.load_state_dict(state_dict['optimizer'], device=self.device)
-            self.lr_scheduler.load_state_dict(state_dict['lr_scheduler'])
-            self.dataloader.sampler.load_state_dict(state_dict['sampler'])
-            self.metrics.load_state_dict(state_dict['metrics'])
+        with torch.no_grad():
+            images, targets = batch
 
-            return True
-        except KeyError as e:
-            raise KeyError(f'Bad state dictionary!, missing (key: {e.args})') from e
+            images = list(image.to(self.device) for image in images)
+            targets = [{k: v.to(self.device) for k, v in t.items()} for t in targets]
 
-    def checkpoint(self, epoch, storage):
-        info(f'Saving checkpoint (epoch: {epoch})')
-        was_saved = storage.save(
-            'checkpoint',
-            dict(
-                epoch=epoch,
-                model=self.model.state_dict(),
-                optimizer=self.optimizer.state_dict(),
-                lr_scheduler=self.lr_scheduler.state_dict(),
-                sampler=self.dataloader.sampler.state_dict(),
-                metrics=self.metrics.state_dict()
-            )
-        )
-        if was_saved:
-            info('Checkpoint saved')
-        else:
-            info('Skipped Checkpoint')
+            loss_dict = self.model(images, targets)
+            loss = self.criterion(loss_dict)
 
-    def get_space(self, **fidelities):
-        """Return hyper parameter space"""
-        return {
-            'task': {       # fidelity(min, max, base logarithm)
-                'epochs': fidelities.get('epochs')
-            },
-            'optimizer': self.optimizer.get_space(),
-            'lr_schedule': self.lr_scheduler.get_space(),
-            'model': self.model.get_space()
-        }
+        self.model.train()
 
-    def init(self, optimizer=None, lr_schedule=None, model=None, trial_id=None):
-        optimizer = select(optimizer, {})
-        lr_schedule = select(lr_schedule, {})
-        model = select(model, {})
+        # do not use item() in the loop it forces cuda to sync
+        if hasattr(loss, 'detach'):
+            return loss.detach()
 
-        self.detector.init(
-            **model
-        )
+        return torch.Tensor(loss)
 
-        self.set_device(self.device)
-        self.optimizer.init(
-            self.detector.parameters(),
-            override=True, **optimizer
-        )
-        self.lr_scheduler.init(
-            self.optimizer,
-            override=True, **lr_schedule
-        )
+    @property
+    def model(self) -> Module:
+        return self.detector
 
-        # try to resume itself
-        checkpoints = self.metrics.get('CheckPointer')
-        if checkpoints is not None:
-            self.resume(checkpoints.storage)
+    @model.setter
+    def model(self, model):
+        self.detector = model
 
-        parameters = {}
-        parameters.update(optimizer)
-        parameters.update(lr_schedule)
-        parameters.update(model)
-
-        self.metrics.on_new_trial(self, parameters, trial_id)
-        self.set_device(self.device)
+    def parameters(self):
+        return self.detector.parameters()

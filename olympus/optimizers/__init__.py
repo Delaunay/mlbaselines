@@ -5,7 +5,7 @@ from torch.optim.optimizer import Optimizer as TorchOptimizer
 
 from olympus.utils import MissingArgument, warning, HyperParameters
 from olympus.utils.factory import fetch_factories
-from olympus.optimizers.schedules import LRSchedule
+from olympus.optimizers.schedules import LRSchedule, known_schedule
 
 
 registered_optimizers = fetch_factories('olympus.optimizers', __file__)

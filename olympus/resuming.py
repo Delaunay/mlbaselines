@@ -38,7 +38,7 @@ class Resumable(Aspect):
 class DefaultResumingAspect(Resumable):
     """Iterates over an object attributes and look for resumable attributes"""
 
-    def load_state_dict(self, obj, states, strict):
+    def load_state_dict(self, obj, states, strict=True):
         missing_fields = []
 
         for field_name, field in obj.__dict__.items():
@@ -58,7 +58,7 @@ class DefaultResumingAspect(Resumable):
         for field_name, field in obj.__dict__.items():
             if hasattr(field, 'state_dict'):
                 try:
-                    state[field_name] = state_dict(field, destination, prefix, keep_vars)
+                    state[field_name] = state_dict(field)
                 except:
                     print(f'An error occurred when trying {field_name}')
                     raise
@@ -89,17 +89,17 @@ class BadResumeGuard:
 def load_state_dict(obj, state_dict, strict=True, force_default=False):
     with BadResumeGuard(obj):
         if hasattr(obj, 'load_state_dict') and not force_default:
-            return obj.load_state_dict(state_dict, strict)
+            return obj.load_state_dict(state_dict)
 
         aspect = Resumable.get_aspect(type(obj), DefaultResumingAspect())
-        return aspect.load_state_dict(obj, state_dict, strict)
+        return aspect.load_state_dict(obj, state_dict)
 
 
 def state_dict(obj, destination=None, prefix='', keep_vars=False, force_default=False):
     with BadResumeGuard(obj):
         # class override
         if hasattr(obj, 'state_dict') and not force_default:
-            return obj.state_dict(destination, prefix, keep_vars)
+            return obj.state_dict()
 
         aspect = Resumable.get_aspect(type(obj), DefaultResumingAspect())
         return aspect.state_dict(obj, destination, prefix, keep_vars)

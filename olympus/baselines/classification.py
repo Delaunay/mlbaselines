@@ -7,8 +7,7 @@ from olympus.observers import ElapsedRealTime
 from olympus.models import Model, known_models
 from olympus.models.inits import known_initialization
 
-from olympus.optimizers import Optimizer, known_optimizers
-from olympus.optimizers.schedules import LRSchedule, known_schedule
+from olympus.optimizers import Optimizer, known_optimizers, LRSchedule, known_schedule
 
 from olympus.tasks import Classification
 from olympus.tasks.hpo import HPO, fidelity
@@ -20,6 +19,7 @@ from olympus.utils.storage import StateStorage
 from olympus.utils.tracker import TrackLogger
 
 DEFAULT_EXP_NAME = 'classification_{dataset}_{model}_{optimizer}_{lr_scheduler}_{weight_init}'
+base = option('base_path', '/tmp/olympus')
 
 
 def arguments(task=None):
@@ -32,7 +32,8 @@ def arguments(task=None):
         '--model', type=str, metavar='MODEL_NAME', choices=known_models(), required=True,
         help='Name of the model')
     parser.add_argument(
-        '--dataset', type=str, metavar='DATASET_NAME', choices=known_datasets('classification', include_unknown=True), required=True,
+        '--dataset', type=str, metavar='DATASET_NAME',
+        choices=known_datasets('classification', include_unknown=True), required=True,
         help='Name of the dataset')
     parser.add_argument(
         '--optimizer', type=str, default='sgd',
@@ -68,7 +69,7 @@ def arguments(task=None):
              '1 enables progress output, '
              'higher enable higher level logging')
     parser.add_argument(
-        '--database', type=str, default='file://track_test.json',
+        '--database', type=str, default=f'file:{base}/classification_baseline.json',
         help='where to store metrics and intermediate results')
     parser.add_argument(
         '--orion-database', type=str, default=None,
@@ -95,7 +96,7 @@ def classification_baseline(model, weight_init,
                             logger=None, validate=True, **config):
 
     dataset = SplitDataset(
-        Dataset(dataset),
+        Dataset(dataset, path=f'{base}/data'),
         split_method=split_method
     )
 
@@ -149,7 +150,7 @@ def main(**kwargs):
     client = TrackLogger(experiment_name, storage_uri=args.database)
 
     # save partial results here
-    state_storage = StateStorage(folder=option('state.storage', '/tmp/olympus/classification'))
+    state_storage = StateStorage(folder=option('state.storage', f'{base}/classification'))
 
     def main_task():
         return classification_baseline(device=device, logger=client, storage=state_storage, **kwargs)
@@ -172,8 +173,8 @@ def main(**kwargs):
     final_task = classification_baseline(device=device, logger=client, storage=state_storage, **kwargs, hpo_done=True)
 
     if option('worker.id', 0, type=int) == 0:
-        print('Waiting for other workers to finish')
         hpo.wait_done()
+
         if hpo.is_broken():
             return
 

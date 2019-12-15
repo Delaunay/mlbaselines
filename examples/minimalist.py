@@ -4,11 +4,12 @@ from olympus.optimizers import Optimizer, LRSchedule
 
 from olympus.models import Model
 from olympus.observers import ObserverList, ProgressView
-from olympus.utils import fetch_device
+from olympus.utils import fetch_device, option
 
 
 epochs = 2
 device = fetch_device()
+base = option('base_path', '/tmp/olympus')
 
 # Model
 model = Model(
@@ -25,7 +26,7 @@ optimizer = Optimizer('sgd', params=model.parameters(), weight_decay=0.001, lr=1
 # Schedule
 lr_schedule = LRSchedule('exponential', optimizer=optimizer, gamma=0.99)
 
-data = Dataset('fake_mnist', path='/tmp/olympus')
+data = Dataset('fake_mnist', path=f'{base}/data')
 
 splits = SplitDataset(data, split_method='original')
 

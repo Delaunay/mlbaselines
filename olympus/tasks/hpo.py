@@ -4,7 +4,7 @@ import hashlib
 import time
 
 from olympus.tasks.task import Task
-from olympus.utils import warning
+from olympus.utils import warning, error, info
 from olympus.utils import get_storage, show_dict
 from olympus.utils.options import options
 from olympus.hpo import TrialIterator
@@ -90,6 +90,7 @@ class HPO(Task):
             max_trials=self.max_trials,
             space=space,
             algorithms=self.hpo_config,
+            strategy='StubParallelStrategy',
             storage=get_storage(self.storage_uri, objective)
         )
 
@@ -112,9 +113,6 @@ class HPO(Task):
             val = metrics[objective]
 
             results = [dict(name='ValidationErrorRate', value=1 - val, type='objective')]
-            for k, v in metrics.items():
-                results.append(dict(name=k, value=v, type='statistic'))
-
             self.experiment.observe(trial, results)
 
         self.metrics.finish(self)
@@ -150,6 +148,15 @@ class HPO(Task):
     def is_broken(self):
         return self.experiment.is_broken
 
-    def wait_done(self):
+    def wait_done(self, timeout=60, sleep_step=0.1):
+        if not self.is_broken() and not self.is_done():
+            info('Waiting for other workers to finish')
+
+        total_sleep = 0
         while not self.is_broken() and not self.is_done():
-            time.sleep(0.1)
+            time.sleep(sleep_step)
+            total_sleep += sleep_step
+
+            if timeout is not None and total_sleep > timeout:
+                error('Timed out waiting for trials to finish')
+                break

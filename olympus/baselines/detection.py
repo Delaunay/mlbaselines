@@ -1,13 +1,12 @@
 from argparse import ArgumentParser, Namespace
 
-from olympus.datasets import DataLoader, known_datasets
+from olympus.datasets import DataLoader, known_datasets, Dataset, SplitDataset
 from olympus.models import Model, known_models
 from olympus.models.inits import known_initialization
-from olympus.optimizers import Optimizer, known_optimizers
-from olympus.optimizers.schedules import LRSchedule, known_schedule
+from olympus.optimizers import Optimizer, known_optimizers, LRSchedule, known_schedule
 from olympus.tasks import ObjectDetection
 from olympus.tasks.hpo import HPO, fidelity
-from olympus.utils import fetch_device, Chrono, set_verbose_level
+from olympus.utils import fetch_device, set_verbose_level, select
 from olympus.utils.options import option
 from olympus.utils.storage import StateStorage
 from olympus.utils.tracker import TrackLogger
@@ -15,6 +14,7 @@ from olympus.metrics import Loss
 
 
 DEFAULT_EXP_NAME = 'detection_{dataset}_{model}_{optimizer}_{lr_scheduler}_{weight_init}'
+base = option('base_path', '/tmp/olympus')
 
 
 def arguments():
@@ -27,7 +27,7 @@ def arguments():
         '--model', type=str, metavar='MODEL_NAME', choices=known_models(), required=True,
         help='Name of the model')
     parser.add_argument(
-        '--dataset', type=str, metavar='DATASET_NAME', choices=known_datasets('detection'), required=True,
+        '--dataset', type=str, metavar='DATASET_NAME', choices=known_datasets(), required=True,
         help='Name of the dataset')
     parser.add_argument(
         '--optimizer', type=str, default='sgd',
@@ -57,13 +57,16 @@ def arguments():
         '--half', action='store_true', default=False,
         help='enable fp16 training')
     parser.add_argument(
-        '-v', '--verbose', action='count', default=0,
+        '-v', '--verbose', type=int, default=0,
         help='verbose level')
+    parser.add_argument(
+        '--database', type=str, default=f'file:{base}/detection_baseline.json',
+        help='where to store metrics and intermediate results')
+    parser.add_argument(
+        '--orion-database', type=str, default=None,
+        help='where to store Orion data')
 
     return parser
-
-
-chrono = Chrono()
 
 
 def reduce_loss(loss_dict):
@@ -73,51 +76,49 @@ def reduce_loss(loss_dict):
 def detection_baseline(model, weight_init,
                        optimizer, lr_scheduler,
                        dataset, batch_size, device,
+                       split_method='original',
                        sampler_seed=0, model_seed=0, storage=None, half=False, hpo_done=False, logger=None, **config):
 
-    with chrono.time('loader'):
-        dataset = DataLoader(
-            dataset,
-            seed=sampler_seed,
-            sampling_method={'name': 'original'},
-            batch_size=batch_size)
+    dataset = SplitDataset(
+        Dataset(dataset, path=f'{base}/data'),
+        split_method=split_method
+    )
 
-    with chrono.time('get_shapes'):
-        input_size, target_size = dataset.get_shapes()
+    loader = DataLoader(
+        dataset,
+        sampler_seed=sampler_seed,
+        batch_size=batch_size
+    )
 
-    with chrono.time('model'):
-        model = Model(
-            model,
-            input_size=input_size,
-            output_size=dataset.datasets.num_classes,
-            weight_init=weight_init,
-            seed=model_seed,
-            half=half)
+    input_size, target_size = loader.get_shapes()
 
-    with chrono.time('optimizer'):
-        optimizer = Optimizer(optimizer, half=half)
+    model = Model(
+        model,
+        input_size=input_size,
+        output_size=dataset.dataset.dataset.num_classes,
+        weight_init=weight_init,
+        seed=model_seed,
+        half=half)
 
-    with chrono.time('lr'):
-        lr_schedule = LRSchedule(lr_scheduler)
+    optimizer = Optimizer(optimizer, half=half)
 
-    with chrono.time('get_loaders'):
-        train, valid = dataset.get_train_valid_loaders(hpo_done)
+    lr_schedule = LRSchedule(lr_scheduler)
 
-    with chrono.time('task'):
-        main_task = ObjectDetection(
-            detector=model,
-            optimizer=optimizer,
-            lr_scheduler=lr_schedule,
-            dataloader=train,
-            device=device,
-            storage=storage,
-            criterion=reduce_loss,
-            logger=logger)
+    train, valid = loader.get_train_valid_loaders(hpo_done)
 
-    with chrono.time('metric'):
-        main_task.metrics.append(
-            Loss(name='validation', loader=valid)
-        )
+    main_task = ObjectDetection(
+        detector=model,
+        optimizer=optimizer,
+        lr_scheduler=lr_schedule,
+        dataloader=train,
+        device=device,
+        storage=storage,
+        criterion=reduce_loss,
+        logger=logger)
+
+    main_task.metrics.append(
+        Loss(name='validation', loader=valid)
+    )
 
     return main_task
 
@@ -129,12 +130,11 @@ def main(**kwargs):
     device = fetch_device()
     experiment_name = args.experiment_name.format(**kwargs)
 
-    path = option('trial.storage', 'file://track_test.json')
-    client = TrackLogger(experiment_name, storage_uri=path)
+    client = TrackLogger(experiment_name, storage_uri=args.database)
 
     # save partial results here
     state_storage = StateStorage(
-        folder=option('state.storage', '/tmp'),
+        folder=option('state.storage', f'{base}/detection'),
         time_buffer=30)
 
     def main_task():
@@ -148,7 +148,7 @@ def main(**kwargs):
         num_rungs=5,
         num_brackets=1,
         max_trials=300,
-        storage=f'track:{path}'
+        storage=select(args.orion_database, f'track:{args.database}')
     )
 
     hpo.fit(epochs=fidelity(args.epochs), objective='validation_loss')

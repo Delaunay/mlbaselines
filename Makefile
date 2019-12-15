@@ -22,13 +22,15 @@ travis-classification: clean
 	COVERAGE_FILE=.coverage.classify coverage run --parallel-mode olympus/baselines/launch.py classification -v 10 --batch-size 32 --epochs 5 --dataset test-mnist --model logreg
 
 travis-classification-parallel: clean
-	COVERAGE_FILE=.coverage.classify.parallel coverage run --parallel-mode olympus/baselines/launch.py --workers $${CORES} --device-sharing classification --batch-size 32 --epochs 5 --dataset test-mnist --model logreg
+	rm -rf /tmp/olympus/classification | true
+	COVERAGE_FILE=.coverage.classify.parallel coverage run --parallel-mode olympus/baselines/launch.py --workers $${CORES} --device-sharing classification -v 10 --batch-size 32 --epochs 5 --dataset test-mnist --model logreg
 
 travis-classification-fp16: clean
+	rm -rf /tmp/olympus/classification | true
 	COVERAGE_FILE=.coverage.classify_fp16 coverage run --parallel-mode olympus/baselines/launch.py classification --batch-size 32 --epochs 5 --dataset test-mnist --model logreg --half
 
 travis-detection: clean
-	COVERAGE_FILE=.coverage.dect_short coverage run --parallel-mode olympus/baselines/launch.py detection --batch-size 2 --epochs 5 --dataset pennfudan --model fasterrcnn_resnet18_fpn -v
+	COVERAGE_FILE=.coverage.dect_short coverage run --parallel-mode olympus/baselines/launch.py detection --batch-size 2 --epochs 5 --dataset test_pennfudan --model fasterrcnn_resnet18_fpn -v 10
 
 travis-detection-short: clean
 	COVERAGE_FILE=.coverage.dect coverage run --parallel-mode examples/detection_simple.py
@@ -53,9 +55,7 @@ travis-a2c: clean
 	COVERAGE_FILE=.coverage.a2c coverage run olympus/baselines/launch.py a2c --verbose 10 --epochs 5 --weight-init glorot_uniform --env-name SpaceInvaders-v0 --parallel-sim 4 --max-steps 32 --optimizer sgd --model toy_rl_convnet --num-steps 32 --gamma 0.99 --orion-database legacy:pickleddb:rc_check.pkl
 
 test-parallel: clean
-	rm rc_check.pkl rc_check.pkl.lock
-	rm -rf /tmp/classification
-	olympus --workers 4 --device-sharing classification --batch-size 32 --epochs 5 --dataset test-mnist --model logreg --orion-database legacy:pickleddb:rc_check.pkl
+	olympus --workers 6 --device-sharing classification --batch-size 32 --epochs 300 --dataset test-mnist --model logreg --orion-database legacy:pickleddb:rc_check.pkl
 
 tests: clean
 	python -m pytest --cov=olympus tests/unit
@@ -97,7 +97,6 @@ update-doc: build-doc serve-doc
 
 yolo: rm-doc build-doc serve-doc
 
-
 kill-zombies:
 	ps | grep olympus | awk '{print $$1}' | paste -s -d ' '
 	bash -c "kill -9 $$(ps -e | grep olympus | awk '{print $$1}' | paste -s -d ' ')" | true
@@ -105,13 +104,9 @@ kill-zombies:
 	bash -c "kill -9 $$(ps -e | grep make | awk '{print $$1}' | paste -s -d ' ')" | true
 
 clean:
-	rm -rf /tmp/olympus | true
-	rm -rf /tmp/classification | true
-	rm -rf /tmp/objectdetection | true
-	rn -rf /tmp/a2c | true
-	rm my_data.pkl my_data.pkl.lock | true
-	rm test.pkl test.pkl.lock | true
-	rm track_test.json track_test.json.lock | true
-	rm simple.json | true
-	rm rc_check.pkl* | true
-
+	rm -rf /tmp/olympus/a2c | true
+	rm -rf /tmp/olympus/classification | true
+	rm -rf /tmp/olympus/detection | true
+	rm -rf /tmp/olympus/*.json | true
+	rm -rf /tmp/olympus/*.lock | true
+	mkdir -p /tmp/olympus/
