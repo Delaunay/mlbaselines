@@ -34,7 +34,8 @@ if __name__ == '__main__':
             'psycopg2-binary',
             'gym',
             'tqdm',
-            'pandas'
+            'pandas',
+            'filelock'
         ],
         setup_requires=['setuptools'],
         tests_require=['pytest', 'flake8', 'codecov', 'pytest-cov'],
