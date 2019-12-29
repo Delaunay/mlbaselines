@@ -118,5 +118,6 @@ SavedAction = namedtuple('SavedAction', [
     'entropy',      # Action entropy
     'critic',       # Critic Value of the action
     'mask',         # Mask is not done ?
-    'next_state'    # New Game State resulting from the Action
+    'next_state',   # New Game State resulting from the Action
+    'info'
 ])

@@ -1,7 +1,7 @@
 import torch
 from torch.nn import Module
 
-from olympus.utils import info, select
+from olympus.utils import select
 from olympus.tasks.task import Task
 from olympus.metrics import OnlineLoss
 from olympus.resuming import state_dict, load_state_dict, BadResumeGuard
@@ -73,7 +73,7 @@ class ObjectDetection(Task):
         parameters.update(model)
 
         # Trial Creation and Trial resume
-        self.metrics.on_new_trial(self, parameters, trial)
+        self.metrics.new_trial(parameters, trial)
         self.set_device(self.device)
 
     # Training
@@ -86,16 +86,23 @@ class ObjectDetection(Task):
                 self.epoch(epoch + 1, context)
 
             self.report(pprint=True, print_fun=print)
-            self.metrics.finish(self)
+            self.metrics.end_train()
 
     def epoch(self, epoch, context):
+        self._fix()
         self.current_epoch = epoch
+        self.metrics.new_epoch(epoch, context)
 
         for step, batch in enumerate(self.dataloader):
-            self.step(step, batch, context)
+            self.metrics.new_batch(step, batch)
 
-        self.metrics.on_new_epoch(epoch, self, context)
+            results = self.step(step, batch, context)
+
+            self.lr_scheduler.step(step)
+            self.metrics.end_batch(step, batch, results)
+
         self.lr_scheduler.epoch(epoch, lambda x: self.metrics.value()['validation_loss'])
+        self.metrics.end_epoch(epoch, context)
 
     def step(self, step, input, context):
         images, targets = input
@@ -117,8 +124,6 @@ class ObjectDetection(Task):
             'loss': loss.detach()
         }
 
-        self.metrics.on_new_batch(step, self, input, results)
-        self.lr_scheduler.step(step)
         return results
     # ---------------------------------------------------------------------
 

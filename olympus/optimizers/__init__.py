@@ -35,6 +35,25 @@ def register_optimizer(name, factory, override=False):
     registered_optimizers[name] = factory
 
 
+def get_schedules_space():
+    from olympus.optimizers.schedules import registered_schedules
+
+    space = {}
+    for k, schedule in registered_schedules.items():
+        space[k] = schedule.get_space()
+
+    return dict(schedule=space)
+
+
+def get_optimizers_space():
+    space = {}
+
+    for k, optimizer in registered_optimizers.items():
+        space[k] = optimizer.get_space()
+
+    return dict(optimizer=space)
+
+
 class Optimizer(TorchOptimizer):
     """Lazy Optimizer that allows you to first fetch the supported parameters using ``get_space`` and then
     initialize the underlying optimizer using ``init_optimizer``
@@ -82,7 +101,7 @@ class Optimizer(TorchOptimizer):
 
     >>> optimizer = Optimizer('SGD')
     >>> optimizer.get_space()
-    {'lr': 'loguniform(1e-5, 1)', 'momentum': 'uniform(0, 1)'}
+    {'lr': 'loguniform(1e-5, 1)', 'momentum': 'uniform(0, 1)', 'weight_decay': 'loguniform(1e-10, 1e-3)'}
     >>> optimizer.init_optimizer(model.parameters(), weight_decay, lr=0.001, momentum=0.8)
     >>> optimizer.zero_grad()
     >>> loss = model(x)

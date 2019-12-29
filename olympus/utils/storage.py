@@ -170,7 +170,7 @@ class StateStorage(BaseStorage):
             self.last_save = datetime.utcnow()
             return True
         else:
-            info(f'{elapsed_time} > {self.time_buffer} skipping checkpoint')
+            info(f'({elapsed_time:.2f} > {self.time_buffer}) skipping checkpoint')
 
         self._insert_cache(filename, buffer)
         return False
@@ -233,6 +233,3 @@ class StateStorage(BaseStorage):
         except FileNotFoundError:
             info(f'State file {name} was not found')
             return None
-
-
-

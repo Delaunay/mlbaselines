@@ -15,9 +15,7 @@ base = option('base_path', '/tmp/olympus')
 model = Model(
     'resnet18',
     input_size=(1, 28, 28),
-    output_size=(10,),
-    weight_init='glorot_uniform',
-    seed=1
+    output_size=(10,)
 )
 
 # Optimizer
@@ -42,14 +40,17 @@ event_handler = ObserverList()
 event_handler.append(
     ProgressView(max_epoch=epochs, max_step=len(loader.train())).every(epoch=1, batch=1))
 
-
 model = model.to(device=device)
 loss = 0
 
+event_handler.start_train()
+
 for e in range(epochs):
     losses = []
+    event_handler.new_epoch(e + 1)
 
     for step, (batch, target) in enumerate(loader.train()):
+        event_handler.new_batch(step)
 
         optimizer.zero_grad()
         predict = model(batch.to(device=device))
@@ -60,11 +61,11 @@ for e in range(epochs):
         optimizer.backward(loss)
         optimizer.step()
 
-        event_handler.on_new_batch(step)
+        event_handler.end_batch(step)
 
-    event_handler.on_new_epoch(e + 1)
     losses = [l.item() for l in losses]
     loss = sum(losses) / len(losses)
+    event_handler.end_epoch(e + 1)
 
-event_handler.finish()
+event_handler.end_train()
 print(loss)

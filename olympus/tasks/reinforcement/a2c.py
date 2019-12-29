@@ -8,9 +8,7 @@ from torch.optim import Optimizer
 
 from olympus.tasks.task import Task
 from olympus.utils import select
-from olympus.utils.cuda import Stream, stream
-from olympus.reinforcement.replay import ReplayVector
-from olympus.reinforcement.utils import AbstractActorCritic, SavedAction
+from olympus.reinforcement.utils import AbstractActorCritic
 from olympus.resuming import state_dict, load_state_dict, BadResumeGuard
 from olympus.observers import ProgressView, Speed, ElapsedRealTime, CheckPointer, Tracker
 from olympus.metrics.named import NamedMetric
@@ -38,8 +36,8 @@ class A2C(Task):
     num_steps of simulations are accumulated together to perform one gradient update
 
     """
-    def __init__(self, model: AbstractActorCritic, dataloader, optimizer, storage, lr_scheduler, device, logger,
-                 gamma=0.99, num_steps=5, criterion=None):
+    def __init__(self, model: AbstractActorCritic, dataloader, optimizer, lr_scheduler, device, criterion=None,
+                 storage=None, logger=None):
         super(A2C, self).__init__(device=device)
 
         if criterion is None:
@@ -49,8 +47,7 @@ class A2C(Task):
         self.lr_scheduler = lr_scheduler
         self.optimizer: Optimizer = optimizer
         self.criterion: Module = criterion
-        self.num_steps: int = num_steps
-        self.gamma: float = gamma
+        self.gamma: float = 0.99
         self.eps = np.finfo(np.float32).eps.item()
         self.action_sampler: Callable[[], Distribution] = Categorical
         self.tensor_shape = None
@@ -59,9 +56,6 @@ class A2C(Task):
         self.storage = storage
         self._first_epoch = 0
         self.current_epoch = 0
-
-        self.actor_stream = None
-        self.critic_stream = None
 
         self.metrics.append(NamedMetric(name='loss'))
         self.metrics.append(ElapsedRealTime())
@@ -77,11 +71,6 @@ class A2C(Task):
         self.hyper_parameters = {}
         self.batch_size = None
 
-    def finish(self):
-        super().finish()
-        if hasattr(self.dataloader, 'close'):
-            self.dataloader.close()
-
     # Hyper Parameter Settings
     # ---------------------------------------------------------------------
     def get_space(self, **fidelities):
@@ -92,10 +81,11 @@ class A2C(Task):
             },
             'optimizer': self.optimizer.get_space(),
             'lr_schedule': self.lr_scheduler.get_space(),
-            'model': self.actor_critic.get_space()
+            'model': self.actor_critic.get_space(),
+            'gamma': 'loguniform(0.99, 1)'
         }
 
-    def init(self, optimizer=None, lr_schedule=None, model=None, trial=None):
+    def init(self, gamma=0.99, optimizer=None, lr_schedule=None, model=None, trial=None):
         """
         Parameters
         ----------
@@ -108,7 +98,10 @@ class A2C(Task):
         model: Dict
             model hyper parameters
 
-        trial_id: Optional[str]
+        gamma: float
+            reward discount factor
+
+        trial: Optional[str]
             trial id to use for logging.
             When using orion usually it already created a trial for us we just need to append to it
         """
@@ -116,6 +109,7 @@ class A2C(Task):
         optimizer = select(optimizer, {})
         lr_schedule = select(lr_schedule, {})
         model = select(model, {})
+        self.gamma = gamma
 
         self.actor_critic.init(
             **model
@@ -143,11 +137,51 @@ class A2C(Task):
         parameters.update(lr_schedule)
         parameters.update(model)
 
-        self.metrics.on_new_trial(self, parameters, trial)
+        self.metrics.new_trial(parameters, trial)
         self.set_device(self.device)
 
     # Training
     # --------------------------------------------------------------------
+    @property
+    def _epoch(self):
+        return int(self.dataloader.completed_simulations)
+
+    def fit(self, epochs, context=None):
+        self._fix()
+
+        with BadResumeGuard(self):
+            self._start(epochs)
+
+            prev = self._epoch
+            step = 0
+
+            for _, vector in enumerate(self.dataloader):
+                last_state = self.dataloader.state
+                self.metrics.new_batch(step, vector)
+
+                results = self.advantage_actor_critic(last_state, vector)
+                self.metrics.end_batch(step, vector, results)
+
+                step += 1
+
+                # Called every time a simulation gets completed
+                if self._epoch > prev:
+                    self.metrics.new_epoch(self._epoch, None)
+                    self.lr_scheduler.epoch(self._epoch)
+
+                    prev = self._epoch
+                    step = 0
+
+                # Epochs is the number of completed simulations
+                if self.dataloader.completed_simulations + 1 >= epochs:
+                    break
+
+            self.report(pprint=True, print_fun=print)
+
+        self.metrics.end_train()
+        # Free all the file descriptor opened by the Gym envs
+        self.dataloader.close()
+
     def compute_returns(self, value, states):
         reward = value
         returns = []
@@ -200,94 +234,6 @@ class A2C(Task):
             'critic': critic_loss.item()
         }
         return results
-
-    def fit(self, epochs, context=None):
-        # -----------------------------
-        # RL Creates a lot of small torch.tensor
-        # They need to be GCed so pytorch can reuse that memory
-        import gc
-        # Only GC the most recent gen because that where the small tensors are
-        gc.collect(2)
-        # -----------------------------
-        with BadResumeGuard(self):
-            self.actor_stream = Stream()
-            self.critic_stream = Stream()
-
-            self._start(epochs)
-
-            for epoch in range(0, epochs):
-                frame_count = self.frame_count
-                self.epoch(epoch + 1, self.dataloader.iterator())
-                frame_count = self.frame_count - frame_count
-
-            self.report(pprint=True, print_fun=print)
-
-        self.finish()
-
-    def epoch(self, epoch, iterator):
-        self.current_epoch = 0
-        # starting epoch
-        state = iterator.next(action=None)
-        state = state.to(self.device)
-
-        is_done = False
-        batch = 0
-
-        while not is_done:
-            batch, is_done = self.step(batch, state, iterator)
-
-        self.metrics.on_new_epoch(epoch, self, None)
-        self.lr_scheduler.epoch(epoch)
-        return
-
-    def step(self, batch, state, iterator):
-        # Make sure we have as much memory as possible
-        replay_vector = ReplayVector()
-        is_done = False
-
-        # Accumulates simulation steps in batches
-        for step in range(self.num_steps):
-            # Run the actor and critic in parallel
-            with stream(self.actor_stream):
-                action, log_prob, entropy = self.actor_critic.act(state)
-
-            with stream(self.critic_stream):
-                critic = self.actor_critic.critic(state)
-
-            self.actor_stream.synchronize()
-            new_state = iterator.next(action.detach())
-            self.critic_stream.synchronize()
-
-            if new_state is not None:
-                old_state = state
-                state, reward, done, _ = new_state
-                state = state.to(self.device)
-
-                # Make sure all Tensor follows the size below
-                #   (WorkerSize x size) using unsqueeze
-                replay_vector.append(SavedAction(
-                    action=action,
-                    reward=reward.to(device=self.device),
-                    log_prob=log_prob.squeeze(1),
-                    entropy=entropy,
-                    critic=critic,
-                    mask=(1 - done).to(device=self.device),
-                    state=old_state,
-                    next_state=state
-                ))
-            else:
-                is_done = True
-                break
-
-        # optimize for current batch
-        if replay_vector:
-            batch += 1
-            results = self.advantage_actor_critic(state, replay_vector)
-
-            self.metrics.on_new_batch(batch, self, None, results)
-            self.lr_scheduler.step(batch)
-
-        return batch, is_done
 
     # CheckPointing
     # ---------------------------------------------------------------------

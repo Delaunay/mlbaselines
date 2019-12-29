@@ -1,5 +1,5 @@
 from olympus.utils.factory import fetch_factories
-from olympus.utils import seed as init_seed, warning
+from olympus.utils import seed as init_seed, warning, HyperParameters
 
 from torch.nn import Module
 from torch.random import fork_rng
@@ -25,6 +25,63 @@ def register_initialization(name, factory, override=False):
 
 class RegisteredInitNotFound(Exception):
     pass
+
+
+def get_initializers_space():
+    space = {}
+    for k, initializer in registered_initialization.items():
+        space[k] = initializer.get_space()
+
+    return dict(initializer=space)
+
+
+class Initializer:
+    """Lazy Initializer"""
+    def __init__(self, name, seed=0, **kwargs):
+        self.name = name
+        self.hyper_parameters = HyperParameters(space={})
+        self.seed = seed
+        self._initializer = None
+
+        self.initializer_ctor = registered_initialization.get(name)
+
+        if self.initializer_ctor is None:
+            raise RegisteredInitNotFound(name)
+
+        if hasattr(self.initializer_ctor, 'get_space'):
+            self.hyper_parameters.space = self.initializer_ctor.get_space()
+
+        self.hyper_parameters.add_parameters(**kwargs)
+
+    def get_space(self):
+        """Return the dimension space of each parameters"""
+        if self._initializer:
+            warning('Initializer is already set')
+
+        return self.hyper_parameters.missing_parameters()
+
+    def init(self, override=False, **kwargs):
+        if self._initializer and not override:
+            warning('Initializer is already set, use override=True to force re initialization')
+            return self
+
+        self.hyper_parameters.add_parameters(**kwargs)
+        self._initializer = self.initializer_ctor(**self.hyper_parameters.parameters(strict=True))
+
+        return self
+
+    @property
+    def initializer(self):
+        if not self._initializer:
+            self.init()
+
+        return self._initializer
+
+    def __call__(self, model):
+        with fork_rng(enabled=True):
+            init_seed(self.seed)
+
+            return self.initializer(model)
 
 
 def initialize_weights(model, name=None, seed=0, half=False, **kwargs):

@@ -32,8 +32,8 @@ class CheckPointer(Observer):
         default_factory=lambda: option('checkpoint.frequency_epoch', 1, type=int))
 
     # Batch resuming is not supported
-    frequency_trial: int = 1
-    frequency_batch: int = 0
+    frequency_new_trial: int = 1
+    frequency_end_epoch: int = 1
 
     epoch: int = 0
     # checkpoint is done last after all other metrics have finished computing their statistics
@@ -55,14 +55,11 @@ class CheckPointer(Observer):
 
         info('Skipped Checkpoint')
 
-    def on_new_batch(self, step, task, input, context):
-        pass
-
-    def on_new_epoch(self, epoch, task, context):
+    def on_end_epoch(self, task, epoch, context):
         self.epoch = epoch
         self.save(task)
 
-    def on_new_trial(self, task, parameters, trial):
+    def on_new_trial(self, task, step, parameters, trial):
         """On new trial try to resume the new trial"""
         # Make a unique id for resuming
         if trial is None:

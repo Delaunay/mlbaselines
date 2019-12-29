@@ -8,7 +8,7 @@ from torch.optim import Adam
 import torchvision.transforms as transforms
 import torch.nn.functional as F
 
-from olympus.reinforcement.dataloader import RLDataloader
+from olympus.reinforcement.gymenv import RLDataloader
 from olympus.tasks.rl import ReinforcementLearningA2C, ActorCritic
 
 

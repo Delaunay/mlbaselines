@@ -1,4 +1,3 @@
-from dataclasses import dataclass
 from typing import Callable
 
 import numpy as np
@@ -8,16 +7,16 @@ from torch.nn import Module
 import torch.nn as nn
 import torch.nn.functional as F
 from torch.optim import Optimizer
-from torch.utils.data.sampler import BatchSampler, SubsetRandomSampler
+from torch.utils.data import BatchSampler, SubsetRandomSampler
 
 from olympus.tasks.task import Task
-from olympus.metrics import MetricList
-from olympus.utils import get_value
-from olympus.reinforcement.replay import ReplayVector
-from olympus.reinforcement.utils import AbstractActorCritic, SavedAction
+from olympus.utils import select
+from olympus.reinforcement.utils import AbstractActorCritic
+from olympus.resuming import state_dict, load_state_dict, BadResumeGuard
+from olympus.observers import ProgressView, Speed, ElapsedRealTime, CheckPointer, Tracker
+from olympus.metrics.named import NamedMetric
 
 
-@dataclass
 class PPO(Task):
     """
 
@@ -41,18 +40,120 @@ class PPO(Task):
     num_steps of simulations are accumulated together to perform one gradient update
 
     """
-    actor_critic: AbstractActorCritic
-    optimizer: Optimizer
-    criterion: Module = lambda x: x.sum()
-    metrics = MetricList()
-    num_steps: int = 5
-    gamma: float = 0.99
-    eps = np.finfo(np.float32).eps.item()
-    action_sampler: Callable[[], Distribution] = Categorical
-    batch_size: int = None
-    tensor_shape = None
-    frame_count: int = 0
-    dataloader = None
+    def __init__(self, model: AbstractActorCritic, dataloader, optimizer, lr_scheduler, device,
+                 ppo_epoch=5, ppo_batch_size=32, ppo_clip_param=10, ppo_max_grad_norm=1000, criterion=None,
+                 storage=None, logger=None):
+        super(PPO, self).__init__(device=device)
+
+        if criterion is None:
+            criterion = lambda x: x.sum()
+
+        self.actor_critic = model
+        self.lr_scheduler = lr_scheduler
+        self.optimizer: Optimizer = optimizer
+        self.criterion: Module = criterion
+        self.gamma: float = 0.99
+        self.eps = np.finfo(np.float32).eps.item()
+        self.action_sampler: Callable[[], Distribution] = Categorical
+        self.tensor_shape = None
+        self.frame_count: int = 0
+        self.dataloader = dataloader
+        self.storage = storage
+        self._first_epoch = 0
+        self.current_epoch = 0
+
+        self.ppo_epoch = ppo_epoch
+        self.ppo_batch_size = ppo_batch_size
+        self.ppo_clip_param = ppo_clip_param
+        self.ppo_max_grad_norm = ppo_max_grad_norm
+
+        self.metrics.append(NamedMetric(name='loss'))
+        self.metrics.append(ElapsedRealTime())
+        self.metrics.append(Speed())
+        self.metrics.append(ProgressView(speed_observer=self.metrics.get('Speed')))
+
+        if storage:
+            self.metrics.append(CheckPointer(storage=storage))
+
+        if logger is not None:
+            self.metrics.append(Tracker(logger=logger))
+
+        self.hyper_parameters = {}
+        self.batch_size = None
+
+    def finish(self):
+        super().finish()
+        if hasattr(self.dataloader, 'close'):
+            self.dataloader.close()
+
+    # Hyper Parameter Settings
+    # ---------------------------------------------------------------------
+    def get_space(self, **fidelities):
+        """Return hyper parameter space"""
+        return {
+            'task': {  # fidelity(min, max, base logarithm)
+                'epochs': fidelities.get('epochs')
+            },
+            'optimizer': self.optimizer.get_space(),
+            'lr_schedule': self.lr_scheduler.get_space(),
+            'model': self.actor_critic.get_space(),
+            'gamma': 'loguniform(0.99, 1)'
+        }
+
+    def init(self, gamma=0.99, optimizer=None, lr_schedule=None, model=None, trial=None):
+        """
+        Parameters
+        ----------
+        optimizer: Dict
+            Optimizer hyper parameters
+
+        lr_schedule: Dict
+            lr schedule hyper parameters
+
+        model: Dict
+            model hyper parameters
+
+        gamma: float
+            reward discount factor
+
+        trial: Optional[str]
+            trial id to use for logging.
+            When using orion usually it already created a trial for us we just need to append to it
+        """
+
+        optimizer = select(optimizer, {})
+        lr_schedule = select(lr_schedule, {})
+        model = select(model, {})
+        self.gamma = gamma
+
+        self.actor_critic.init(
+            **model
+        )
+
+        # We need to set the device now so optimizer receive cuda tensors
+        self.set_device(self.device)
+        self.optimizer.init(
+            self.actor_critic.parameters(),
+            override=True, **optimizer
+        )
+        self.lr_scheduler.init(
+            self.optimizer,
+            override=True, **lr_schedule
+        )
+
+        self.hyper_parameters = {
+            'optimizer': optimizer,
+            'lr_schedule': lr_schedule,
+            'model': model
+        }
+
+        parameters = {}
+        parameters.update(optimizer)
+        parameters.update(lr_schedule)
+        parameters.update(model)
+
+        self.metrics.on_new_trial(self, parameters, trial)
+        self.set_device(self.device)
 
     def compute_returns(self, value, actions):
         reward = value
@@ -64,7 +165,7 @@ class PPO(Task):
 
         return returns
 
-    def ppo(self, current_state, replay_vector, ppo_epoch=5, ppo_batch_size=32, ppo_clip_param=10, ppo_max_grad_norm=1000):
+    def ppo(self, current_state, replay_vector):
         """New policy gradient methods for reinforcement learning, which alternate  between  split  data
         through  interaction  with  the  environment,  and  optimizing  a“surrogate” objective function
         using stochastic gradient ascent.
@@ -96,11 +197,11 @@ class PPO(Task):
         advantage = (target_v - self.actor_critic.critic(state)).detach()
         all_loss = 0
 
-        self.batch_size = ppo_batch_size
-        for p in range(ppo_epoch):
+        self.batch_size = self.ppo_batch_size
+        for p in range(self.ppo_epoch):
             sampler = BatchSampler(
                 sampler=SubsetRandomSampler(range(len(state))),
-                batch_size=ppo_batch_size,
+                batch_size=self.ppo_batch_size,
                 drop_last=True
             )
 
@@ -115,7 +216,7 @@ class PPO(Task):
 
                 advantage_batch = advantage[indices]
                 L1 = ratio * advantage_batch
-                L2 = torch.clamp(ratio, 1 - ppo_clip_param, 1 + ppo_clip_param) * advantage_batch
+                L2 = torch.clamp(ratio, 1 - self.ppo_clip_param, 1 + self.ppo_clip_param) * advantage_batch
 
                 action_loss = -torch.min(L1, L2).mean()
 
@@ -135,70 +236,85 @@ class PPO(Task):
                 self.optimizer.zero_grad()
                 loss = action_loss + 0.5 * value_loss - 0.001 * entropy
                 loss.backward()
-                nn.utils.clip_grad_norm_(self.actor_critic.parameters(), ppo_max_grad_norm)
+                nn.utils.clip_grad_norm_(self.actor_critic.parameters(), self.ppo_max_grad_norm)
                 self.optimizer.step()
 
-                epoch_loss += loss
+                epoch_loss += loss.item()
                 self.frame_count += self.batch_size
 
             epoch_loss /= count + 1
             all_loss += epoch_loss
 
-        return all_loss / ppo_epoch
+        return {
+            'loss': all_loss / self.ppo_epoch
+        }
 
-    def fit(self, epoch, context=None):
-        for i in range(0, epoch):
-            frame_count = self.frame_count
-            loss = self.epoch(i, iter(self.dataloader))
-            frame_count = self.frame_count - frame_count
+    # Training
+    # --------------------------------------------------------------------
+    @property
+    def _epoch(self):
+        return int(self.dataloader.completed_simulations)
 
-    def epoch(self, iterator):
-        # starting epoch
-        state = iterator.next(action=None)
-        state = state.to(self.device)
+    def fit(self, epochs, context=None):
+        self._fix()
 
-        is_done = False
-        all_loss = []
+        with BadResumeGuard(self):
+            self._start(epochs)
 
-        while not is_done:
-            replay_vector = ReplayVector()
+            prev = self._epoch
+            step = 0
 
-            # Accumulates simulation steps in batches
-            for _ in range(self.num_steps):
-                action, log_prob, entropy = self.actor_critic.act(state)
-                critic = self.actor_critic.critic(state)
+            for _, vector in enumerate(self.dataloader):
+                last_state = self.dataloader.state
 
-                new_state = iterator.next(action)
-                if new_state is not None:
-                    old_state = state
-                    state, reward, done, _ = new_state
-                    state = state.to(self.device)
+                context = self.ppo(last_state, vector)
+                self.metrics.on_new_batch(step, self, context=context)
+                step += 1
 
-                    # Make sure all Tensor follows the size below
-                    #   (WorkerSize x size) using unsqueeze
-                    replay_vector.append(SavedAction(
-                        action      = action,
-                        reward      = reward.unsqueeze(1).to(device=self.device),
-                        log_prob    = log_prob.unsqueeze(1),
-                        entropy     = entropy,
-                        critic      = critic,
-                        mask        = (1 - done).unsqueeze(1).to(device=self.device),
-                        state       = old_state,
-                        next_state  = state
-                    ))
-                else:
-                    is_done = True
+                # Called every time a simulation gets completed
+                if self._epoch > prev:
+                    self.metrics.on_new_epoch(self._epoch, self, None)
+                    self.lr_scheduler.epoch(self._epoch)
+
+                    prev = self._epoch
+                    step = 0
+
+                # Epochs is the number of completed simulations
+                if self.dataloader.completed_simulations + 1 >= epochs:
                     break
 
-            # optimize for current batch
-            if replay_vector:
-                # loss = self.advantage_actor_critic(state, replay_vector)
-                loss = self.ppo(current_state=state, replay_vector=replay_vector)
-                all_loss.append(get_value(loss))
+            self.report(pprint=True, print_fun=print)
 
-        # epoch is done compute the epoch loss
-        sum_loss = 0
-        for loss in all_loss:
-            sum_loss += get_value(loss)
+        self.finish()
 
-        return sum_loss / len(all_loss)
+    # CheckPointing
+    # ---------------------------------------------------------------------
+    def load_state_dict(self, state, strict=True):
+        load_state_dict(self, state, strict, force_default=True)
+        self._first_epoch = state['epoch']
+        self.current_epoch = state['epoch']
+
+    def state_dict(self, destination=None, prefix='', keep_vars=False):
+        state = state_dict(self, destination, prefix, keep_vars, force_default=True)
+        state['epoch'] = self.current_epoch
+        return state
+
+    @property
+    def model(self):
+        return self.actor_critic
+
+    @model.setter
+    def model(self, model):
+        self.actor_critic = model
+
+    def parameters(self):
+        return self.actor_critic.parameters()
+
+    def _fix(self):
+        # -----------------------------
+        # RL Creates a lot of small torch.tensor
+        # They need to be GCed so pytorch can reuse that memory
+        import gc
+        # Only GC the most recent gen because that where the small tensors are
+        gc.collect(2)
+        # -----------------------------

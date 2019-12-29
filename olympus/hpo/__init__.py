@@ -9,9 +9,13 @@ from olympus.utils.stat import StatStream
 import logging
 logging.basicConfig(level=option('orion.debug', logging.WARN, type=int))
 
-from orion.client.experiment import ExperimentClient
-from orion.client import create_experiment
-from orion.core.worker.trial import Trial
+import_error = None
+try:
+    from orion.client.experiment import ExperimentClient
+    from orion.client import create_experiment
+    from orion.core.worker.trial import Trial
+except ImportError as e:
+    import_error = e
 
 
 class TrialIterator:
@@ -22,10 +26,11 @@ class TrialIterator:
     experiment: ExperimentClient
         Orion Experiment
     """
-    def __init__(self, experiment, retries=2):
+    def __init__(self, experiment, retries=2, client=None):
         self.experiment = experiment
         self.time = StatStream(drop_first_obs=1)
         self.retries = retries
+        self.client = client
 
     def __iter__(self):
         return self
@@ -59,28 +64,38 @@ class TrialIterator:
                 info(f'Orion did not suggest more trials (is_done: {self.experiment.is_done}')
                 raise StopIteration
 
+        if self.client is not None:
+            self.client.trial = trial
+
         return trial
 
     next = __next__
 
 
 class OrionClient:
-    def __init__(self, storage_uri=option('orion.uri', 'track://file.json')):
-        self.experiment = None
-        self.trial = None
-        self.storage = get_storage(storage_uri)
+    def __init__(self, algo, storage_uri=option('orion.uri', 'track://file.json'), max_trials=50, **kwargs):
+        if import_error is not None:
+            raise RuntimeError('Orion is not installed!') from import_error
 
-    def new_experiment(self, name, algorithms, space, objective):
+        self.experiment = None
+        self.max_trials = max_trials
+        self.storage_uri = storage_uri
+        self.trial = None
+        self.hpo_config = {
+            algo: kwargs
+        }
+
+    def new_experiment(self, name, space, objective):
         # fetch or create the experiment being ran
         self.experiment = create_experiment(
             name=name,
-            algorithms=algorithms,
+            max_trials=self.max_trials,
             space=space,
-            storage=self.storage + f'?objective={objective}'
+            algorithms=self.hpo_config,
+            strategy='StubParallelStrategy',
+            storage=get_storage(self.storage_uri, objective)
         )
-
-    def __iter__(self):
-        return TrialIterator(self.experiment)
+        return TrialIterator(self.experiment, client=self)
 
     def report(self, name, value, type):
         # Only the main process or master process can report values
@@ -93,4 +108,10 @@ class OrionClient:
             )
 
     def report_objective(self, name, value):
-        return self.report(name, value, type='objective')
+        if rank() == -1 or rank() == 0:
+            return self.report(name, value, type='objective')
+
+    def __getattr__(self, item):
+        if hasattr(self.experiment, item):
+            return getattr(self.experiment, item)
+        raise AttributeError(f'{item} not found')

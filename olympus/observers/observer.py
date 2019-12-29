@@ -20,24 +20,24 @@ class Observer:
     priority: int
         Controls which metric is called first
     """
-    frequency_epoch: int = field(default=0)
-    frequency_batch: int = field(default=0)
-    frequency_trial: int = field(default=0)
+    frequency_new_epoch: int = field(default=0)
+    frequency_new_batch: int = field(default=0)
+    frequency_new_trial: int = field(default=0)
     priority: int = field(default=0)
 
-    def on_new_epoch(self, epoch, task, context):
+    def on_new_epoch(self, task, epoch, context):
         """Called at the end of an epoch, before a new epoch starts"""
         pass
 
-    def on_new_batch(self, step, task, input, context):
+    def on_new_batch(self, task, step, input=None, context=None):
         """Called after a batch has been processed"""
         pass
 
-    def on_new_trial(self, task, parameters, trial_id):
+    def on_new_trial(self, task, step, parameters, trial_id):
         """Called after a trial has been processed"""
         pass
 
-    def start(self, task=None):
+    def on_start_train(self, task, step=None):
         """Called on ce the training starts
 
         Notes
@@ -47,7 +47,7 @@ class Observer:
         """
         pass
 
-    def finish(self, task=None):
+    def on_end_train(self, task, step=None):
         """Called at the end of training after the last epoch"""
         pass
 

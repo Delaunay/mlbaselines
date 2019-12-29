@@ -2,7 +2,7 @@ export OLYMPUS_DATA_PATH=/tmp
 export OLYMPUS_STATE_STORAGE_TIME=0
 export CORES=4
 
-travis: travis-doc travis-minimalist travis-hpo_simple travis-classification travis-classification-parallel travis-detection travis-classification-fp16 travis-unit travis-custom travis-end
+travis: travis-doc travis-unit travis-custom travis-minimalist travis-hpo_simple travis-classification travis-classification-parallel travis-detection travis-classification-fp16 travis-a2c2 travis-a2c travis-end
 
 travis-install:
 	pip install -e .
@@ -52,7 +52,10 @@ travis-end:
 	codecov
 
 travis-a2c: clean
-	COVERAGE_FILE=.coverage.a2c coverage run olympus/baselines/launch.py a2c --verbose 10 --epochs 5 --weight-init glorot_uniform --env-name SpaceInvaders-v0 --parallel-sim 4 --max-steps 32 --optimizer sgd --model toy_rl_convnet --num-steps 32 --gamma 0.99 --orion-database legacy:pickleddb:rc_check.pkl
+	COVERAGE_FILE=.coverage.a2c coverage run olympus/baselines/launch.py a2c --verbose 10 --epochs 5 --weight-init glorot_uniform --env-name SpaceInvaders-v0 --parallel-sim 4 --optimizer sgd --model toy_rl_convnet --num-steps 32
+
+travis-a2c2: clean
+	COVERAGE_FILE=.coverage.a2c2 coverage run olympus/baselines/launch.py a2c --verbose 10 --epochs 10 --weight-init glorot_uniform --env-name chaser --parallel-sim 4 --optimizer sgd --model toy_rl_convnet --num-steps 32
 
 test-parallel: clean
 	olympus --workers 6 --device-sharing classification --batch-size 32 --epochs 300 --dataset test-mnist --model logreg --orion-database legacy:pickleddb:rc_check.pkl
@@ -109,4 +112,6 @@ clean:
 	rm -rf /tmp/olympus/detection | true
 	rm -rf /tmp/olympus/*.json | true
 	rm -rf /tmp/olympus/*.lock | true
+	rm -rf /tmp/olympus/*.pkl | true
+	rm -rf *.pkl *.lock | true
 	mkdir -p /tmp/olympus/

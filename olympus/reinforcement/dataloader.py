@@ -1,118 +1,264 @@
 import torch
+import numpy as np
 
-from olympus.utils.dataloader import DataLoader, GenericStateIterator
-from olympus.reinforcement.environment import ParallelEnvironment
+from olympus.reinforcement.replay import ReplayVector
+from olympus.reinforcement.utils import SavedAction
+from olympus.utils.cuda import Stream, stream
 
 
-class _RLIterator(GenericStateIterator):
-    """Make gym environment behave like iterators
+def to_nchw(states):
+    return states.permute(0, 3, 1, 2)
+
+
+class RLTorchIterator:
+    """Iterates through environment states
 
     Parameters
     ----------
-    env: Env
-        Gym environment or ParallelEnvironment from mlbaseline
+    actor: Union[nn.Module, Callable]
+        Returns the action that should be taken
 
-    max_steps: int
-        Max Frame / steps to generate. Once the max step is reached the iterator returns None
+    critic: Union[nn.Module, Callable]
+        Returns the value of the current state
+
+    max_step: Optional[int]
+        If unspecified the Iterator is infinite, else we stop after max_steps
+
+    no_grad: bool
+        Whether or not the actor and the critic should have their grad computed
+
+    Returns
+    -------
+    A dictionary representing the transition from one state to anoter
+
+    state: Tensor[NCHW, dtype=uint8]
+        State of the game before the action is taken for images (size: (num_parallel, 3, H, W))
+
+    new_state: Tensor[NCHW, dtype=uint8]
+        State of the game after the action is taken for images (size: (num_parallel, 3, H, W))
+
+    action: Tensor[num_parallel, dtype=int]
+        Return the action taken for each parallel simulation
+
+    log_prob: Tensor[num_parallel, dtype=float]
+    entropy: Tensor[num_parallel, dtype=float]
+    critic: Tensor[num_parallel, dtype=float]
+    reward: Tensor[num_parallel, dtype=float]
+    done: Tensor[num_parallel, dtype=bool]
+    info: List[dict] size: num_parallel
     """
+    def __init__(self, environment, actor, critic, device=None, max_step=None, no_grad=False):
+        self.step = 0
+        self.max_step = max_step
+        self.env = environment
+        self.actor = actor
+        self.critic = critic
+        self.actor_stream = Stream()
+        self.critic_stream = Stream()
+        self.grad_ctx = torch.enable_grad
+        self.dtype = torch.float
+        self.completed_simulations = 0
+        self.device = device
+        if self.device is None:
+            self.device = torch.device('cpu')
 
-    def __init__(self, loader, env, max_steps: int = None, transforms=None):
-        super(_RLIterator, self).__init__(loader)
+        if no_grad:
+            self.grad_ctx = torch.no_grad
 
-        self.env = env
-        self.max_steps = max_steps
-        self.init = False
-        self.loader = loader
+        self.state = self._convert(self.env.reset()).to(device=self.device)
 
-        self.transforms = lambda x: x
-        if transforms:
-            self.transforms = transforms
-
-    def next(self, action):
-        if self.init is False:
-            assert action is None
-            self.init = True
-
-            self.loader.batch_id += 1
-            return self.transforms(self.env.reset())
-
-        if self.max_steps is not None and self.loader.batch_id > self.max_steps:
-            self.loader.epoch_id += 1
-            self.loader.batch_id = 0
-            return None
-
-        self.loader.batch_id += 1
-        data = self.env.step(action)
-        r = self.transforms(data[0])
-        return (r,) + data[1:]
-
-
-class RLDataloader(DataLoader):
-    """
-    Parameters
-    ----------
-    num_workers: int
-        number of simulation/game/environment running in parallel
-
-    max_steps: int
-        stop the simulation after max_steps steps
-
-    env_factory: Callable[]
-        Pickable function to be called to initialize the environment on all workers
-
-    env_args:
-        args to pass to the env_factory
-
-    Notes
-    -----
-    Depending on the simulation num_workers can be greatly superior to the number of threads.
-    Users should monitor GPU usage and adjust accordingly
-
-    """
-    def __init__(self, num_workers: int, max_steps: int, state_transforms, env_factory, *env_args):
-        super(RLDataloader, self).__init__()
-
-        if num_workers > 1:
-            self.env = ParallelEnvironment(num_workers, env_factory, *env_args)
-        else:
-            self.env = env_factory(*env_args)
-
-        self._batch_shape = None
-        self.batch_size = num_workers
-        self.max_steps = max_steps
-        self.state_transforms = state_transforms
-
-    def __len__(self):
-        return self.max_steps
-
-    def iterator(self):
-        return _RLIterator(self, self.env, self.max_steps, transforms=self.state_transforms)
-
-    @property
-    def batch_shape(self):
-        if self._batch_shape is None:
-            # Transform might modify the shape of the state so we have to compute the shape using a dummy state
-            with torch.no_grad():
-                tracer = torch.randn((1,) + self.env.observation_space.shape)
-                tracer = self.state_transforms(tracer)
-                self._batch_shape = (self.batch_size,) + tracer.shape[1:]
-
-        return self._batch_shape
-
-    @property
-    def state_vector_shape(self):
-        return self.batch_shape[1:]
-
-    @property
-    def action_vector_size(self):
-        return self.env.action_space.n
-
-    def state_dict(self):
-        return {}
-
-    def load_state_dict(self, data):
-        pass
+    def to(self, device):
+        self.device = device
+        self.state = self.state.to(device=self.device)
+        return self
 
     def close(self):
-        if hasattr(self.env, 'close'):
-            self.env.close()
+        return self.env.close()
+
+    def __iter__(self):
+        return self
+
+    def __len__(self):
+        return 1
+
+    def _convert(self, x):
+        if x is None:
+            return None
+
+        return torch.from_numpy(
+            np.stack(x)
+        ).to(dtype=self.dtype, device=self.device)
+
+    def __next__(self):
+        if self.max_step is not None and self.step >= self.max_step:
+            raise StopIteration
+
+        with self.grad_ctx():
+            with stream(self.actor_stream):
+                action, log_prob, entropy = self.actor(self.state)
+
+            critic = None
+            if self.critic:
+                with stream(self.critic_stream):
+                    critic = self.critic(self.state)
+
+        self.actor_stream.synchronize()
+        state, rew, done, info = self.env.step(action.cpu().numpy())
+        state = self._convert(state).to(device=self.device)
+        self.critic_stream.synchronize()
+
+        transition = {
+            'state'    : self.state,            # Tensor[NCHW, uint8]
+            'new_state': state,                 # Tensor[NCHW, uint8]
+            'action'   : action,                # List[N, int]
+            'log_prob' : log_prob.squeeze(1),   # List[N, int]
+            'entropy'  : entropy,               # List[N, int]
+            'critic'   : critic,                # List[N, int]
+            'reward'   : self._convert(rew),    # List[N, Float]
+            'done'     : self._convert(done),   # List[N, Bool]
+            'info'     : info                   # List[N, dict]
+        }
+
+        self.completed_simulations += transition.get('done').sum()
+        self.step += 1
+        self.state = state
+        return transition
+
+
+class ReplayVectorIterator:
+    """Aggregate Transition into a vector to be used for later"""
+    def __init__(self, iterator: RLTorchIterator, num_steps):
+        self.iterator = iterator
+        self.num_steps = num_steps
+
+    def to(self, device):
+        self.iterator.to(device)
+        return self
+
+    def __iter__(self):
+        return self
+
+    def __len__(self):
+        return len(self.iterator)
+
+    def __next__(self):
+        replay = ReplayVector()
+
+        for step_idx, transition in enumerate(self.iterator):
+            replay.append(SavedAction(
+                action=transition.get('action'),
+                reward=transition.get('reward'),
+                log_prob=transition.get('log_prob'),
+                entropy=transition.get('entropy'),
+                critic=transition.get('critic'),
+                mask=(1 - transition.get('done')),
+                state=transition.get('state'),
+                next_state=transition.get('new_state'),
+                info=transition.get('info')
+            ))
+
+            if step_idx + 1 >= self.num_steps:
+                break
+
+        return replay
+
+    def close(self):
+        return self.iterator.close()
+
+    @property
+    def state(self):
+        """Return the latest state"""
+        return self.iterator.state
+
+    @property
+    def completed_simulations(self):
+        """Number of completed simulations since start"""
+        return self.iterator.completed_simulations
+
+
+def simple_replay_vector(num_steps):
+    def _replay(iterator):
+        return ReplayVectorIterator(iterator, num_steps)
+
+    return _replay
+
+
+class RLDataLoader:
+    """
+    Parameters
+    ----------
+    dataset_environment:
+        Generic Reinforcement Learning environment
+
+    replay:
+        Replay Vector iterator constructor
+
+    transform:
+        Transform to apply to each simulation state
+    """
+    def __init__(self, dataset_environment, actor, critic, replay=None):
+        self.dataset = dataset_environment
+        self.replay = replay
+        self.actor = actor
+        self.critic = critic
+        self.device = torch.device('cpu')
+
+        if self.replay is None:
+            self.replay = simple_replay_vector(1)
+
+    def train(self, no_grad=False):
+        return self.replay(RLTorchIterator(
+            self.dataset.train,
+            self.actor,
+            self.critic,
+            device=self.device,
+            no_grad=no_grad))
+
+    def valid(self):
+        return self.replay(RLTorchIterator(
+            self.dataset.valid,
+            self.actor,
+            self.critic,
+            device=self.device,
+            no_grad=True))
+
+    def test(self):
+        return self.replay(RLTorchIterator(
+            self.dataset.test,
+            self.actor,
+            self.critic,
+            device=self.device,
+            no_grad=True))
+
+    def shutdown(self):
+        self.dataset.close()
+
+    def close(self):
+        self.shutdown()
+
+
+if __name__ == '__main__':
+    from olympus.reinforcement.procgenenv import ProcgenEnvironment
+
+    env = ProcgenEnvironment('coinrun', parallel_env=4)
+
+    def dummy_actor(*args, **kwargs):
+        return env.sample_action(), [0, 0, 0, 0], [0, 0, 0, 0]
+
+    loader = RLDataLoader(
+        env,
+        replay=simple_replay_vector(num_steps=2),
+        actor=dummy_actor,
+        critic=lambda x: [0, 0, 0, 0]
+    )
+
+    train_set = loader.train()
+    for step, i in enumerate(train_set):
+        for k, v in i.to_dict().items():
+
+            if isinstance(v, torch.Tensor):
+                print(f'{k:>30} :', v.shape, v.dtype)
+            else:
+                print(f'{k:>30} :', v)
+
+        break

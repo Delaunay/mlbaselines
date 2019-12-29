@@ -44,7 +44,7 @@ class ClassifierAdversary(Metric):
     loader: DataLoader = None
     time = StatStream(drop_first_obs=1)
 
-    def on_new_epoch(self, epoch, task, context):
+    def on_end_epoch(self, task, epoch, context):
         if self.loader:
             accuracy = 0
             total_loss = 0
@@ -89,7 +89,7 @@ class ClassifierAdversary(Metric):
         acc, loss = task.accuracy(adversarial_images, target)
         return acc, loss
 
-    def on_new_batch(self, step, task, input, context):
+    def on_end_batch(self, task, step, input, context):
         # make the examples
         batch, target = input
 
@@ -101,9 +101,9 @@ class ClassifierAdversary(Metric):
         self.accumulator += acc.item()
         self.count += 1
 
-    def finish(self, task=None):
+    def on_end_train(self, task, step=None):
         if self.count > 0:
-            self.on_new_epoch(None, task, None)
+            self.on_new_epoch(task, step, None)
 
     def value(self):
         results = {

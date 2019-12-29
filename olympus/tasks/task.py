@@ -6,7 +6,7 @@ class Task:
     def __init__(self, device=None):
         self._device = device if device else torch.device('cpu')
         self._first_epoch = 0
-        self._metrics = MetricList()
+        self._metrics = MetricList(task=self)
         self.bad_state = False
         self.dataloader = None
 
@@ -44,8 +44,9 @@ class Task:
             progress.max_step = len(self.dataloader)
 
         if not self.resumed():
-            self.metrics.start(self)
-            self.report(pprint=True, print_fun=print)
+            self.metrics.start_train()
+        else:
+            self.metrics.resume_train(self._first_epoch)
 
     def fit(self, epoch, context=None):
         """Execute a single batch
@@ -78,11 +79,6 @@ class Task:
         if m:
             return self.metrics.report(pprint, print_fun)
 
-    def finish(self):
-        m = self.metrics
-        if m:
-            return self.metrics.finish(self)
-
     def summary(self):
         print(GenerateSummary().task_summary(self))
 
@@ -113,6 +109,15 @@ class Task:
     def state_dict(self, destination=None, prefix='', keep_vars=False):
         """Save a state the task can go back to if an error occur"""
         raise NotImplementedError()
+
+    def _fix(self):
+        # -----------------------------
+        # RL Creates a lot of small torch.tensor
+        # They need to be GCed so pytorch can reuse that memory
+        import gc
+        # Only GC the most recent gen because that where the small tensors are
+        gc.collect(2)
+        # -----------------------------
 
 
 class GenerateSummary:

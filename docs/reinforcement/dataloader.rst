@@ -1,5 +1,5 @@
-olympus.reinforcement.dataloader module
-=======================================
+Reinforcement Loader
+====================
 
 .. automodule:: olympus.reinforcement.dataloader
     :members:

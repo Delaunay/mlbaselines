@@ -14,12 +14,13 @@ class Accuracy(Metric):
     loader: DataLoader = None
     accuracies: list = field(default_factory=list)
     losses: list = field(default_factory=list)
-    frequency_epoch: int = 1
-    frequency_batch: int = 0
     name: str = 'validation'
     eval_time: StatStream = field(default_factory=lambda: StatStream(drop_first_obs=0))
     total_time: int = 0
     metric_stream: Stream = field(default_factory=Stream)
+
+    frequency_new_epoch: int = 1
+    frequency_new_batch: int = 0
 
     def state_dict(self):
         return dict(accuracies=self.accuracies, losses=self.losses)
@@ -54,7 +55,7 @@ class Accuracy(Metric):
 
         return eval_time, acc, loss
 
-    def on_new_epoch(self, epoch, task, context):
+    def on_new_epoch(self, task, epoch, context):
         # I would like to make this completely async
         # but I do not think I can do it easily
         # Good enough for now
@@ -64,11 +65,11 @@ class Accuracy(Metric):
         self.accuracies.append(acc)
         self.losses.append(loss)
 
-    def start(self, task=None):
-        self.on_new_epoch(None, task, None)
+    def on_start_train(self, task, step=None):
+        self.on_new_epoch(task, step, None)
 
-    def finish(self, task=None):
-        self.on_new_epoch(None, task, None)
+    def on_end_train(self, task, step=None):
+        self.on_new_epoch(task, step, None)
 
     def value(self):
         if not self.accuracies:
@@ -92,8 +93,8 @@ class OnlineTrainAccuracy(Metric):
     loss: int = 0
     count: int = 0
 
-    frequency_epoch: int = 1
-    frequency_batch: int = 1
+    frequency_end_epoch: int = 1
+    frequency_end_batch: int = 1
 
     def state_dict(self):
         return dict(
@@ -111,7 +112,7 @@ class OnlineTrainAccuracy(Metric):
         self.loss = state_dict['loss']
         self.count = state_dict['count']
 
-    def on_new_batch(self, step, task, input, context):
+    def on_end_batch(self, task, step, input, context):
         _, targets = input
         predictions = context.get('predictions')
 
@@ -128,7 +129,7 @@ class OnlineTrainAccuracy(Metric):
             self.loss += loss
             self.count += 1
 
-    def on_new_epoch(self, epoch, task, context):
+    def on_end_epoch(self, task, epoch, context):
         if self.count > 0:
             # new epoch
             self.accuracies.append(self.accumulator / self.count)
@@ -137,9 +138,9 @@ class OnlineTrainAccuracy(Metric):
             self.loss = 0
             self.count = 0
 
-    def finish(self, task=None):
+    def on_end_train(self, task, step=None):
         if self.count > 0:
-            self.on_new_epoch(None, None, None)
+            self.on_new_epoch(task, None, None)
 
     def value(self):
         if not self.accuracies:

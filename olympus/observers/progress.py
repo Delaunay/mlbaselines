@@ -14,13 +14,12 @@ def get_time_delta(start):
 
 @dataclass
 class Speed(Observer):
-    epoch = 0
-    step = 0
-
     batch_size: int = 0
 
-    frequency_epoch: int = 1
-    frequency_batch: int = 1
+    frequency_new_epoch: int = 1
+    frequency_end_epoch: int = 1
+    frequency_new_batch: int = 1
+    frequency_end_batch: int = 1
 
     step_time: StatStream = field(default_factory=lambda: StatStream(drop_first_obs=5))
     epoch_time: StatStream = field(default_factory=lambda: StatStream(drop_first_obs=1))
@@ -35,24 +34,17 @@ class Speed(Observer):
             return 0
 
     def on_new_epoch(self, epoch, task, context):
-        self.epoch_time += get_time_delta(self.epoch_start)
         self.epoch_start = datetime.utcnow()
 
-        self.epoch = epoch
-        self.step = 0
+    def on_end_epoch(self, task, epoch, context=None):
+        self.epoch_time += get_time_delta(self.epoch_start)
 
-    def on_new_batch(self, step, task, input, context):
-        self.batch_size = self.guess_batch_size(input)
+    def on_new_batch(self, task, step, input=None, context=None):
+        self.step_start = datetime.utcnow()
+
+    def on_end_batch(self, task, step, input=None, context=None):
         self.step_time += get_time_delta(self.step_start)
-        self.step_start = datetime.utcnow()
-        self.step = step
-
-    def start(self, task=None):
-        self.step_start = datetime.utcnow()
-        self.epoch_start = self.step_start
-
-    def finish(self, task=None):
-        pass
+        self.batch_size = self.guess_batch_size(input)
 
     def value(self):
         result = {}
@@ -77,17 +69,14 @@ class Speed(Observer):
         return {
             'speed_step_time': self.step_time.state_dict(),
             'speed_epoch_time': self.step_time.state_dict(),
-            'speed_epoch': self.epoch,
         }
 
     def load_state_dict(self, state_dict):
         self.step_time.from_dict(state_dict['speed_step_time'])
         self.epoch_time.from_dict(state_dict['speed_epoch_time'])
-        self.epoch = state_dict['speed_epoch']
 
         self.step_start = datetime.utcnow()
         self.epoch_start = datetime.utcnow()
-        self.step = 0
 
 
 @dataclass
@@ -99,10 +88,11 @@ class ProgressView(Observer):
     max_step: int = 0
     step_length: int = 0
     epoch: int = 0
+    step: int = 0
     multiplier: int = 0
 
-    frequency_epoch: int = option('progress.frequency_epoch', 1, type=int)
-    frequency_batch: int = option('progress.frequency_batch', 1, type=int)
+    frequency_end_epoch: int = option('progress.frequency_epoch', 1, type=int)
+    frequency_end_batch: int = option('progress.frequency_batch', 1, type=int)
     frequency_trial: int = 0
 
     orion_handle = None
@@ -145,7 +135,7 @@ class ProgressView(Observer):
             return None
 
         total_steps = self.max_step * self.max_epoch
-        spent_steps = self.max_step * epoch + obs.step
+        spent_steps = self.max_step * epoch + self.step
         remaining_steps = total_steps - spent_steps
 
         avg = obs.step_time.avg
@@ -164,28 +154,21 @@ class ProgressView(Observer):
 
         return ''
 
-    def on_new_epoch(self, epoch, task, context):
+    def on_end_epoch(self, task, epoch, context):
         self.epoch = epoch
-
-        if self.speed_observer:
-            self.max_epoch = max(self.speed_observer.epoch, self.max_epoch)
+        self.max_epoch = max(self.epoch, self.max_epoch)
 
         self.print_fun()
         self.show_progress(epoch)
         self.print_fun()
 
-    def on_new_batch(self, step, task, input, context):
-        if self.speed_observer:
-            step = self.speed_observer.step
-            self.max_step = max(step, self.max_step)
-            self.epoch = self.speed_observer.epoch
+    def on_end_batch(self, task, step, input=None, context=None):
+        self.step = step
+        self.max_step = max(step, self.max_step)
 
         self.show_progress(self.epoch, step)
 
-    def start(self, task=None):
-        pass
-
-    def finish(self, task=None):
+    def on_end_train(self, task, step=None):
         self.print_fun()
 
     def init_speed_observer(self, task):
@@ -211,6 +194,9 @@ class SampleCount(Observer):
     sample_count: int = 0
     epoch: int = 0
 
+    frequency_end_batch: int = 1
+    frequency_end_epoch: int = 1
+
     def state_dict(self):
         return dict(epoch=self.epoch, sample_count=self.sample_count)
 
@@ -218,10 +204,10 @@ class SampleCount(Observer):
         self.sample_count = state_dict['sample_count']
         self.epoch = state_dict['epoch']
 
-    def on_new_epoch(self, epoch, task, context):
+    def on_end_epoch(self, task, epoch, context):
         self.epoch = epoch
 
-    def on_new_batch(self, step, task, input, context):
+    def on_end_batch(self, task, step, input=None, context=None):
         if hasattr(input, '__getitem__'):
             batch_size = len(input[0])
         else:
@@ -241,8 +227,8 @@ class ElapsedRealTime(Observer):
     start_time: datetime = field(default_factory=datetime.utcnow)
     end_time: datetime = field(default_factory=datetime.utcnow)
 
-    def start(self, task=None):
-        pass
+    frequency_end_batch: int = 1
+    frequency_end_train: int = 1
 
     def state_dict(self):
         return self.value()
@@ -250,10 +236,10 @@ class ElapsedRealTime(Observer):
     def load_state_dict(self, state_dict):
         self.start_time = self.end_time - timedelta(seconds=state_dict['elapsed_time'])
 
-    def on_new_batch(self, step, task, input, context):
+    def on_end_batch(self, step, task, input=None, context=None):
         self.end_time = datetime.utcnow()
 
-    def finish(self, task=None):
+    def on_end_train(self, task, step=None):
         self.end_time = datetime.utcnow()
 
     @property

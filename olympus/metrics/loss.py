@@ -13,8 +13,7 @@ from olympus.utils.stat import StatStream
 class Loss(Metric):
     loader: DataLoader = None
     losses: list = field(default_factory=list)
-    frequency_epoch: int = 1
-    frequency_batch: int = 0
+    frequency_end_epoch: int = 1
     name: str = 'validation'
     eval_time: StatStream = field(default_factory=lambda: StatStream(drop_first_obs=0))
     total_time: int = 0
@@ -25,7 +24,7 @@ class Loss(Metric):
     def load_state_dict(self, state_dict):
         self.losses = state_dict['losses']
 
-    def on_new_epoch(self, epoch, task, context):
+    def on_end_epoch(self, task, epoch, context):
         task.model.eval()
 
         with torch.no_grad():
@@ -44,11 +43,11 @@ class Loss(Metric):
 
         task.model.train()
 
-    def start(self, task=None):
-        self.on_new_epoch(None, task, None)
+    def on_start_train(self, task, step=None):
+        self.on_new_epoch(task, step, None)
 
-    def finish(self, task=None):
-        self.on_new_epoch(None, task, None)
+    def on_end_train(self, task, step=None):
+        self.on_new_epoch(task, step, None)
 
     def value(self):
         if not self.losses:

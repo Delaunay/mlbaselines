@@ -42,7 +42,6 @@ class Classification(Task):
     def __init__(self, classifier, optimizer, lr_scheduler, dataloader, criterion=None, device=None,
                  storage=None, logger=None, preprocessor=None):
         super(Classification, self).__init__(device=device)
-
         criterion = select(criterion, CrossEntropyLoss())
 
         self._first_epoch = 0
@@ -140,7 +139,7 @@ class Classification(Task):
         parameters.update(model)
 
         # Trial Creation and Trial resume
-        self.metrics.on_new_trial(self, parameters, trial)
+        self.metrics.new_trial(parameters, trial)
         self.set_device(self.device)
 
     # Training
@@ -152,19 +151,24 @@ class Classification(Task):
 
             for epoch in range(self._first_epoch, epochs):
                 self.epoch(epoch + 1, context)
-                self.report(pprint=True, print_fun=print)
 
-            self.metrics.finish(self)
+            self.metrics.end_train()
             self._first_epoch = epochs
 
     def epoch(self, epoch, context):
         self.current_epoch = epoch
+        self.metrics.new_epoch(epoch, context)
 
         for step, mini_batch in enumerate(self.dataloader):
-            self.step(step, mini_batch, context)
+            self.metrics.new_batch(step, mini_batch, None)
 
-        self.metrics.on_new_epoch(epoch, self, context)
+            results = self.step(step, mini_batch, context)
+
+            self.lr_scheduler.step(step)
+            self.metrics.end_batch(step, mini_batch, results)
+
         self.lr_scheduler.epoch(epoch, self._get_validation_accuracy)
+        self.metrics.end_epoch(epoch, context)
 
     def step(self, step, input, context):
         self.classifier.train()
@@ -185,9 +189,6 @@ class Classification(Task):
             'predictions': predictions.detach()
         }
 
-        # Metrics
-        self.metrics.on_new_batch(step, self, input, results)
-        self.lr_scheduler.step(step)
         return results
     # ---------------------------------------------------------------------
 

@@ -6,11 +6,8 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 from torch.distributions import Normal
-import torchvision.transforms as transforms
 
 import gym
-
-from olympus.reinforcement.dataloader import RLDataloader
 
 
 import sys
@@ -66,26 +63,23 @@ class ActorRAM(nn.Module):
         return torch.argmax(self.forward(x), dim=1)
 
 
-@pytest.mark.parametrize('worker', workers)
-@pytest.mark.parametrize('env_name', environments)
-def test_environment(env_name, worker):
-    loader = RLDataloader(
-        worker,         # Number of parallel simulations
-        200,            # Max number of steps in a simulation
-        # transform state
-        to_nchw,
-        gym.make,
-        env_name
-    )
-
-    iter = loader.iterator()
-    actor = ActorRAM(loader.state_vector_shape, loader.action_vector_size)
-    state = iter.next(action=None)
-
-    for i in range(0, 1):
-        action = actor.act(state.to(dtype=torch.float32))
-        state, reward, done, _ = iter.next(action.detach())
-
-
-if __name__ == '__main__':
-    test_environment('Enduro-ram-v0', 1)
+# @pytest.mark.parametrize('worker', workers)
+# @pytest.mark.parametrize('env_name', environments)
+# def test_environment(env_name, worker):
+#     loader = RLDataloader(
+#         worker,         # Number of parallel simulations
+#         200,            # Max number of steps in a simulation
+#         # transform state
+#         to_nchw,
+#         gym.make,
+#         env_name
+#     )
+#
+#     iter = loader.iterator()
+#     actor = ActorRAM(loader.state_vector_shape, loader.action_vector_size)
+#     state = iter.next(action=None)
+#
+#     for i in range(0, 1):
+#         action = actor.act(state.to(dtype=torch.float32))
+#         state, reward, done, _ = iter.next(action.detach())
+#

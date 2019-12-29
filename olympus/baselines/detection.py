@@ -2,7 +2,7 @@ from argparse import ArgumentParser, Namespace
 
 from olympus.datasets import DataLoader, known_datasets, Dataset, SplitDataset
 from olympus.models import Model, known_models
-from olympus.models.inits import known_initialization
+from olympus.models.inits import known_initialization, Initializer
 from olympus.optimizers import Optimizer, known_optimizers, LRSchedule, known_schedule
 from olympus.tasks import ObjectDetection
 from olympus.tasks.hpo import HPO, fidelity
@@ -92,12 +92,17 @@ def detection_baseline(model, weight_init,
 
     input_size, target_size = loader.get_shapes()
 
+    init = Initializer(
+        weight_init,
+        seed=model_seed,
+        gain=1.0
+    )
+
     model = Model(
         model,
         input_size=input_size,
         output_size=dataset.dataset.dataset.num_classes,
-        weight_init=weight_init,
-        seed=model_seed,
+        weight_init=init,
         half=half)
 
     optimizer = Optimizer(optimizer, half=half)
@@ -161,8 +166,6 @@ def main(**kwargs):
 
     final_task.init(**params)
     final_task.fit(**task_args)
-
-    final_task.finish()
 
     print('=' * 40)
     print('Results')

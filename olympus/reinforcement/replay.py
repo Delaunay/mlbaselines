@@ -85,6 +85,18 @@ class ReplayVector:
     def __reversed__(self):
         return reversed(self.transitions)
 
+    def to_dict(self):
+        return {
+            'state': self.states(),
+            'new_state': self.next_states(),
+            'action': self.actions(),
+            'log_prob': self.log_probs(),
+            'entropy': self.entropies(),
+            'critic': self.critic_values(),
+            'reward': self.rewards(),
+            'mask': self.masks(),
+        }
+
     def describe(self):
         print('rewards      :', self.rewards().shape)
         print('states       :', self.states().shape)

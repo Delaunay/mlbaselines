@@ -12,7 +12,7 @@ schedules = known_schedule()
 
 @pytest.mark.parametrize('schedule', schedules)
 def test_build_schedule(schedule, batch_size=1):
-    model = Model('logreg', weight_init='glorot_uniform', input_size=(1, 28, 28), output_size=(10,))
+    model = Model('logreg', input_size=(1, 28, 28), output_size=(10,))
 
     optimizer = Optimizer(
         'sgd',

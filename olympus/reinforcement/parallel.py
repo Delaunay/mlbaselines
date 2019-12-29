@@ -124,10 +124,11 @@ class _ParallelEnvironmentCleaner(SignalHandler):
 _manager = None
 
 
+# TODO: Manage Seeding HERE
 class ParallelEnvironment:
     """A group of environment that are computed in parallel"""
 
-    def __init__(self, num_workers, env_factory, *env_args):
+    def __init__(self, num_workers, transforms, env_factory, *env_args):
         global _manager
         if _manager is None:
             _manager = Manager()
@@ -157,11 +158,37 @@ class ParallelEnvironment:
         self.waiting = False
         self.closed = False
 
-        self.remotes[0].send(('get_spaces', None))
-        self.observation_space, self.action_space = self.remotes[0].recv()
+        self.transforms = transforms
+        if self.transforms is None:
+            self.transforms = lambda x: x
+
+        self.observation_space, self.action_space = self._get_spaces()
+
         # do not hang in case of error
         self._cleaner = _ParallelEnvironmentCleaner(self)
         self.dtype = torch.float
+
+    def _get_spaces(self):
+        self.remotes[0].send(('get_spaces', None))
+        observation_space, action_space = self.remotes[0].recv()
+
+        observation_space = self._to_shape(observation_space)
+        action_space = self._to_shape(action_space)
+
+        input = torch.randn((1,) + observation_space)
+        observation_space = self.transforms(input).shape[1:]
+
+        return observation_space, action_space
+
+    def _to_shape(self, space):
+        if isinstance(space, (tuple, torch.Size)):
+            return space
+
+        import gym
+        if isinstance(space, gym.spaces.Discrete):
+            return space.n,
+
+        return space.shape
 
     @property
     def state_space(self):
@@ -178,13 +205,12 @@ class ParallelEnvironment:
         self.waiting = False
 
         obs, rewards, dones, infos = zip(*results)
-        return self._convert(np.stack(obs)),\
+        return self.transforms(self._convert(np.stack(obs))),\
                self._convert(np.stack(rewards)),\
                self._convert(np.stack(dones)), infos
 
     def step(self, actions):
         assert self.waiting is not True, 'should call step_wait after step_async!'
-        actions = actions.detach().cpu().numpy()
         self.vector_stat.step += 1
 
         s = time.time()
@@ -244,13 +270,13 @@ class ParallelEnvironment:
         for remote in self.remotes:
             remote.send(('reset', None))
 
-        return self._convert(np.stack([remote.recv() for remote in self.remotes]))
+        return self.transforms(self._convert(np.stack([remote.recv() for remote in self.remotes])))
 
     def reset_task(self):
         for remote in self.remotes:
             remote.send(('reset_task', None))
 
-        return self._convert(np.stack([remote.recv() for remote in self.remotes]))
+        return self.transforms(self._convert(np.stack([remote.recv() for remote in self.remotes])))
 
     def get_spaces(self):
         return self.observation_space, self.action_space

@@ -23,7 +23,7 @@ class Initialization:
 
 
 class Uniform(Initialization):
-    def __init__(self, a=0.0, b=1.0):
+    def __init__(self, a, b):
         self.a = a
         self.b = b
         # self.gen = torch.Generator()
@@ -37,14 +37,42 @@ class Uniform(Initialization):
         #   weight.uniform_(self.a, self.b, generator=self.gen)
         torch.nn.init.uniform_(weight, self.a, self.b)
 
+    @staticmethod
+    def get_space():
+        return {
+            'a': 'uniform(0, 1)',
+            'b': 'uniform(1, 2)'
+        }
+
+    @staticmethod
+    def defaults():
+        return {
+            'a': 0,
+            'b': 1
+        }
+
 
 class Normal(Initialization):
-    def __init__(self, mean=0.0, std=1.0):
+    def __init__(self, mean, std):
         self.mean = mean
         self.std = std
 
     def layer_init(self, weight):
         torch.nn.init.normal_(weight, self.mean, self.std)
+
+    @staticmethod
+    def get_space():
+        return {
+            'mean': 'normal(0, 1)',
+            'std': 'normal(1, 1)'
+        }
+
+    @staticmethod
+    def defaults():
+        return {
+            'mean': 0,
+            'std': 1
+        }
 
 
 class Orthogonal(Initialization):
@@ -53,6 +81,14 @@ class Orthogonal(Initialization):
 
     def layer_init(self, weight):
         torch.nn.init.orthogonal_(weight, self.gain)
+
+    @staticmethod
+    def get_space():
+        return {'gain': 'uniform(0, 1)'}
+
+    @staticmethod
+    def defaults():
+        return {'gain': 1}
 
 
 builders = {

@@ -4,7 +4,9 @@ Reinforcement Learning
 .. toctree::
 
    dataloader
-   environment
+   parallel
+   gymenv
+   procgenenv
    replay
 
 Module contents

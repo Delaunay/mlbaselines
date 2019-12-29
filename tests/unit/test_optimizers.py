@@ -10,7 +10,7 @@ optimizers = known_optimizers()
 
 @pytest.mark.parametrize('optimizer', optimizers)
 def test_build_optimizer(optimizer, batch_size=1):
-    model = Model('logreg', weight_init='glorot_uniform', input_size=(1, 28, 28), output_size=(10,))
+    model = Model('logreg', input_size=(1, 28, 28), output_size=(10,))
 
     optimizer = Optimizer(
         optimizer,

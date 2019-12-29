@@ -5,7 +5,7 @@ from olympus.metrics import Accuracy
 from olympus.observers import ElapsedRealTime
 
 from olympus.models import Model, known_models
-from olympus.models.inits import known_initialization
+from olympus.models.inits import known_initialization, Initializer
 
 from olympus.optimizers import Optimizer, known_optimizers, LRSchedule, known_schedule
 
@@ -108,12 +108,17 @@ def classification_baseline(model, weight_init,
 
     input_size, target_size = loader.get_shapes()
 
+    init = Initializer(
+        weight_init,
+        seed=model_seed,
+        gain=1.0
+    )
+
     model = Model(
         model,
         input_size=input_size,
         output_size=target_size[0],
-        weight_init=weight_init,
-        seed=model_seed,
+        weight_init=init,
         half=half)
 
     optimizer = Optimizer(optimizer, half=half)
@@ -183,8 +188,6 @@ def main(**kwargs):
 
         final_task.init(**params)
         final_task.fit(epochs=args.epochs)
-
-        final_task.finish()
 
         print('=' * 40)
         print('Final Trial Results')

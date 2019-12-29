@@ -1,16 +1,11 @@
 import json
-import os
-import hashlib
 import time
 
 from olympus.tasks.task import Task
-from olympus.utils import warning, error, info
-from olympus.utils import get_storage, show_dict
-from olympus.utils.options import options
-from olympus.hpo import TrialIterator
+from olympus.utils import warning, error, info, show_dict
+from olympus.hpo import OrionClient
 
-from orion.client import create_experiment
-from orion.core.utils import flatten
+from olympus.utils.functional import flatten
 
 
 def _generate_arguments(obj_space, all_args):
@@ -42,16 +37,12 @@ class HPO(Task):
     def __init__(self, experiment_name, task, algo,
                  storage='legacy:pickleddb:test.pkl', max_trials=50, **kwargs):
         super(HPO, self).__init__()
-        self.experiment_name = experiment_name
-        self.task_maker = task
-        self.experiment = None
-        self._missing_parameters = []
+        self.name = experiment_name
         self.fidelities = {}
-        self.max_trials = max_trials
-        self.storage_uri = storage
-        self.hpo_config = {
-            algo: kwargs
-        }
+        self.task_maker = task
+        self.client = OrionClient(
+            algo, storage, max_trials, **kwargs
+        )
 
     @staticmethod
     def _drop_empty_group(space):
@@ -85,21 +76,14 @@ class HPO(Task):
         print('-' * 40)
         print(json.dumps(space, indent=2))
 
-        self.experiment = create_experiment(
-            name=self.experiment_name,
-            max_trials=self.max_trials,
-            space=space,
-            algorithms=self.hpo_config,
-            strategy='StubParallelStrategy',
-            storage=get_storage(self.storage_uri, objective)
-        )
+        self.metrics.start_train()
 
-        self.metrics.start(self)
-        iterator = TrialIterator(self.experiment)
+        iterator = self.client.new_experiment(self.name, space, objective)
         for idx, trial in enumerate(iterator):
+
             new_task = self.task_maker()
             self._set_orion_progress(new_task)
-            show_dict(flatten.flatten(trial.params))
+            show_dict(flatten(trial.params))
 
             params = trial.params
             task_arguments = params.pop('task')
@@ -107,19 +91,17 @@ class HPO(Task):
             # FIXME: should not use a trial object, should be an ID
             new_task.init(trial=trial, **params)
             new_task.fit(**task_arguments)
-            new_task.finish()
 
             metrics = new_task.metrics.value()
             val = metrics[objective]
 
-            results = [dict(name='ValidationErrorRate', value=1 - val, type='objective')]
-            self.experiment.observe(trial, results)
+            self.client.report_objective('ValidationErrorRate', 1 - val)
 
-        self.metrics.finish(self)
+        self.metrics.end_train()
         return self.get_best_trial()
 
     def get_best_trial(self):
-        completed_trials = self.experiment.fetch_trials_by_status('completed')
+        completed_trials = self.client.fetch_trials_by_status('completed')
 
         best_eval = completed_trials[0].objective.value
         best_trial = completed_trials[0]
@@ -136,17 +118,17 @@ class HPO(Task):
     def _set_orion_progress(self, task):
         progress = task.metrics.get('ProgressView')
         if progress:
-            progress.orion_handle = self.experiment
+            progress.orion_handle = self.client
 
     @property
     def best_trial(self):
         return self.get_best_trial()
 
     def is_done(self):
-        return self.experiment.is_done
+        return self.client.is_done
 
     def is_broken(self):
-        return self.experiment.is_broken
+        return self.client.is_broken
 
     def wait_done(self, timeout=60, sleep_step=0.1):
         if not self.is_broken() and not self.is_done():

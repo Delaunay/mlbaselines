@@ -2,7 +2,8 @@ import torch
 import torch.nn as nn
 
 from olympus.models.module import Module
-from olympus.models.inits import initialize_weights, known_initialization
+from olympus.models.inits import Initializer, known_initialization
+
 from olympus.utils import MissingArgument, warning, LazyCall, HyperParameters
 from olympus.utils.factory import fetch_factories
 from olympus.utils.fp16 import network_to_half
@@ -35,6 +36,9 @@ def try_convert(x, device, dtype):
         return x.to(device=device, dtype=dtype)
 
     return x
+
+
+default_init = Initializer('glorot_uniform', seed=0, gain=1.0)
 
 
 # TODO: Make Model distributed here
@@ -94,17 +98,24 @@ class Model(nn.Module):
     _dtype = torch.float32
     _device = torch.device('cpu')
 
-    def __init__(self, name=None, *, half=False, model=None, input_size=None, output_size=None, weight_init='glorot_uniform', seed=0):
+    def __init__(self, name=None, *, half=False, model=None, input_size=None, output_size=None, weight_init=default_init):
         super(Model, self).__init__()
         self.transform = lambda x: try_convert(x, self.device, self.dtype)
         self.half = half
-        self.seed = seed
         self._model = None
 
         # Track defined hyper parameters
         self.hyper_parameters = HyperParameters(space=Model.MODEL_BASE_SPACE)
-        if weight_init:
-            self.hyper_parameters.add_parameters(weight_init=weight_init)
+
+        # If init is set then we can add its hyper parameters
+        self.weight_init = weight_init
+        if weight_init is not None:
+            # replace weight init by its own hyper parameters
+            space = weight_init.get_space()
+            if space:
+                self.hyper_parameters.space.update(dict(weight_init=space))
+            else:
+                self.hyper_parameters.add_parameters(weight_init=weight_init.name)
 
         # Make a Lazy Model that will be initialized once all the hyper parameters are set
         if model:
@@ -143,14 +154,13 @@ class Model(nn.Module):
         return self.hyper_parameters.missing_parameters()
 
     def init(self, override=False, weight_init=None, **model_hyperparams):
+
         self._model = self.model_builder.invoke(**model_hyperparams)
 
-        parameters = self.hyper_parameters.parameters(strict=False)
-        if weight_init is not None:
-            parameters['weight_init'] = weight_init
+        if weight_init:
+            self.weight_init.init(**weight_init)
 
-        init_name = parameters['weight_init']
-        initialize_weights(self._model, name=init_name, seed=self.seed)
+        self.weight_init(self._model)
 
         if self.half:
             self._model = network_to_half(self._model)

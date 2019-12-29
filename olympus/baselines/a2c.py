@@ -1,9 +1,10 @@
 from argparse import ArgumentParser, Namespace
 
 from olympus.models import Model, known_models
-from olympus.models.inits import known_initialization
+from olympus.models.inits import known_initialization, Initializer
 
-from olympus.reinforcement.dataloader import RLDataloader
+from olympus.reinforcement import Environment
+from olympus.reinforcement.dataloader import RLDataLoader, simple_replay_vector
 from olympus.observers import ElapsedRealTime
 from olympus.optimizers import Optimizer, known_optimizers
 from olympus.optimizers.schedules import LRSchedule, known_schedule
@@ -16,8 +17,6 @@ from olympus.utils.functional import flatten
 from olympus.utils.options import option
 from olympus.utils.storage import StateStorage
 from olympus.utils.tracker import TrackLogger
-
-import gym
 
 DEFAULT_EXP_NAME = 'reinforcement_{env_name}_{model}_{optimizer}_{lr_scheduler}_{weight_init}'
 base = option('base_path', '/tmp/olympus')
@@ -88,29 +87,36 @@ def arguments():
     return parser
 
 
-def a2c_baseline(env_name, parallel_sim, max_steps, weight_init, model, model_seed, optimizer,
-                 lr_scheduler, gamma, num_steps, half, device, logger, storage, **config):
+def a2c_baseline(env_name, parallel_sim, weight_init, model, model_seed, optimizer,
+                 lr_scheduler, num_steps, half, device, logger, storage, **config):
     def to_nchw(states):
         return states.permute(0, 3, 1, 2)
 
-    loader = RLDataloader(
-        parallel_sim,       # Number of parallel simulations
-        max_steps,          # Max number of steps in a simulation
-        to_nchw,            # transform state
-        gym.make,
-        env_name
+    env = Environment(
+        env_name,
+        parallel_env=parallel_sim,
+        transforms=to_nchw
     )
 
-    input_size = loader.state_vector_shape
-    output_size = (loader.action_vector_size,)
+    init = Initializer(
+        weight_init,
+        seed=model_seed,
+        gain=1.0
+    )
 
     model = Model(
         model,
-        input_size=input_size,
-        output_size=output_size[0],
-        weight_init=weight_init,
-        seed=model_seed,
+        input_size=env.input_size,
+        output_size=env.target_size[0],
+        weight_init=init,
         half=half)
+
+    loader = RLDataLoader(
+        env,
+        replay=simple_replay_vector(num_steps=num_steps),
+        actor=model.act,
+        critic=model.critic
+    )
 
     optimizer = Optimizer(optimizer, half=half)
 
@@ -119,9 +125,7 @@ def a2c_baseline(env_name, parallel_sim, max_steps, weight_init, model, model_se
     task = A2C(
         model=model,
         optimizer=optimizer,
-        gamma=gamma,
-        num_steps=num_steps,
-        dataloader=loader,
+        dataloader=loader.train(),
         lr_scheduler=lr_schedule,
         device=device,
         storage=storage,
@@ -174,7 +178,6 @@ def main(**kwargs):
 
         final_task.init(**params)
         final_task.fit(**task_args)
-        final_task.finish()
 
         print('=' * 40)
         print('Final Trial Results')
