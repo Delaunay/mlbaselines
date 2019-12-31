@@ -1,11 +1,16 @@
 import os
+import shutil
+
 import numpy as np
 import torch
 from PIL import Image
-import shutil
 
+from filelock import FileLock
 from torchvision import datasets
-from olympus.datasets.dataset import AllDataset, VariableShape, DictionaryShape, Bound1D
+
+from olympus.datasets.dataset import AllDataset
+from olympus.utils.dtypes import VariableShape, Bound1D, DictionaryShape
+from olympus.utils import option
 
 
 class CocoDetection(datasets.CocoDetection):
@@ -62,11 +67,12 @@ class _PennFudanDataset:
 
     URL = 'https://www.cis.upenn.edu/~jshi/ped_html/PennFudanPed.zip'
 
-    def __init__(self, root, transforms=None, target_transforms=None, download=True):
-        self.root = root
+    def __init__(self, data_path, transforms=None, target_transforms=None, download=True):
+        self.root = data_path
 
         if download:
-            self.download()
+            with FileLock('penndufan.lock', timeout=option('download.lock.timeout', 4 * 60, type=int)):
+                self.download()
 
         self.transforms = transforms
         self.target_transforms = target_transforms

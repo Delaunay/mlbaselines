@@ -23,7 +23,8 @@ import torchvision.transforms.functional as F
 
 from olympus.datasets.dataset import AllDataset
 from olympus.datasets.tensorhdf5 import HDF5Dataset
-from olympus.datasets.transform import to_pil_image
+from olympus.transforms import to_pil_image
+from olympus.utils import option
 
 # download-url: http://cs231n.stanford.edu/tiny-imagenet-200.zip
 
@@ -56,7 +57,7 @@ def build_dataset(data_path, timeout=10 * 60):
         return
 
     try:
-        with FileLock(os.path.join(data_path, DIRNAME + ".lock"), timeout=timeout):
+        with FileLock(os.path.join(data_path, DIRNAME + ".lock"), timeout=option('download.lock.timeout', timeout, type=int)):
             download(data_path)
             unzip(data_path)
             create_hdf5(data_path)

@@ -53,11 +53,5 @@ if __name__ == '__main__':
             'dash': ['plotly', 'plotly-express', 'dash', 'altair'],
             # > pip install git+git://github.com/Delaunay/track
             # 'track': ['']
-            # NVIDIA Apex would go there if there was a pip to give
-            # note that this does not work you need to install it manually
-            # > pip install git+git://github.com/NVIDIA/apex.git@606c3dcccd6ca70
-            # 'float16': [
-            #    'git+git://github.com/NVIDIA/apex.git@606c3dcccd6ca70'
-            # ]
         }
     )

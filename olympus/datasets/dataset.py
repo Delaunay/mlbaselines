@@ -1,23 +1,7 @@
 from collections import defaultdict
 
 from torch.utils.data.dataset import Dataset as TorchDataset
-from typing import Callable, Tuple
-
-
-class Bound1D:
-    def __init__(self, min, max):
-        self.min = min
-        self.max = max
-
-
-class VariableShape:
-    def __init__(self, **shapes):
-        self.shapes = shapes
-
-
-class DictionaryShape:
-    def __init__(self, *keys):
-        self.keys = keys
+from typing import Callable
 
 
 class AllDataset(TorchDataset):

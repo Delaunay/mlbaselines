@@ -1,5 +1,5 @@
-procgenenv
-==========
+Procedurally Generated Environment
+==================================
 
 .. automodule:: olympus.reinforcement.procgenenv
     :members:

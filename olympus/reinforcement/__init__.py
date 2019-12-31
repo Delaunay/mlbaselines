@@ -5,6 +5,7 @@ registered_environment = fetch_factories('olympus.reinforcement', __file__)
 
 
 def known_environments(*category_filters, include_unknown=False):
+    """List known environments"""
     if not category_filters:
         return registered_environment.keys()
 
@@ -24,6 +25,7 @@ def known_environments(*category_filters, include_unknown=False):
 
 
 def register_environment(name, factory, override=False):
+    """Register a new environment backend"""
     global registered_environment
 
     if name in registered_environment:
@@ -40,6 +42,7 @@ class RegisteredEnvironmentNotFound(Exception):
 
 
 class Environment:
+    """Generic Reinforcement Learning Environment, can run multiple simulation in parallel"""
     def __init__(self, env_name, transforms=None, rand_seed=None, train_size=1024, valid_size=128, test_size=128, parallel_env=8,
                  num_thread=4,
                  distribution_mode='easy'):

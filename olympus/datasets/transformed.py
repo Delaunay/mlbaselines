@@ -1,6 +1,4 @@
 from torch.utils.data.dataset import Subset
-from torchvision.transforms.functional import to_pil_image
-from torchvision import transforms
 
 
 class TransformedSubset(Subset):
@@ -18,8 +16,3 @@ class TransformedSubset(Subset):
         return data, target
 
 
-def minimize(size):
-    return transforms.Compose([
-        to_pil_image,
-        transforms.Resize(7),
-        transforms.ToTensor()])
