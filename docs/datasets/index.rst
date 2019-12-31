@@ -17,4 +17,4 @@ Datasets
    svhn
    tensorhdf5
    tinyimagenet
-   transform
+   transformed

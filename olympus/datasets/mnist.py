@@ -1,10 +1,12 @@
 import functools
 
+from filelock import FileLock
 import torch
 from torchvision import datasets, transforms
 
 from olympus.datasets.dataset import AllDataset
-from olympus.datasets.transform import minimize
+from olympus.transforms import minimize
+from olympus.utils import option
 
 
 class MNIST(AllDataset):
@@ -52,14 +54,17 @@ class MNIST(AllDataset):
 
         transform = transforms.Compose(transformations)
 
-        train_dataset = datasets.MNIST(
-            data_path, train=True, download=True,
-            transform=transforms.ToTensor()
-        )
-        test_dataset = datasets.MNIST(
-            data_path, train=False, download=True,
-            transform=transforms.ToTensor()
-        )
+        with FileLock('mnist.lock', timeout=option('download.lock.timeout', 4 * 60, type=int)):
+            train_dataset = datasets.MNIST(
+                data_path, train=True, download=True,
+                transform=transforms.ToTensor()
+            )
+
+        with FileLock('mnist.lock', timeout=option('download.lock.timeout', 4 * 60, type=int)):
+            test_dataset = datasets.MNIST(
+                data_path, train=False, download=True,
+                transform=transforms.ToTensor()
+            )
 
         if test_size is None:
             test_size = len(test_dataset)

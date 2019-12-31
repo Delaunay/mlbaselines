@@ -1,4 +1,13 @@
 import torch
+from torchvision.transforms.functional import to_pil_image
+from torchvision import transforms
+
+
+def minimize(size):
+    return transforms.Compose([
+        to_pil_image,
+        transforms.Resize(7),
+        transforms.ToTensor()])
 
 
 class Preprocessor:

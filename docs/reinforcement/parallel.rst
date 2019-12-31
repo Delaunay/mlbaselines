@@ -1,5 +1,5 @@
-olympus.reinforcement.environment module
-========================================
+Parallel Environments
+=====================
 
 .. automodule:: olympus.reinforcement.parallel
     :members:

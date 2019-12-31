@@ -5,7 +5,7 @@ from torch.utils.data import DataLoader as TorchDataLoader, Dataset as TorchData
 
 from olympus.utils import warning, option, MissingArgument
 from olympus.utils.factory import fetch_factories
-from olympus.datasets.transform import TransformedSubset
+from olympus.datasets.transformed import TransformedSubset
 from olympus.datasets.split import generate_splits
 from olympus.datasets.sampling import RandomSampler
 

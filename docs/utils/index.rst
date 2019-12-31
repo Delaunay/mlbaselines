@@ -3,7 +3,6 @@ Utilities
 
 .. toctree::
 
-   dataloader
    dtypes
    factory
    fp16

@@ -1,5 +1,5 @@
-olympus.reinforcement.replay module
-===================================
+Replay Vector
+=============
 
 .. automodule:: olympus.reinforcement.replay
     :members:

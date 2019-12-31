@@ -2,11 +2,19 @@ import functools
 
 import numpy
 
-from torchvision.models import detection
+# Older version of torchvision do not have the detection models
+import_error = None
+try:
+    from torchvision.models import detection
+except ImportError as e:
+    import_error = e
 
 
 def maskrcnn_resnet50_fpn(input_size=None, output_size=None):
     """with pretrained_backbone"""
+    if import_error is not None:
+        raise import_error
+
     if not isinstance(output_size, int):
         output_size = numpy.product(input_size)
 
@@ -15,6 +23,9 @@ def maskrcnn_resnet50_fpn(input_size=None, output_size=None):
 
 def keypointrcnn_resnet50_fpn(input_size=None, output_size=None):
     """with pretrained_backbone"""
+    if import_error is not None:
+        raise import_error
+
     if not isinstance(output_size, int):
         output_size = numpy.product(input_size)
 
@@ -22,6 +33,9 @@ def keypointrcnn_resnet50_fpn(input_size=None, output_size=None):
 
 
 def _fasterrcnn_resnet_fpn(backbone='resnet50', num_classes=91, pretrained_backbone=True, **kwargs):
+    if import_error is not None:
+        raise import_error
+
     from torchvision.models.detection.faster_rcnn import FasterRCNN, resnet_fpn_backbone
 
     backbone = resnet_fpn_backbone(backbone, pretrained_backbone)
@@ -33,6 +47,9 @@ def _fasterrcnn_resnet_fpn(backbone='resnet50', num_classes=91, pretrained_backb
 
 def fasterrcnn_resnet_fpn(input_size=None, output_size=None, backbone='resnet50'):
     """with pretrained_backbone"""
+    if import_error is not None:
+        raise import_error
+
     if not isinstance(output_size, int):
         output_size = numpy.product(input_size)
 

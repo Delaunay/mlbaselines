@@ -1,7 +1,9 @@
+from filelock import FileLock
 import torch
 from torchvision import datasets, transforms
 
 from olympus.datasets.dataset import AllDataset
+from olympus.utils import option
 
 
 class FashionMNIST(AllDataset):
@@ -42,15 +44,17 @@ class FashionMNIST(AllDataset):
 
     """
     def __init__(self, data_path):
-        train_dataset = datasets.FashionMNIST(
-            data_path, train=True, download=True,
-            transform=transforms.ToTensor()
-        )
+        with FileLock('FashionMNIST.lock', timeout=option('download.lock.timeout', 4 * 60, type=int)):
+            train_dataset = datasets.FashionMNIST(
+                data_path, train=True, download=True,
+                transform=transforms.ToTensor()
+            )
 
-        test_dataset = datasets.FashionMNIST(
-            data_path, train=False, download=True,
-            transform=transforms.ToTensor()
-        )
+        with FileLock('FashionMNIST.lock', timeout=option('download.lock.timeout', 4 * 60, type=int)):
+            test_dataset = datasets.FashionMNIST(
+                data_path, train=False, download=True,
+                transform=transforms.ToTensor()
+            )
 
         super(FashionMNIST, self).__init__(
             torch.utils.data.ConcatDataset([train_dataset, test_dataset]),

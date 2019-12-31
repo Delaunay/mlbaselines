@@ -1,7 +1,9 @@
+from filelock import FileLock
 import torch
 from torchvision import datasets, transforms
 
 from olympus.datasets.dataset import AllDataset
+from olympus.utils import option
 
 
 class SVHN(AllDataset):
@@ -43,13 +45,15 @@ class SVHN(AllDataset):
 
     """
     def __init__(self, data_path):
-        train_dataset = datasets.SVHN(
-            data_path, split='train', download=True,
-            transform=transforms.ToTensor())
+        with FileLock('SVHN.lock', timeout=option('download.lock.timeout', 4 * 60, type=int)):
+            train_dataset = datasets.SVHN(
+                data_path, split='train', download=True,
+                transform=transforms.ToTensor())
 
-        test_dataset = datasets.SVHN(
-            data_path, split='test', download=True,
-            transform=transforms.ToTensor())
+        with FileLock('SVHN.lock', timeout=option('download.lock.timeout', 4 * 60, type=int)):
+            test_dataset = datasets.SVHN(
+                data_path, split='test', download=True,
+                transform=transforms.ToTensor())
 
         super(SVHN, self).__init__(
             torch.utils.data.ConcatDataset([train_dataset, test_dataset]),
