@@ -31,6 +31,11 @@ params = {
         'momentum': 0.04081791544572477,
         'weight_decay': 6.2091793568732874e-06
     },
+    'model': {
+        'initializer': {
+            'gain': 1.0
+        }
+    }
 }
 keys = [
     'online_train_accuracy',

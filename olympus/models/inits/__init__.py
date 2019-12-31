@@ -60,6 +60,10 @@ class Initializer:
 
         return self.hyper_parameters.missing_parameters()
 
+    def get_current_space(self):
+        """Get currently defined parameter space"""
+        return self.hyper_parameters.parameters(strict=False)
+
     def init(self, override=False, **kwargs):
         if self._initializer and not override:
             warning('Initializer is already set, use override=True to force re initialization')

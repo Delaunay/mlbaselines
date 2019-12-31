@@ -1,0 +1,12 @@
+{
+    "model": "logreg",
+    "optimizer": {"sgd":{
+        "lr": 0.001,
+        "weight_decay": 0.001
+    }},
+    "schedule": "none",
+    "optimizer.momentum": 0.99,
+    "batch-size": 32,
+    "epochs": 100,
+    "initializer.gain": 1
+}

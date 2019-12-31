@@ -8,7 +8,7 @@ import sys
 from typing import List, Dict
 
 from olympus.utils.gpu import GpuMonitor
-from olympus.utils import info, warning
+from olympus.utils import info, warning, parse_args
 
 
 def get_available_tasks():
@@ -88,7 +88,8 @@ def simple_launch(task_name, script_args):
     """Launch the task without creating another python interpreter"""
     module = __import__("olympus.baselines.{}".format(task_name), fromlist=[''])
     parser = module.arguments()
-    args = parser.parse_args(script_args)
+
+    args = parse_args(parser, script_args)
     module.main(**vars(args))
     return None
 

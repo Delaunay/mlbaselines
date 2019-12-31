@@ -2,7 +2,7 @@ import torch
 import torch.nn as nn
 
 from olympus.models.module import Module
-from olympus.models.inits import Initializer, known_initialization
+from olympus.models.inits import Initializer, known_initialization, get_initializers_space
 
 from olympus.utils import MissingArgument, warning, LazyCall, HyperParameters
 from olympus.utils.factory import fetch_factories
@@ -93,7 +93,7 @@ class Model(nn.Module):
         if name nor model were not set
     """
     MODEL_BASE_SPACE = {
-        'weight_init': 'choices({})'.format(list(known_initialization()))
+        'initializer': 'choices({})'.format(list(known_initialization()))
     }
     _dtype = torch.float32
     _device = torch.device('cpu')
@@ -113,9 +113,9 @@ class Model(nn.Module):
             # replace weight init by its own hyper parameters
             space = weight_init.get_space()
             if space:
-                self.hyper_parameters.space.update(dict(weight_init=space))
+                self.hyper_parameters.space.update(dict(initializer=space))
             else:
-                self.hyper_parameters.add_parameters(weight_init=weight_init.name)
+                self.hyper_parameters.add_parameters(initializer=weight_init.name)
 
         # Make a Lazy Model that will be initialized once all the hyper parameters are set
         if model:
@@ -153,12 +153,16 @@ class Model(nn.Module):
         """Return hyper parameter space"""
         return self.hyper_parameters.missing_parameters()
 
-    def init(self, override=False, weight_init=None, **model_hyperparams):
+    def get_current_space(self):
+        """Get currently defined parameter space"""
+        return self.hyper_parameters.parameters(strict=False)
+
+    def init(self, override=False, initializer=None, **model_hyperparams):
 
         self._model = self.model_builder.invoke(**model_hyperparams)
 
-        if weight_init:
-            self.weight_init.init(**weight_init)
+        if initializer:
+            self.weight_init.init(**initializer)
 
         self.weight_init(self._model)
 

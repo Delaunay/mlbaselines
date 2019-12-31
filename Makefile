@@ -21,6 +21,12 @@ travis-hpo_simple: clean
 travis-classification: clean
 	COVERAGE_FILE=.coverage.classify coverage run --parallel-mode olympus/baselines/launch.py classification -v 10 --batch-size 32 --epochs 5 --dataset test-mnist --model logreg
 
+travis-classification-hp: clean
+	COVERAGE_FILE=.coverage.classify coverage run --parallel-mode olympus/baselines/launch.py classification -v 10 --batch-size 32 --epochs 5 --dataset test-mnist --model logreg --optimizer.lr 0.001
+
+travis-classification-config: clean
+	COVERAGE_FILE=.coverage.classify coverage run --parallel-mode olympus/baselines/launch.py classification --arg-file ./examples/arguments.json --dataset test-mnist --epochs 5
+
 travis-classification-parallel: clean
 	rm -rf /tmp/olympus/classification | true
 	COVERAGE_FILE=.coverage.classify.parallel coverage run --parallel-mode olympus/baselines/launch.py --workers $${CORES} --device-sharing classification -v 10 --batch-size 32 --epochs 5 --dataset test-mnist --model logreg

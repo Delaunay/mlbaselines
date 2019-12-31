@@ -206,6 +206,10 @@ class Optimizer(TorchOptimizer):
 
         return self.hyper_parameters.missing_parameters()
 
+    def get_current_space(self):
+        """Get currently defined parameter space"""
+        return self.hyper_parameters.parameters(strict=False)
+
     @property
     def defaults(self):
         """Returns the default hyper parameter of the underlying optimizer"""
