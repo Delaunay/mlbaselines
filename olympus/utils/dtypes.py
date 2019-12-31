@@ -44,3 +44,19 @@ CHW = C, H, W
 NCHW = N, C, H, W
 
 Image = Tensor[CHW]
+
+
+class Bound1D:
+    def __init__(self, min, max):
+        self.min = min
+        self.max = max
+
+
+class VariableShape:
+    def __init__(self, **shapes):
+        self.shapes = shapes
+
+
+class DictionaryShape:
+    def __init__(self, *keys):
+        self.keys = keys

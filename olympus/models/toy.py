@@ -1,4 +1,4 @@
-from functools import reduce
+from functools import reduce, partial
 
 import torch
 import torch.nn as nn
@@ -60,11 +60,9 @@ class ConvNet(nn.Module):
         return self.forward(states).sum(dim=1)
 
 
-def convnet(input_size, output_size):
-    return ConvNet(input_size, output_size)
-
-
 builders = {
-    'toy_rl_convnet': convnet
+    'toy_rl_convnet16': partial(ConvNet, hidden_size=16),
+    'toy_rl_convnet32': partial(ConvNet, hidden_size=32),
+    'toy_rl_convnet64': partial(ConvNet, hidden_size=64)
 }
 

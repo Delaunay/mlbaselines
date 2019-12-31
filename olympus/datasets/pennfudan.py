@@ -5,7 +5,9 @@ from PIL import Image
 import shutil
 
 from torchvision import datasets
-from olympus.datasets.dataset import AllDataset, VariableShape, DictionaryShape, Bound1D
+
+from olympus.datasets.dataset import AllDataset
+from olympus.utils.dtypes import VariableShape, Bound1D, DictionaryShape
 
 
 class CocoDetection(datasets.CocoDetection):

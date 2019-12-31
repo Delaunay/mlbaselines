@@ -52,10 +52,10 @@ travis-end:
 	codecov
 
 travis-a2c: clean
-	COVERAGE_FILE=.coverage.a2c coverage run olympus/baselines/launch.py a2c --verbose 10 --epochs 5 --weight-init glorot_uniform --env-name SpaceInvaders-v0 --parallel-sim 4 --optimizer sgd --model toy_rl_convnet --num-steps 32
+	COVERAGE_FILE=.coverage.a2c coverage run olympus/baselines/launch.py a2c --verbose 10 --epochs 5 --weight-init glorot_uniform --env-name SpaceInvaders-v0 --parallel-sim 4 --optimizer sgd --model toy_rl_convnet16 --num-steps 32
 
 travis-a2c2: clean
-	COVERAGE_FILE=.coverage.a2c2 coverage run olympus/baselines/launch.py a2c --verbose 10 --epochs 10 --weight-init glorot_uniform --env-name chaser --parallel-sim 4 --optimizer sgd --model toy_rl_convnet --num-steps 32
+	COVERAGE_FILE=.coverage.a2c2 coverage run olympus/baselines/launch.py a2c --verbose 10 --epochs 10 --weight-init glorot_uniform --env-name chaser --parallel-sim 4 --optimizer sgd --model toy_rl_convnet16 --num-steps 32
 
 test-parallel: clean
 	olympus --workers 6 --device-sharing classification --batch-size 32 --epochs 300 --dataset test-mnist --model logreg --orion-database legacy:pickleddb:rc_check.pkl

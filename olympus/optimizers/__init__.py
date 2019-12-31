@@ -194,8 +194,8 @@ class Optimizer(TorchOptimizer):
 
     def _wrap_optimizer(self, optimizer):
         if self.half:
-            import apex.fp16_utils.fp16_optimizer as apex_optimizer
-            return apex_optimizer.FP16_Optimizer(optimizer, **self.half_args)
+            from olympus.utils.fp16 import FP16Optimizer
+            return FP16Optimizer(optimizer, **self.half_args)
 
         return optimizer
 
