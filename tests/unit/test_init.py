@@ -10,6 +10,11 @@ def test_model_init():
             'momentum': 0.04081791544572477,
             'weight_decay': 6.2091793568732874e-06
         },
+        'model': {
+            'initializer': {
+                'gain': 1.0
+            }
+        }
     }
 
     device = fetch_device()

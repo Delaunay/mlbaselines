@@ -66,6 +66,11 @@ jobs:
         . venv/bin/activate
         make travis-classification
 
+    - name: no-hpo
+      run: |
+        . venv/bin/activate
+        make travis-classification-config
+
     - name: upload-coverage
       env:
         CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}

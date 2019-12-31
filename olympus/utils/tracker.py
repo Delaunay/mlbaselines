@@ -32,6 +32,7 @@ class TrackLogger:
     def __init__(self, project, *, group=None, storage_uri=options('metric.storage', 'file://track_test.json')):
         self.client = TrackClient(storage_uri)
         self.client.set_project(Project(name=project))
+        # print(self.client.project)
         if group:
             self.client.set_group(TrialGroup(name=group))
 
@@ -39,7 +40,7 @@ class TrackLogger:
         # if UID is set then used the UID
         # this so when we are using orion we use its trial and not create another one
         trial = Trial(parameters=parameters)
-        if trial_id:
+        if trial_id is not None:
             try:
                 trial = Trial()
                 trial.uid = trial_id

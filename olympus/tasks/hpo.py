@@ -2,7 +2,7 @@ import json
 import time
 
 from olympus.tasks.task import Task
-from olympus.utils import warning, error, info, show_dict
+from olympus.utils import warning, error, info, show_dict, drop_empty_key
 from olympus.hpo import OrionClient
 
 from olympus.utils.functional import flatten
@@ -44,15 +44,6 @@ class HPO(Task):
             algo, storage, max_trials, **kwargs
         )
 
-    @staticmethod
-    def _drop_empty_group(space):
-        new_space = {}
-        for key, val in space.items():
-            if val:
-                new_space[key] = val
-
-        return new_space
-
     def fit(self, objective, step=None, input=None, context=None, **fidelities):
         """Train the model a few times and return a best trial/set of parameters"""
         self.fidelities = fidelities
@@ -70,7 +61,7 @@ class HPO(Task):
         #  256 trial =>   1
 
         task = self.task_maker()
-        space = HPO._drop_empty_group(task.get_space(**self.fidelities))
+        space = drop_empty_key(task.get_space(**self.fidelities))
 
         print('Research Space')
         print('-' * 40)

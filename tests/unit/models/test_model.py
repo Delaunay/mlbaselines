@@ -2,13 +2,7 @@ import pytest
 
 import torch
 
-from olympus.models import Model, known_models
-
-
-def test_model_default_hyper():
-    m: Model = Model('resnet18', weight_init=None)
-
-    assert dict(m.get_space()) != dict()
+from olympus.models import Model
 
 
 def test_model_fixed_init():
