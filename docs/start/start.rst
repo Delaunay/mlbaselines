@@ -83,6 +83,4 @@ Olympus comes with its own integrated hyper optimizer, Orion, so you will never 
 You can find below a fully functional example.
 It is only 40 lines long and yet supports multi gpu training, mixed precision, hyper parameter search and more!
 
-.. literalinclude:: ../../examples/hpo_simple.py
-   :language: python
-   :linenos:
+See :ref:`hpo-simple-example`

@@ -1,5 +1,6 @@
+git+git://github.com/Epistimio/sample-space.git@master#egg=sspace
 git+git://github.com/Epistimio/orion.git@develop#egg=orion
-git+git://github.com/Delaunay/track.git@master#egg=track
+git+git://github.com/Delaunay/cqueue.git@master#egg=msgqueue
 gym
 procgen
 atari_py
@@ -7,3 +8,12 @@ plotly
 plotly-express
 dash
 altair
+ConfigSpace
+torch
+torchvision
+h5py
+psycopg2-binary
+gym
+tqdm
+pandas
+filelock

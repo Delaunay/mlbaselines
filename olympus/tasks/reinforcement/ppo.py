@@ -13,7 +13,7 @@ from olympus.tasks.task import Task
 from olympus.utils import select
 from olympus.reinforcement.utils import AbstractActorCritic
 from olympus.resuming import state_dict, load_state_dict, BadResumeGuard
-from olympus.observers import ProgressView, Speed, ElapsedRealTime, CheckPointer, Tracker
+from olympus.observers import ProgressView, Speed, ElapsedRealTime, CheckPointer
 from olympus.metrics.named import NamedMetric
 
 
@@ -75,9 +75,6 @@ class PPO(Task):
         if storage:
             self.metrics.append(CheckPointer(storage=storage))
 
-        if logger is not None:
-            self.metrics.append(Tracker(logger=logger))
-
         self.hyper_parameters = {}
         self.batch_size = None
 
@@ -100,7 +97,7 @@ class PPO(Task):
             'gamma': 'loguniform(0.99, 1)'
         }
 
-    def init(self, gamma=0.99, optimizer=None, lr_schedule=None, model=None, trial=None):
+    def init(self, gamma=0.99, optimizer=None, lr_schedule=None, model=None, uid=None):
         """
         Parameters
         ----------
@@ -152,7 +149,7 @@ class PPO(Task):
         parameters.update(lr_schedule)
         parameters.update(model)
 
-        self.metrics.on_new_trial(self, parameters, trial)
+        self.metrics.on_new_trial(self, parameters, uid)
         self.set_device(self.device)
 
     def compute_returns(self, value, actions):

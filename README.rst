@@ -60,3 +60,19 @@ even when optimizing over hyper parameters !
    :linenos:
 
 
+Install
+~~~~~~~
+
+.. code-block:: bash
+
+    pip install git+git://github.com/mila-iqia/olympus.git
+
+
+with fANOVA
+-----------
+
+.. code-block:: bash
+
+    sudo apt-get install swig
+    # pip install pyrex
+    pip install fanova

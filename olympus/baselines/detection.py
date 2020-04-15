@@ -4,12 +4,16 @@ from olympus.datasets import DataLoader, known_datasets, Dataset, SplitDataset
 from olympus.models import Model, known_models
 from olympus.models.inits import known_initialization, Initializer
 from olympus.optimizers import Optimizer, known_optimizers, LRSchedule, known_schedule
+from olympus.observers import ElapsedRealTime
+
 from olympus.tasks import ObjectDetection
-from olympus.tasks.hpo import HPO, fidelity
-from olympus.utils import fetch_device, set_verbose_level, select
+from olympus.hpo import HPOptimizer, Fidelity
+from olympus.tasks.hpo import HPO
+
+from olympus.utils import fetch_device, set_verbose_level, required, show_dict
 from olympus.utils.options import option
 from olympus.utils.storage import StateStorage
-from olympus.utils.tracker import TrackLogger
+from olympus.utils.functional import flatten
 from olympus.metrics import Loss
 
 
@@ -24,10 +28,10 @@ def arguments():
         '--experiment-name', type=str, default=DEFAULT_EXP_NAME,  metavar='EXP_NAME',
         help='Name of the experiment in Orion storage (default: {})'.format(DEFAULT_EXP_NAME))
     parser.add_argument(
-        '--model', type=str, metavar='MODEL_NAME', choices=known_models(), required=True,
+        '--model', type=str, metavar='MODEL_NAME', choices=known_models(), default=required,
         help='Name of the model')
     parser.add_argument(
-        '--dataset', type=str, metavar='DATASET_NAME', choices=known_datasets(), required=True,
+        '--dataset', type=str, metavar='DATASET_NAME', choices=known_datasets(), default=required,
         help='Name of the dataset')
     parser.add_argument(
         '--optimizer', type=str, default='sgd',
@@ -47,6 +51,9 @@ def arguments():
     parser.add_argument(
         '--epochs', type=int, default=300, metavar='N',
         help='maximum number of epochs to train (default: 300)')
+    parser.add_argument(
+        '--min-epochs', type=int, default=20, metavar='MN',
+        help='minimum number of epochs to train (default: 20) for HPO')
     parser.add_argument(
         '--model-seed', type=int, default=1,
         help='random seed for model initialization (default: 1)')
@@ -135,44 +142,47 @@ def main(**kwargs):
     device = fetch_device()
     experiment_name = args.experiment_name.format(**kwargs)
 
-    client = TrackLogger(experiment_name, storage_uri=args.database)
-
     # save partial results here
     state_storage = StateStorage(
         folder=option('state.storage', f'{base}/detection'),
         time_buffer=30)
 
     def main_task():
-        return detection_baseline(device=device, logger=client, storage=state_storage, **kwargs)
+        return detection_baseline(device=device, storage=state_storage, **kwargs)
 
-    hpo = HPO(
-        experiment_name,
-        task=main_task,
-        algo='ASHA',
-        seed=1,
-        num_rungs=5,
-        num_brackets=1,
-        max_trials=300,
-        storage=select(args.orion_database, f'track:{args.database}')
-    )
+    space = main_task().get_space()
 
-    hpo.fit(epochs=fidelity(args.epochs), objective='validation_loss')
+    params = {}
+    if space:
+        show_dict(space)
+        hpo = HPOptimizer('hyperband', space=space,
+                          fidelity=Fidelity(args.min_epochs, args.epochs).to_dict())
 
-    # Train using train+valid for the final result
-    final_task = detection_baseline(device=device, logger=client, storage=state_storage, **kwargs, hpo_done=True)
+        hpo_task = HPO(hpo, main_task)
+        hpo_task.metrics.append(ElapsedRealTime())
 
-    params = hpo.best_trial.params
-    task_args = params.pop('task')
+        trial = hpo_task.fit(objective='validation_loss')
+        print(f'HPO is done, objective: {trial.objective}')
+        params = trial.params
+    else:
+        print('No hyper parameter missing, running the experiment...')
+    # ------
 
-    final_task.init(**params)
-    final_task.fit(**task_args)
+    # Run the experiment with the best hyper parameters
+    # -------------------------------------------------
+    if params is not None:
+        # Train using train + valid for the final result
+        final_task = detection_baseline(device=device, **kwargs, hpo_done=True)
+        final_task.init(**params)
+        final_task.fit(epochs=args.epochs)
 
-    print('=' * 40)
-    print('Results')
-    print('-' * 40)
-    final_task.report(pprint=True, print_fun=print)
-    print('=' * 40)
+        print('=' * 40)
+        print('Final Trial Results')
+        show_dict(flatten(params))
+        final_task.report(pprint=True, print_fun=print)
+        print('=' * 40)
 
 
 if __name__ == '__main__':
-    main(**vars(arguments().parse_args()))
+    from olympus.utils import parse_args
+    main(**vars(parse_args(arguments())))

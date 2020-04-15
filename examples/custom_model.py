@@ -13,6 +13,10 @@ class MyCustomModel(nn.Module):
         return self.main(x)
 
 
+# Register my model
+builders = {'my_model': MyCustomModel}
+
+
 if __name__ == '__main__':
     model = Model(
         model=MyCustomModel,

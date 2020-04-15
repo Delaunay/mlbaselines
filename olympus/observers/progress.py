@@ -168,9 +168,6 @@ class ProgressView(Observer):
 
         self.show_progress(self.epoch, step)
 
-    def on_end_train(self, task, step=None):
-        self.print_fun()
-
     def init_speed_observer(self, task):
         if not self.speed_observer and task:
             self.speed_observer = task.metrics.get('Speed', None)

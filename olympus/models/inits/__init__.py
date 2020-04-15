@@ -1,5 +1,5 @@
 from olympus.utils.factory import fetch_factories
-from olympus.utils import seed as init_seed, warning, HyperParameters
+from olympus.utils import set_seeds as init_seed, warning, HyperParameters
 
 from torch.nn import Module
 from torch.random import fork_rng
@@ -55,9 +55,6 @@ class Initializer:
 
     def get_space(self):
         """Return the dimension space of each parameters"""
-        if self._initializer:
-            warning('Initializer is already set')
-
         return self.hyper_parameters.missing_parameters()
 
     def get_current_space(self):

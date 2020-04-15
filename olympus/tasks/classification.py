@@ -2,7 +2,7 @@ import torch
 
 from torch.nn import Module, CrossEntropyLoss
 
-from olympus.observers import ElapsedRealTime, SampleCount, ProgressView, Speed, CheckPointer, Tracker
+from olympus.observers import ElapsedRealTime, SampleCount, ProgressView, Speed, CheckPointer
 from olympus.metrics import OnlineTrainAccuracy
 from olympus.tasks.task import Task
 from olympus.utils import select, drop_empty_key
@@ -40,7 +40,7 @@ class Classification(Task):
         Where to save checkpoints in case of failures
     """
     def __init__(self, classifier, optimizer, lr_scheduler, dataloader, criterion=None, device=None,
-                 storage=None, logger=None, preprocessor=None):
+                 storage=None, preprocessor=None):
         super(Classification, self).__init__(device=device)
         criterion = select(criterion, CrossEntropyLoss())
 
@@ -62,9 +62,6 @@ class Classification(Task):
 
         if storage:
             self.metrics.append(CheckPointer(storage=storage))
-
-        if logger is not None:
-            self.metrics.append(Tracker(logger=logger))
         # ------------------------------------------------------------------
 
         if preprocessor is not None:
@@ -74,12 +71,9 @@ class Classification(Task):
 
     # Hyper Parameter Settings
     # ---------------------------------------------------------------------
-    def get_space(self, **fidelities):
+    def get_space(self):
         """Return hyper parameter space"""
         return drop_empty_key({
-            'task': {                       # fidelity(min, max, base logarithm)
-                'epochs': fidelities.get('epochs')
-            },
             'optimizer': self.optimizer.get_space(),
             'lr_schedule': self.lr_scheduler.get_space(),
             'model': self.model.get_space()
@@ -93,7 +87,7 @@ class Classification(Task):
             'model': self.model.get_current_space()
         }
 
-    def init(self, optimizer=None, lr_schedule=None, model=None, trial=None):
+    def init(self, optimizer=None, lr_schedule=None, model=None, uid=None):
         """
         Parameters
         ----------
@@ -145,7 +139,7 @@ class Classification(Task):
         hyperparameters = self.get_current_space()
 
         # Trial Creation and Trial resume
-        self.metrics.new_trial(hyperparameters, trial)
+        self.metrics.new_trial(hyperparameters, uid)
         self.set_device(self.device)
 
     # Training

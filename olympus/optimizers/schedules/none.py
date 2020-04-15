@@ -11,10 +11,10 @@ class NoLR(LRScheduleInterface):
     def load_state_dict(self, state_dict):
         pass
 
-    def epoch(self, epoch, metrics=None):
+    def epoch(self, epoch=None, metrics=None):
         pass
 
-    def step(self, step, metrics=None):
+    def step(self, step=None, metrics=None):
         pass
 
     @staticmethod

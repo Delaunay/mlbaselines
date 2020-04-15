@@ -1,0 +1,165 @@
+
+.pydict {
+
+}
+
+.pydict_key {
+    margin-right:10px
+}
+
+.pydict_value {
+}
+
+.pydict_item {
+
+}
+
+
+.pylist {
+
+}
+
+.pylist_value {
+
+}
+
+
+body{
+    margin-left:auto;
+    margin-right:auto;
+    font-family: monospace;
+    font-size: 12px;
+}
+
+.projects-list {
+    display: inline-block;
+}
+
+.project-details {
+    display: inline-block;
+}
+
+.track-project {
+    display: inline-block;
+}
+
+
+h3 {
+    font-size: 14px;
+}
+
+h4 {
+    font-size: 14px;
+    text-decoration: underline;
+    font-weight: bold;
+}
+
+button {
+    height: 100%,
+    width: 100%
+}
+
+.container {
+    // border-style: dotted;
+    // max-width: none;
+    // margin:none;
+    // padding:none;
+}
+
+.workspace{
+    height: calc(100% - 250px);
+    border-style: dotted;
+    margin:5px;
+    padding:5px;
+}
+
+.small-col {
+  float: left;
+  width: 14%;
+  display:inline-block;
+  border-style: dotted;
+  padding:4px;
+  margin:2px;
+  height: 250px;
+  overflow-y: scroll
+}
+
+.bigger-col {
+    width: 34%;
+    float: left;
+    display:inline-block;
+    border-style: dotted;
+    padding:4px;
+    height: 250px;
+    margin:2px;
+    overflow-y: scroll
+}
+
+.big-col {
+  float: left;
+  width: 70%;
+  display:inline-block;
+  border-style: dotted;
+  padding:5px;
+  margin:5px;
+  height: 100%;
+}
+
+
+input[type="radio"]{
+    padding:5px;
+    margin:5px
+}
+
+.form-group {
+    margin-bottom: 0;
+}
+
+
+.details {
+    text-align: left;
+}
+
+.tabs {
+    padding: 0;
+}
+
+.tab {
+    padding: 0;
+}
+
+#base-eng {
+    padding: 0;
+}
+
+#sql-eng {
+    padding: 0;
+}
+
+.sql-input {
+    width: 99%;
+    padding: 5px;
+    margin: 5px;
+}
+
+.toolbox {
+    border-style: dotted;
+    padding:5px;
+    margin:5px;
+    display: inline-block;
+    width: 100%;
+    min-height:25px;
+}
+
+#graph_dials {
+    vertical-align: middle;
+    margin: none;
+}
+
+
+#workspace {
+    border-style: dotted;
+    padding:5px;
+    margin:5px;
+    margin-bottom: 1rem;
+}

@@ -1,13 +1,14 @@
 SKIP_TEST=False
 try:
-    from olympus.report.pages.group import GroupPage
-    from olympus.report.pages.trial import TrialPage
-    from olympus.report.pages.project import ProjectPage
+    from olympus.dashboard.pages.group import GroupPage
+    from olympus.dashboard.pages.trial import TrialPage
+    from olympus.dashboard.pages.project import ProjectPage
+
+    from track.persistence import get_protocol
 except ImportError:
     SKIP_TEST = True
 
 
-from track.persistence import get_protocol
 import pytest
 import os
 

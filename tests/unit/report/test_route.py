@@ -1,4 +1,4 @@
-from olympus.report.dashboard import router, add_regex_route, add_route, DuplicateRoute
+from olympus.dashboard.dashboard import router, add_regex_route, add_route, DuplicateRoute
 import pytest
 
 

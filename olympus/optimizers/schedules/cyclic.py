@@ -21,10 +21,10 @@ class CyclicLR(LRScheduleAdapter):
         state_dict['scale_fn'] = self.schedule.scale_fn
         self.schedule.load_state_dict(state_dict)
 
-    def epoch(self, epoch, metrics=None):
+    def epoch(self, epoch=None, metrics=None):
         pass
 
-    def step(self, step, metrics=None):
+    def step(self, step=None, metrics=None):
         self.schedule.step()
 
     @staticmethod

@@ -1,11 +1,11 @@
 import torch
 from torch.nn import Module
 
-from olympus.utils import select
+from olympus.utils import select, drop_empty_key
 from olympus.tasks.task import Task
 from olympus.metrics import OnlineLoss
 from olympus.resuming import state_dict, load_state_dict, BadResumeGuard
-from olympus.observers import ProgressView, Speed, ElapsedRealTime, CheckPointer, Tracker, SampleCount
+from olympus.observers import ProgressView, Speed, ElapsedRealTime, CheckPointer, SampleCount
 
 
 class ObjectDetection(Task):
@@ -32,23 +32,17 @@ class ObjectDetection(Task):
         if storage:
             self.metrics.append(CheckPointer(storage=storage))
 
-        if logger is not None:
-            self.metrics.append(Tracker(logger=logger))
-
     # Hyper Parameter Settings
     # ---------------------------------------------------------------------
-    def get_space(self, **fidelities):
+    def get_space(self):
         """Return hyper parameter space"""
-        return {
-            'task': {       # fidelity(min, max, base logarithm)
-                'epochs': fidelities.get('epochs')
-            },
+        return drop_empty_key({
             'optimizer': self.optimizer.get_space(),
             'lr_schedule': self.lr_scheduler.get_space(),
             'model': self.model.get_space()
-        }
+        })
 
-    def init(self, optimizer=None, lr_schedule=None, model=None, trial=None):
+    def init(self, optimizer=None, lr_schedule=None, model=None, uid=None):
         optimizer = select(optimizer, {})
         lr_schedule = select(lr_schedule, {})
         model = select(model, {})
@@ -73,7 +67,7 @@ class ObjectDetection(Task):
         parameters.update(model)
 
         # Trial Creation and Trial resume
-        self.metrics.new_trial(parameters, trial)
+        self.metrics.new_trial(parameters, uid)
         self.set_device(self.device)
 
     # Training

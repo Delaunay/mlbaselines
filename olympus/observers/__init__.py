@@ -3,7 +3,6 @@ import json
 from olympus.observers.observer import Observer
 from olympus.observers.progress import *
 from olympus.observers.checkpointer import CheckPointer
-from olympus.observers.tracking import Tracker
 from olympus.utils import warning, error
 
 

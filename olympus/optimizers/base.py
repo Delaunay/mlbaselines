@@ -1,4 +1,4 @@
-import torch.optim.optimizer as optim
+import torch.optim as optim
 
 
 class OptimizerInterface(optim.Optimizer):

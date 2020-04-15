@@ -17,10 +17,10 @@ class ExponentialLR(LRScheduleAdapter):
     def load_state_dict(self, state_dict):
         self.schedule.load_state_dict(state_dict)
 
-    def epoch(self, epoch, metrics=None):
-        self.schedule.step(epoch)
+    def epoch(self, epoch=None, metrics=None):
+        self.schedule.step()
 
-    def step(self, step, metrics=None):
+    def step(self, step=None, metrics=None):
         pass
 
     @staticmethod

@@ -12,8 +12,11 @@ from olympus.utils.storage import BaseStorage
 
 
 def unique_trial_id(task, o_params):
+    # uid = o_params.get('uid')
+    # if uid is not None:
+    #     return uid
+
     params = copy.deepcopy(o_params)
-    params.pop('task', None)
 
     hash = hashlib.sha256()
     hash.update(task.encode('utf8'))
@@ -38,14 +41,14 @@ class CheckPointer(Observer):
     epoch: int = 0
     # checkpoint is done last after all other metrics have finished computing their statistics
     priority: int = -11
-    trial_id = None
+    uid = None
 
     def save(self, task):
         was_saved = False
         state = state_dict(task)
 
         if state:
-            was_saved = self.storage.save(self.trial_id, state)
+            was_saved = self.storage.save(self.uid, state)
         else:
             warning('The state dictionary was empty!')
 
@@ -59,24 +62,21 @@ class CheckPointer(Observer):
         self.epoch = epoch
         self.save(task)
 
-    def on_new_trial(self, task, step, parameters, trial):
+    def on_new_trial(self, task, step, parameters, uid):
         """On new trial try to resume the new trial"""
         # Make a unique id for resuming
-        if trial is None:
-            self.trial_id = unique_trial_id(task.__class__.__name__, parameters)
-        else:
-            # /!\/!\/!\/!\/!\/!\/!\/!\/!\/!\/!\/!\/!\
-            # /!\ hash_params ignore fidelity     /!\ Do not update this code if you do not know
-            # /!\/!\/!\/!\/!\/!\/!\/!\/!\/!\/!\/!\/!\ what that means
-            self.trial_id = trial.hash_params
+        uid = parameters.get('uid', uid)
 
-        state = self.storage.safe_load(self.trial_id, device=task.device)
+        if uid is None:
+            self.uid = unique_trial_id(task.__class__.__name__, parameters)
+
+        state = self.storage.safe_load(self.uid, device=task.device)
 
         if state is not None:
             load_state_dict(task, state)
-            info(f'Resuming (trial_id: {self.trial_id})')
+            info(f'Resuming (trial_id: {self.uid})')
         else:
-            info(f'Starting a new (trial_id: {self.trial_id})')
+            info(f'Starting a new (trial_id: {self.uid})')
 
     def value(self):
         return {}

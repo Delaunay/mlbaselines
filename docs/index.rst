@@ -10,14 +10,7 @@
 .. toctree::
    :caption: Examples
 
-   examples/minimalist
-   examples/hpo_simple
-
-
-.. toctree::
-   :caption: Extending
-
-   extending/index
+   examples/index
 
 
 .. toctree::

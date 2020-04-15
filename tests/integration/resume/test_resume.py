@@ -37,6 +37,9 @@ params = {
         }
     }
 }
+
+UID = '93c88038692bf4baf715ca3806d8a46347a646552f08ede113ef68efae6f1579'
+
 keys = [
     'online_train_accuracy',
     'validation_loss',
@@ -46,11 +49,6 @@ keys = [
     'epoch',
     'sample_count'
 ]
-
-
-class FakeTrial:
-    id = 0
-    hash_params = 'checkpoint.state'
 
 
 def random_interrupt(epoch):
@@ -132,6 +130,9 @@ class InterruptingMetric(Metric):
     priority: int = -100
     epoch: int = field(default=0)
 
+    def on_new_trial(self, task, step, parameters, uid):
+        print('uid')
+
     def state_dict(self):
         return dict(epoch=self.epoch + 1)
 
@@ -161,20 +162,24 @@ class InterruptingMetric(Metric):
 
 
 def make_base_task(device, storage):
-    return classification_baseline(
+    task = classification_baseline(
         'logreg', 'glorot_uniform',
         'sgd', 'none', 'test-mnist', 32,
         device, storage=storage)
 
+    chk = task.metrics.get('CheckPointer')
+    chk.frequency_epoch = 1
+    return task
 
-def run_no_interrupts(epoch, params, device):
+
+def run_no_interrupts(epoch, params, device, storage=NoStorage()):
     global model_parameters1
 
-    task_no_interrupt = make_base_task(device, NoStorage())
+    task_no_interrupt = make_base_task(device, storage)
 
     task_no_interrupt.init(**params)
     chk = task_no_interrupt.metrics.get('CheckPointer')
-    print('no_interrupts_id: ', chk.trial_id)
+    print('no_interrupts_id: ', chk.uid)
 
     model_parameters1 = list(task_no_interrupt.model.parameters())
     task_no_interrupt.fit(epochs=epoch)
@@ -191,12 +196,11 @@ def run_with_interrupts(epoch, batch_freq, state_folder, params, device):
         return task_resume
 
     def get_trial_id(task):
-        return task.metrics.get('CheckPointer').trial_id
+        return task.metrics.get('CheckPointer').uid
 
     def delete_state():
         task_resume = make_task()
         task_resume.init(**params)
-
         state_filename = f'{state_folder}/{get_trial_id(task_resume)}.state'
         remove(state_filename)
 
@@ -226,7 +230,7 @@ def run_with_interrupts(epoch, batch_freq, state_folder, params, device):
             task_resume.init(**params)
 
             chk = task_resume.metrics.get('CheckPointer')
-            assert trial_id == chk.trial_id
+            assert trial_id == chk.uid
             assert task_resume.resumed
 
     return task_resume.metrics.value()
@@ -275,27 +279,25 @@ def create_resumed_trained_trial(epochs=5):
     """Create a Task was trained stopped and resumed"""
     device = fetch_device()
 
-    class FakeTrial2:
-        id = 0
-        hash_params = 'serialization_test'
-
-    old_task = create_trained_trial(epochs)
-
     # Saves Task
+    old_task = create_trained_trial(epochs)
+    uid = old_task.metrics.get('CheckPointer').uid
     state_storage = StateStorage(folder='/tmp/olympus/tests', time_buffer=0)
-    saved = state_storage.save('serialization_test', old_task.state_dict())
+    saved = state_storage.save(uid, old_task.state_dict())
     assert saved
 
+    # Done
     new_task = make_base_task(device, state_storage)
     # Automatic Resume
-    new_task.init(trial=FakeTrial2(), **params)
+    new_task.init(**params)
     assert new_task.resumed()
     return new_task
 
 
 def test_model_serialization(epochs=5):
     """Check that models evaluate the same way after resume"""
-    remove('/tmp/olympus/tests/serialization_test.state')
+    remove('/tmp/olympus/tests/93c88038692bf4baf715ca3806d8a46347a646552f08ede113ef68efae6f1579.state')
+
     original_trial = create_trained_trial(epochs)
     resumed_trial = create_resumed_trained_trial(epochs)
 
@@ -309,6 +311,7 @@ def test_model_serialization(epochs=5):
     # Metrics are the same
     original_m = original_acc.value()
     resumed_m = resumed_acc.value()
+
     for k in ['validation_accuracy', 'validation_loss']:
         assert abs(original_m[k] - resumed_m[k]) < 1e-4
 
@@ -369,7 +372,7 @@ def task_deterministic(epoch=5):
     device = fetch_device()
 
     state_folder = '/tmp/olympus/tests'
-    file_name = f'{state_folder}/94d2cd8af8fd709a4e7abcbde32fd9782b7e150fc9d3a3d6a10d98d07f247d56.state'
+    file_name = f'{state_folder}/93c88038692bf4baf715ca3806d8a46347a646552f08ede113ef68efae6f1579.state'
 
     metrics1 = run_no_interrupts(epoch, params, device)
     remove(file_name)
@@ -379,13 +382,41 @@ def task_deterministic(epoch=5):
 
     for k in keys:
         diff = abs(metrics1[k] - metrics2[k])
-        print(f'{k} => {diff}')
+        print(f'{k:>30} => {diff}')
+        assert diff < 1e-4
+
+
+def task_deterministic_2(epoch=5):
+    """Check that training in 2 steps is the same as training in one step"""
+    device = fetch_device()
+
+    state_folder = '/tmp/olympus/tests'
+    file_name = f'{state_folder}/93c88038692bf4baf715ca3806d8a46347a646552f08ede113ef68efae6f1579.state'
+
+    state_storage = StateStorage(folder=state_folder, time_buffer=0)
+
+    # Run in one step
+    metrics1 = run_no_interrupts(epoch * 2, params, device, state_storage)
+    remove(file_name)
+
+    # run 5 epochs
+    _ = run_no_interrupts(epoch, params, device, state_storage)
+    assert os.path.exists(file_name)
+
+    # run 10 epochs but resume from the 5 previous epochs
+    metrics2 = run_no_interrupts(epoch * 2, params, device, state_storage)
+    remove(file_name)
+
+    for k in keys:
+        diff = abs(metrics1[k] - metrics2[k])
+        print(f'{k:>30} => {diff}')
         assert diff < 1e-4
 
 
 def test_task_deterministic():
     for i in range(1, 10):
         task_deterministic(i)
+        task_deterministic_2(i)
 
 
 def test_task_resume():
@@ -396,7 +427,10 @@ def test_task_resume():
 if __name__ == '__main__':
     os.environ['OLYMPUS_DATA_PATH'] = '/tmp'
 
-    test_model_serialization()
-    test_model_resume_train(2)
-    main_resume(20, 1)
-    main_resume(5)
+    # test_task_deterministic()
+
+    test_task_resume()
+
+    # test_model_resume_train(2)
+    # main_resume(20, 1)
+    # main_resume(5)

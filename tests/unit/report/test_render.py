@@ -1,9 +1,9 @@
 SKIP_TEST=False
 try:
-    from olympus.report.render.altair_plot import AltairPlot
-    from olympus.report.render.simple_plot import SimplePlot
-    from olympus.report.render.track import TrialGroupRender, TrialRender, ProjectRender
-    from olympus.report.render.utils import list_to_html, dict_to_html, to_html
+    from olympus.dashboard.render.altair_plot import AltairPlot
+    from olympus.dashboard.render.simple_plot import SimplePlot
+    from olympus.dashboard.render.track import TrialGroupRender, TrialRender, ProjectRender
+    from olympus.dashboard.render.utils import list_to_html, dict_to_html, to_html
 except ImportError:
     SKIP_TEST = True
 

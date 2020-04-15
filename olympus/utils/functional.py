@@ -2,7 +2,7 @@ import copy
 
 
 def select(a, b):
-    if a:
+    if a is not None:
         return a
     return b
 

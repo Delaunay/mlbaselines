@@ -1,117 +1,138 @@
-from datetime import datetime
+from olympus.utils.factory import fetch_factories
+from olympus.utils import MissingArgument, warning
+from olympus.hpo.fidelity import Fidelity
+from olympus.hpo.parallel import ParallelHPO
 
-from olympus.distributed.multigpu import rank
-from olympus.utils import get_storage, error, info, warning, debug
-from olympus.utils.options import option
-from olympus.utils.stat import StatStream
-
-# Orion Debug
-import logging
-logging.basicConfig(level=option('orion.debug', logging.WARN, type=int))
-
-import_error = None
-try:
-    from orion.client.experiment import ExperimentClient
-    from orion.client import create_experiment
-    from orion.core.worker.trial import Trial
-except ImportError as e:
-    import_error = e
+registered_optimizer = fetch_factories('olympus.hpo', __file__)
 
 
-class TrialIterator:
-    """Take an Orion experiment and iterate through all the trials it suggests
+def known_hpo():
+    return registered_optimizer.keys()
 
-    Parameters
-    ----------
-    experiment: ExperimentClient
-        Orion Experiment
+
+def register_hpo(name, factory, override=False):
+    global registered_optimizer
+
+    if name in registered_optimizer:
+        warning(f'{name} was already registered, use override=True to ignore')
+
+        if not override:
+            return
+
+    registered_optimizer[name] = factory
+
+
+class RegisteredHPONotFound(Exception):
+    pass
+
+
+class HPOptimizer:
+    """Olympus standardized HPO interface
+
+    Examples
+    --------
+
+    .. code-block:: python
+
+        def add(a, b):
+             return a + b
+
+        hpo = HPOptimizer('hyperband', space={
+            'a': 'uniform(0, 1)',
+            'b': 'uniform(0, 1)'
+        })
+
+        while not hpo.is_done():
+            for args in hpo:
+                # try a new configuration
+                result = add(**args)
+
+                # forward the result to the optimizer
+                hpo.observe(args, result)
+
+        hpo.result()
+        (OrderedDict([('a', 0.02021839744032572), ('b', 0.05433798833925363), ('uid', 'b6b3c96296beaad9'), ('epoch', 8)]), 0.07455638577957935
+
     """
-    def __init__(self, experiment, retries=2, client=None):
-        self.experiment = experiment
-        self.time = StatStream(drop_first_obs=1)
-        self.retries = retries
-        self.client = client
+
+    def __init__(self, name=None, *, hpo=None, **kwargs):
+        self.hpo = None
+
+        if name:
+            hpo_fun = registered_optimizer.get(name)
+
+            if not hpo_fun:
+                raise RegisteredHPONotFound(name)
+
+            self.hpo = hpo_fun(**kwargs)
+
+        elif hpo and isinstance(hpo, type):
+            self.hpo = hpo(**kwargs)
+
+        else:
+            raise MissingArgument('hpo or name need to be set')
+
+        kwargs['name'] = name
+        self.kwargs = kwargs
+
+    def insert_manual_sample(self, sample=None, fidelity_override=None, **kwargs):
+        return self.hpo.insert_manual_sample(sample, fidelity_override, **kwargs)
+
+    def suggest(self, **kwargs):
+        return self.hpo.suggest(**kwargs)
+
+    def observe(self, args, result):
+        return self.hpo.observe(args, result)
+
+    def is_done(self):
+        return self.hpo.is_done()
+
+    def remaining(self):
+        return self.hpo.remaining()
+
+    def load_state_dict(self, state):
+        return self.hpo.load_state_dict(state)
+
+    def state_dict(self):
+        return self.hpo.state_dict()
+
+    def info(self):
+        return self.hpo.info()
+
+    def result(self):
+        result = sorted(self.hpo.trials.values(), key=lambda x: x.objective)
+        return result[0]
 
     def __iter__(self):
-        return self
+        return iter(self.hpo)
 
     @property
-    def is_finished(self):
-        return self.experiment.is_done or self.experiment.is_broken
+    def trials(self):
+        return self.hpo.trials
 
-    def __next__(self, _depth=0):
-        if _depth >= self.retries:
-            debug(f'Retried {_depth} times without success')
-            raise StopIteration
-
-        if self.experiment.is_broken:
-            error('Experiment is broken and cannot continue')
-            raise StopIteration
-
-        if self.experiment.is_done:
-            info('Orion does not have more trials to suggest')
-            raise StopIteration
-
-        start = datetime.utcnow()
-        trial = self.experiment.suggest()
-        self.time += (datetime.utcnow() - start).total_seconds()
-
-        if trial is None:
-            if not self.experiment.is_done:
-                warning('No additional trials were found but experiment is not done')
-                return self.__next__(_depth + 1)
-            else:
-                info(f'Orion did not suggest more trials (is_done: {self.experiment.is_done}')
-                raise StopIteration
-
-        if self.client is not None:
-            self.client.trial = trial
-
-        return trial
-
-    next = __next__
+    def ctor_call(self):
+        return self.kwargs
 
 
-class OrionClient:
-    def __init__(self, algo, storage_uri=option('orion.uri', 'track://file.json'), max_trials=50, **kwargs):
-        if import_error is not None:
-            raise RuntimeError('Orion is not installed!') from import_error
+def check():
+    def add(a, b, **kwargs):
+        return a + b
 
-        self.experiment = None
-        self.max_trials = max_trials
-        self.storage_uri = storage_uri
-        self.trial = None
-        self.hpo_config = {
-            algo: kwargs
-        }
+    hpo = HPOptimizer('hyperband', fidelity=Fidelity(1, 30, 2), space={
+        'a': 'uniform(0, 1)',
+        'b': 'uniform(0, 1)'
+    })
 
-    def new_experiment(self, name, space, objective):
-        # fetch or create the experiment being ran
-        self.experiment = create_experiment(
-            name=name,
-            max_trials=self.max_trials,
-            space=space,
-            algorithms=self.hpo_config,
-            strategy='StubParallelStrategy',
-            storage=get_storage(self.storage_uri, objective)
-        )
-        return TrialIterator(self.experiment, client=self)
+    while not hpo.is_done():
+        for args in hpo:
+            # try a new configuration
+            result = add(**args)
 
-    def report(self, name, value, type):
-        # Only the main process or master process can report values
-        if rank() == -1 or rank() == 0:
-            assert type in Trial.Result.allowed_types
+            # forward the result to the optimizer
+            hpo.observe(args, result)
 
-            self.experiment.observe(
-                self.trial,
-                [dict(name=name, type=type, value=value)]
-            )
+    print(hpo.result())
 
-    def report_objective(self, name, value):
-        if rank() == -1 or rank() == 0:
-            return self.report(name, value, type='objective')
 
-    def __getattr__(self, item):
-        if hasattr(self.experiment, item):
-            return getattr(self.experiment, item)
-        raise AttributeError(f'{item} not found')
+if __name__ == '__main__':
+    check()

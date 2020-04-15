@@ -14,6 +14,7 @@ if __name__ == '__main__':
             'olympus.accumulators',
             'olympus.datasets',
             'olympus.datasets.split',
+            'olympus.dashboard',
             'olympus.distributed',
             'olympus.hpo',
             'olympus.metrics',
@@ -26,25 +27,15 @@ if __name__ == '__main__':
             'olympus.tasks',
             'olympus.utils',
         ],
-        install_requires=[
-            'torch',
-            'torchvision',
-            # 'orion',
-            'h5py',
-            'psycopg2-binary',
-            'gym',
-            'tqdm',
-            'pandas',
-            'filelock'
-        ],
         setup_requires=['setuptools'],
         tests_require=['pytest', 'flake8', 'codecov', 'pytest-cov'],
         entry_points={
             'console_scripts': [
                 'olympus = olympus.baselines.launch:main',
-                'olympus-dash = olympus.report.dashboard:main',
+                'olympus-dash = olympus.dashboard.dashboard:main',
                 'olympus-mongo = olympus.distributed.mongo:start_mongod',
-                'olympus-port = olympus.distributed.network:get_free_port'
+                'olympus-port = olympus.distributed.network:get_free_port',
+                'olympus-hpo-worker = olympus.hpo.worker:main'
             ]
         },
         extras_require={

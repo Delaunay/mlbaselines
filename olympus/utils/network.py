@@ -47,3 +47,12 @@ def get_ip_address(ifname=None):
             struct.pack('256s', ifname[:15])
         )[20:24])
 
+
+def is_port_free(port):
+    import errno
+
+    try:
+        s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        s.bind(('127.0.0.1', port))
+    except socket.error as e:
+        return e.errno == errno.EADDRINUSE

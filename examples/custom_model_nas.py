@@ -30,6 +30,10 @@ class MyCustomNASModel(nn.Module):
         }
 
 
+# Register my model
+builders = {'my_model': MyCustomNASModel}
+
+
 if __name__ == '__main__':
     model = Model(
         model=MyCustomNASModel,

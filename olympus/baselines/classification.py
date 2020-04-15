@@ -1,4 +1,4 @@
-from argparse import ArgumentParser, Namespace, REMAINDER, RawDescriptionHelpFormatter
+from argparse import ArgumentParser, Namespace, RawDescriptionHelpFormatter
 
 from olympus.datasets import DataLoader, known_datasets, Dataset, SplitDataset
 from olympus.metrics import Accuracy
@@ -8,14 +8,14 @@ from olympus.models import Model, known_models, Initializer, known_initializatio
 from olympus.optimizers import Optimizer, known_optimizers, LRSchedule, known_schedule
 
 from olympus.tasks import Classification
-from olympus.tasks.hpo import HPO, fidelity
+from olympus.hpo import HPOptimizer, Fidelity
+from olympus.tasks.hpo import HPO
 
-from olympus.utils import fetch_device, set_verbose_level, select, show_dict, show_hyperparameter_space, get_parameters
+from olympus.utils import fetch_device, set_verbose_level, show_dict, show_hyperparameter_space, get_parameters
 from olympus.utils import required
 from olympus.utils.functional import flatten
 from olympus.utils.options import option
 from olympus.utils.storage import StateStorage
-from olympus.utils.tracker import TrackLogger
 
 DEFAULT_EXP_NAME = 'classification_{dataset}_{model}_{optimizer}_{schedule}_{initializer}'
 base = option('base_path', '/tmp/olympus')
@@ -55,11 +55,14 @@ def arguments():
         metavar='INIT_NAME', choices=known_initialization(),
         help='Name of the weight initialization method (default: glorot_uniform)')
     parser.add_argument(
-        '--batch-size', type=int, default=128, metavar='N',
+        '--batch-size', type=int, default=128, metavar='B',
         help='input batch size for training (default: 128)')
     parser.add_argument(
         '--epochs', type=int, default=300, metavar='N',
         help='maximum number of epochs to train (default: 300)')
+    parser.add_argument(
+        '--min-epochs', type=int, default=20, metavar='MN',
+        help='minimum number of epochs to train (default: 20) for HPO')
     parser.add_argument(
         '--model-seed', type=int, default=1,
         help='random seed for model initialization (default: 1)')
@@ -90,7 +93,7 @@ def classification_baseline(model, initializer,
                             dataset, batch_size, device,
                             split_method='original',
                             sampler_seed=0, model_seed=0, storage=None, half=False, hpo_done=False,
-                            logger=None, validate=True, hyper_parameters=None, **config):
+                            validate=True, hyper_parameters=None, **config):
 
     dataset = SplitDataset(
         Dataset(dataset, path=f'{base}/data'),
@@ -132,8 +135,7 @@ def classification_baseline(model, initializer,
         lr_scheduler=lr_schedule,
         dataloader=train,
         device=device,
-        storage=storage,
-        logger=logger)
+        storage=storage)
 
     if validate:
         main_task.metrics.append(
@@ -143,35 +145,6 @@ def classification_baseline(model, initializer,
     return main_task
 
 
-def hpo_optimize(experiment_name, main_task, args):
-    hpo = HPO(
-        experiment_name,
-        task=main_task,
-        algo='ASHA',
-        seed=1,
-        num_rungs=5,
-        num_brackets=1,
-        max_trials=300,
-        storage=select(args.orion_database, f'track:{args.database}')    # 'legacy:pickleddb:my_data.pkl'
-    )
-    hpo.metrics.append(ElapsedRealTime())
-    hpo.fit(epochs=fidelity(args.epochs), objective='validation_accuracy')
-
-    if option('worker.id', 0, type=int) == 0:
-        hpo.wait_done()
-
-        if hpo.is_broken():
-            return
-
-        print('HPO Report')
-        print('-' * 40)
-        hpo.metrics.report()
-        print('=' * 40)
-        return hpo.best_trial.params
-
-    return None
-
-
 def main(**kwargs):
     show_dict(kwargs)
 
@@ -179,32 +152,40 @@ def main(**kwargs):
     set_verbose_level(args.verbose)
 
     device = fetch_device()
-    experiment_name = args.experiment_name.format(**kwargs)
-
-    client = TrackLogger(experiment_name, storage_uri=args.database)
+    # experiment_name = args.experiment_name.format(**kwargs)
 
     # save partial results here
-    state_storage = StateStorage(folder=option('state.storage', f'{base}/classification'))
+    state_storage = StateStorage(
+        folder=option('state.storage', f'{base}/classification'),
+        time_buffer=30)
 
     def main_task():
-        return classification_baseline(device=device, logger=client, storage=state_storage, **kwargs)
+        return classification_baseline(device=device, storage=state_storage, **kwargs)
 
     space = main_task().get_space()
-    space.pop('task', None)
 
-    # Use Orion to find the best Hyper parameters
+    # If space is not empty we search the best hyper parameters
     params = {}
     if space:
-        params = hpo_optimize(experiment_name, main_task, args)
+        show_dict(space)
+        hpo = HPOptimizer('hyperband', space=space,
+                          fidelity=Fidelity(args.min_epochs, args.epochs).to_dict())
+
+        hpo_task = HPO(hpo, main_task)
+        hpo_task.metrics.append(ElapsedRealTime())
+
+        trial = hpo_task.fit(objective='validation_accuracy')
+        print(f'HPO is done, objective: {trial.objective}')
+        params = trial.params
     else:
         print('No hyper parameter missing, running the experiment...')
+    # ------
 
     # Run the experiment with the best hyper parameters
+    # -------------------------------------------------
     if params is not None:
         # Train using train + valid for the final result
-        final_task = classification_baseline(device=device, logger=client, storage=state_storage, **kwargs, hpo_done=True)
-        params.pop('task', None)
-
+        final_task = classification_baseline(device=device, **kwargs, hpo_done=True)
         final_task.init(**params)
         final_task.fit(epochs=args.epochs)
 

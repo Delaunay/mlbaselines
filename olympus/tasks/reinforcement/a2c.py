@@ -7,10 +7,10 @@ from torch.nn import Module
 from torch.optim import Optimizer
 
 from olympus.tasks.task import Task
-from olympus.utils import select
+from olympus.utils import select, drop_empty_key
 from olympus.reinforcement.utils import AbstractActorCritic
 from olympus.resuming import state_dict, load_state_dict, BadResumeGuard
-from olympus.observers import ProgressView, Speed, ElapsedRealTime, CheckPointer, Tracker
+from olympus.observers import ProgressView, Speed, ElapsedRealTime, CheckPointer
 from olympus.metrics.named import NamedMetric
 
 
@@ -65,9 +65,6 @@ class A2C(Task):
         if storage:
             self.metrics.append(CheckPointer(storage=storage))
 
-        if logger is not None:
-            self.metrics.append(Tracker(logger=logger))
-
         self.hyper_parameters = {}
         self.batch_size = None
 
@@ -75,17 +72,14 @@ class A2C(Task):
     # ---------------------------------------------------------------------
     def get_space(self, **fidelities):
         """Return hyper parameter space"""
-        return {
-            'task': {       # fidelity(min, max, base logarithm)
-                'epochs': fidelities.get('epochs')
-            },
+        return drop_empty_key({
             'optimizer': self.optimizer.get_space(),
             'lr_schedule': self.lr_scheduler.get_space(),
             'model': self.actor_critic.get_space(),
             'gamma': 'loguniform(0.99, 1)'
-        }
+        })
 
-    def init(self, gamma=0.99, optimizer=None, lr_schedule=None, model=None, trial=None):
+    def init(self, gamma=0.99, optimizer=None, lr_schedule=None, model=None, uid=None):
         """
         Parameters
         ----------
@@ -137,7 +131,7 @@ class A2C(Task):
         parameters.update(lr_schedule)
         parameters.update(model)
 
-        self.metrics.new_trial(parameters, trial)
+        self.metrics.new_trial(parameters, uid)
         self.set_device(self.device)
 
     # Training

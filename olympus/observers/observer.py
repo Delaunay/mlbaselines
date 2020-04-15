@@ -33,7 +33,7 @@ class Observer:
         """Called after a batch has been processed"""
         pass
 
-    def on_new_trial(self, task, step, parameters, trial_id):
+    def on_new_trial(self, task, step, parameters, uid):
         """Called after a trial has been processed"""
         pass
 

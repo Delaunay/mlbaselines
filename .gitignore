@@ -86,3 +86,5 @@ simple.json
 track_*
 
 out.txt
+*.zip
+

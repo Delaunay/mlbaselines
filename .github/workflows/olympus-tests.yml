@@ -1,4 +1,4 @@
-name: Olympus-CI
+name: tests
 
 on: [push]
 
@@ -26,10 +26,12 @@ jobs:
 
     - name: Install dependencies
       run: |
+        sudo apt-get install mongodb-server
         python -m pip install --upgrade pip
         pip install virtualenv
         python -m venv venv
         . venv/bin/activate
+        pip uninstall -y msgqueue orion sspace
         make travis-install
         pip install flake8
 
@@ -56,20 +58,25 @@ jobs:
         . venv/bin/activate
         make travis-minimalist
 
+    - name: no-hpo
+      run: |
+        . venv/bin/activate
+        make travis-classification-config
+
     - name: hpo-simple
       run: |
         . venv/bin/activate
         make travis-hpo_simple
 
+    - name: hpo-parallel
+      run: |
+        . venv/bin/activate
+        make travis-hpo_parallel
+
     - name: classification
       run: |
         . venv/bin/activate
         make travis-classification
-
-    - name: no-hpo
-      run: |
-        . venv/bin/activate
-        make travis-classification-config
 
     - name: upload-coverage
       env:

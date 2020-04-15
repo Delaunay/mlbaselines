@@ -19,5 +19,3 @@ from olympus.tasks import Classification
 
 from olympus.utils import fetch_device
 from olympus.utils.storage import StateStorage
-from olympus.utils.tracker import TrackLogger
-
