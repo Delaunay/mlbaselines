@@ -28,7 +28,7 @@ class HPO(Task):
             for config in configurations:
                 show_dict(config)
 
-                uid = config.pop('uid')
+                # uid = config.pop('uid')
                 epoch = config.pop('epoch')
 
                 new_task = self.task_maker()
@@ -38,7 +38,7 @@ class HPO(Task):
                 metrics = new_task.metrics.value()
                 result = metrics[objective]
 
-                config['uid'] = uid
+                # config['uid'] = uid
                 self.hpo.observe(config, result)
 
         self.metrics.end_train()

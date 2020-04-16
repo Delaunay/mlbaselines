@@ -4,26 +4,38 @@ from datetime import datetime
 from olympus.observers.observer import Observer
 from olympus.utils.options import option
 
-from msgqueue.backends import new_client
+try:
+    from msgqueue.backends import new_client
+    ERROR = None
+except ImportError as e:
+    ERROR = e
+
 
 METRIC_QUEUE = 'OLYMETRIC'
 
 
+def metric_logger(uri, database, experiment):
+    return MSGQTracker(client=_Logger(uri, database, experiment))
+
+
 class _Logger:
-    def __init__(self, namespace, uri):
-        self.client = new_client(uri, namespace)
+    def __init__(self, uri, database, experiment):
+        if ERROR is not None:
+            raise ERROR
+
+        self.experiment = experiment
+        self.client = new_client(uri, database)
         self.uid = None
 
     def log(self, epoch, data):
-        self.client.push(METRIC_QUEUE, {
-            'epoch': epoch,
-            'uid': self.uid,
-            'metric': data
-        })
+        data['uid'] = self.uid
+        data['epoch'] = epoch
+
+        self.client.push(METRIC_QUEUE, self.experiment, data)
 
 
 @dataclass
-class Tracker(Observer):
+class MSGQTracker(Observer):
     client: _Logger = None
 
     frequency_new_trial: int = 1
@@ -39,20 +51,21 @@ class Tracker(Observer):
     priority: int = -10
 
     def on_new_trial(self, task, step, parameters, uid):
+        assert uid is not None
         self.client.uid = uid
 
     # We push data on new epoch so for the last epoch
     # end_train push the last metrics without duplicates
     def on_new_epoch(self, task, epoch, context):
         self.epoch = epoch
-        self.client.log(epoch, task.metrics.values())
+        self.client.log(epoch, task.metrics.value())
 
     def on_start_train(self, task, step=None):
         pass
 
     def on_end_train(self, task, step=None):
         if task is not None:
-            self.client.log(self.epoch + 1, task.metrics.values())
+            self.client.log(self.epoch + 1, task.metrics.value())
 
     def value(self):
         return {}

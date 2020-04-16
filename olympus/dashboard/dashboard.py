@@ -166,8 +166,8 @@ def main(args=None):
 
     # queue_uri = 'mongo://0.0.0.0:8123'
     queue_uri = 'mongo://127.0.0.1:27017'
-    queue_uri = 'cockroach://0.0.0.0:8123'
-    queue_uri = 'zip:/home/setepenre/work/olympus/data.zip'
+    # queue_uri = 'cockroach://0.0.0.0:8123'
+    # queue_uri = 'zip:/home/setepenre/work/olympus/data.zip'
 
     parser = ArgumentParser()
     parser.add_argument('--theme', type=str, default='darkly', choices=list(themes.keys()),
@@ -178,13 +178,15 @@ def main(args=None):
                         '   - mongodb instance: mongo://127.0.0.1:27017\n'
                         '   - cockroach db instance cockroach://0.0.0.0:8123\n'
                         '   - local archive: zip:/home/setepenre/work/olympus/data.zip\n')
+    parser.add_argument('--database', type=str, default='olympus',
+                        help='Name of the database')
     args = parser.parse_args(args)
 
     insert_kv('theme', args.theme)
     insert_kv('is_dark', themes.get(args.theme) == 'dark')
 
     dash = dashboard(args.theme)
-    client = new_monitor(args.uri)
+    client = new_monitor(args.uri, args.database)
 
     menu = MenuRender(
         Status='/queue/status',

@@ -45,7 +45,7 @@ def get_queues(client, namespace):
     global queue_names
     names = queue_names.get(namespace)
     if names is None:
-        names = client.queues(namespace)
+        names = client.queues()
         queue_names[namespace] = names
 
     return names
@@ -66,7 +66,7 @@ def list_namespaces(client, page_name, link):
                 continue
 
             queues.append(
-                html.Li(dcc.Link(f'{namespace}/{name}', href=f'/queue/{link}/{namespace}/{name}')))
+                html.Li(dcc.Link(f'{name}/{namespace}', href=f'/queue/{link}/{name}/{namespace}')))
 
         items.append(html.Li([f'Queues for {namespace}', html.Ul(queues)]))
 
@@ -78,27 +78,28 @@ def list_namespaces(client, page_name, link):
 class QueuePage(Page):
     @staticmethod
     def route():
-        return '/queue/raw/?(?P<namespace>[a-zA-Z0-9]*)/?(?P<queue_name>[a-zA-Z0-9]*)'
+        return '/queue/raw/?(?P<queue_name>[a-zA-Z0-9]*)/?(?P<namespace>[a-zA-Z0-9_\\-]*)'
 
     def __init__(self, client: QueueMonitor):
         self.client = client
 
-    def render(self, app, namespace, queue_name):
+    def render(self, app, queue_name, namespace):
         if not namespace:
             return list_namespaces(self.client, 'raw', 'raw')
 
         app.title = f'Raw {namespace}/{queue_name}'
-        return self.pending_messages(app, namespace, queue_name)
+        return self.pending_messages(app, queue_name, namespace)
 
-    def pending_messages(self, app, namespace, name):
-        messages = self.client.messages(namespace, name)
+    def pending_messages(self, app, name, namespace):
+        messages = self.client.messages(name, namespace)
+        print(messages, name, namespace)
         return MessagesRender(messages).render(app)
 
 
 class ResultPage(Page):
     @staticmethod
     def route():
-        return '/queue/result/?(?P<namespace>[a-zA-Z0-9]*)/?(?P<queue_name>[a-zA-Z0-9]*)'
+        return '/queue/result/?(?P<queue_name>[a-zA-Z0-9]*)/?(?P<namespace>[a-zA-Z0-9]*)'
 
     def __init__(self, client: QueueMonitor):
         self.client = client
@@ -107,7 +108,7 @@ class ResultPage(Page):
         if not namespace:
             return list_namespaces(self.client, 'result', 'result')
 
-        app.title = f'Results {namespace}/{queue_name}'
+        app.title = f'Results {queue_name}/{namespace}'
         return self.show_results(namespace, queue_name)
 
     def extract_messages(self, messages):
@@ -124,7 +125,7 @@ class ResultPage(Page):
         return results
 
     def show_results(self, namespace, queue_name):
-        messages = self.client.messages(namespace, queue_name)
+        messages = self.client.messages(queue_name, namespace)
 
         if get_kv('is_dark'):
             alt.themes.enable('dark')
@@ -148,12 +149,12 @@ class ResultPage(Page):
 class GanttPage(Page):
     @staticmethod
     def route():
-        return '/queue/gantt/?(?P<namespace>[a-zA-Z0-9]*)/?(?P<queue_name>[a-zA-Z0-9]*)'
+        return '/queue/gantt/?(?P<queue_name>[a-zA-Z0-9]*)/?(?P<namespace>[a-zA-Z0-9]*)'
 
     def __init__(self, client: QueueMonitor):
         self.client = client
 
-    def render(self, app, namespace, queue_name):
+    def render(self, app, queue_name, namespace):
         if not namespace:
             return list_namespaces(self.client, 'gantt', 'gantt')
 
@@ -161,8 +162,8 @@ class GanttPage(Page):
         return self.gantt(namespace, queue_name)
 
     def gantt(self, namespace, name):
-        messages = self.client.messages(namespace, name)
-        worker_count = len(self.client.agents(namespace))
+        messages = self.client.messages(name, namespace)
+        worker_count = len(self.client.agents())
         jobs, annotations = self.prepare_gantt_data(messages, worker_count)
 
         if not jobs:
@@ -263,7 +264,7 @@ class GanttPage(Page):
 class StatusPage(Page):
     @staticmethod
     def route():
-        return '/queue/status/?(?P<namespace>[a-zA-Z0-9]*)/?(?P<queue_name>[a-zA-Z0-9]*)'
+        return '/queue/status/?(?P<queue_name>[a-zA-Z0-9]*)/?(?P<namespace>[a-zA-Z0-9]*)'
 
     def __init__(self, client: QueueMonitor):
         self.client = client
@@ -279,17 +280,17 @@ class StatusPage(Page):
         """Agent are not unique every time one is restarted a new entry is added
         The list is already sorted so we know we get the last agent for each name
         """
-        agents = self.client.agents(namespace)
+        agents = self.client.agents()
         unique_agents = {}
         for a in agents:
             unique_agents[a.agent] = a
         return list(unique_agents.values())
 
     def show_status(self, namespace, name):
-        unread_messages = self.client.unread_messages(namespace, name)
-        unactioned      = self.client.unactioned_messages(namespace, name)
-        finished        = self.client.actioned_count(namespace, name)
-        lost            = self.client.lost_messages(namespace)
+        unread_messages = self.client.unread_messages(name, namespace)
+        unactioned      = self.client.unactioned_messages(name, namespace)
+        finished        = self.client.actioned_count(name, namespace)
+        lost            = self.client.lost_messages(name, namespace)
 
         agents = self.get_unique_agents(namespace)
 
@@ -346,7 +347,7 @@ class LogPage(Page):
         return self.show_logs(namespace, agent_id)
 
     def show_logs(self, namespace, agent):
-        data = self.client.log(namespace, agent)
+        data = self.client.log(agent)
         return html.Div([
             html.H4(f'Logs of {namespace}/{agent}'),
             html.Pre(data)
@@ -513,7 +514,7 @@ class SpaceExploration(Page):
 class FANOVAPage(Page):
     @staticmethod
     def route():
-        return '/queue/fanova/?(?P<namespace>[a-zA-Z0-9]*)/?(?P<queue_name>[a-zA-Z0-9]*)'
+        return '/queue/fanova/?(?P<queue_name>[a-zA-Z0-9]*)/?(?P<namespace>[a-zA-Z0-9]*)'
 
     def __init__(self, client: QueueMonitor):
         self.client = client

@@ -3,6 +3,7 @@ import json
 from olympus.observers.observer import Observer
 from olympus.observers.progress import *
 from olympus.observers.checkpointer import CheckPointer
+from olympus.observers.msgtracker import metric_logger
 from olympus.utils import warning, error
 
 
@@ -136,9 +137,9 @@ class ObserverList:
         """Broadcast a `new_batch` event to all metrics"""
         self.broadcast_event('end_batch', self.task, step, input, context)
 
-    def new_trial(self, parameters, trial_id):
+    def new_trial(self, parameters, uid):
         """Broadcast a `new_trial` event"""
-        self.broadcast_event('new_trial', self.task, 0, parameters, trial_id)
+        self.broadcast_event('new_trial', self.task, 0, parameters, uid)
 
     def start_train(self):
         """Broadcast a `start` event to all metrics"""

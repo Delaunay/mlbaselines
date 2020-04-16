@@ -21,6 +21,9 @@ travis-hpo_simple: clean
 travis-classification: clean
 	COVERAGE_FILE=.coverage.classify coverage run --parallel-mode olympus/baselines/launch.py classification -v 10 --batch-size 32 --min-epochs 0 --epochs 5 --dataset test-mnist --model logreg
 
+travis-classification-metric: clean
+	COVERAGE_FILE=.coverage.classify coverage run --parallel-mode olympus/baselines/launch.py classification -v 10 --batch-size 32 --min-epochs 0 --epochs 5 --dataset test-mnist --model logreg --uri mongo://127.0.0.1:27017 --database olympus
+
 travis-classification-hp: clean
 	COVERAGE_FILE=.coverage.classify.hp coverage run --parallel-mode olympus/baselines/launch.py classification -v 10 --batch-size 32 --min-epochs 0 --epochs 5 --dataset test-mnist --model logreg --optimizer.lr 0.001
 

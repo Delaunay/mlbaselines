@@ -2,7 +2,7 @@ from argparse import ArgumentParser, Namespace, RawDescriptionHelpFormatter
 
 from olympus.datasets import DataLoader, known_datasets, Dataset, SplitDataset
 from olympus.metrics import Accuracy
-from olympus.observers import ElapsedRealTime
+from olympus.observers import ElapsedRealTime, metric_logger
 
 from olympus.models import Model, known_models, Initializer, known_initialization
 from olympus.optimizers import Optimizer, known_optimizers, LRSchedule, known_schedule
@@ -79,11 +79,11 @@ def arguments():
              '1 enables progress output, '
              'higher enable higher level logging')
     parser.add_argument(
-        '--database', type=str, default=f'file:{base}/classification_baseline.json',
-        help='where to store metrics and intermediate results')
+        '--uri', type=str, default=None,
+        help='Resource to use to store metrics')
     parser.add_argument(
-        '--orion-database', type=str, default=None,
-        help='where to store Orion data')
+        '--database', type=str, default='olympus',
+        help='which database to use')
 
     return parser
 
@@ -93,7 +93,7 @@ def classification_baseline(model, initializer,
                             dataset, batch_size, device,
                             split_method='original',
                             sampler_seed=0, model_seed=0, storage=None, half=False, hpo_done=False,
-                            validate=True, hyper_parameters=None, **config):
+                            validate=True, hyper_parameters=None, uri_metric=None, **config):
 
     dataset = SplitDataset(
         Dataset(dataset, path=f'{base}/data'),
@@ -152,7 +152,7 @@ def main(**kwargs):
     set_verbose_level(args.verbose)
 
     device = fetch_device()
-    # experiment_name = args.experiment_name.format(**kwargs)
+    experiment_name = args.experiment_name.format(**kwargs)
 
     # save partial results here
     state_storage = StateStorage(
@@ -160,7 +160,13 @@ def main(**kwargs):
         time_buffer=30)
 
     def main_task():
-        return classification_baseline(device=device, storage=state_storage, **kwargs)
+        task = classification_baseline(device=device, storage=state_storage, **kwargs)
+
+        if args.uri is not None:
+            logger = metric_logger(args.uri, args.database, experiment_name)
+            task.metrics.append(logger)
+
+        return task
 
     space = main_task().get_space()
 
