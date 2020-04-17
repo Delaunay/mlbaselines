@@ -1,6 +1,7 @@
 from dataclasses import dataclass, field
 
 from olympus.observers.observer import Observer
+from olympus.utils import show_dict
 from olympus.utils.stat import StatStream
 from olympus.utils.options import option
 
@@ -91,8 +92,12 @@ class ProgressView(Observer):
     step: int = 0
     multiplier: int = 0
 
-    frequency_end_epoch: int = option('progress.frequency_epoch', 1, type=int)
-    frequency_end_batch: int = option('progress.frequency_batch', 1, type=int)
+    frequency_end_epoch: int = field(
+        default_factory=lambda: option('progress.frequency.epoch', 1, type=int))
+    frequency_end_batch: int = field(
+        default_factory=lambda: option('progress.frequency.batch', 1, type=int))
+    show_metrics: str = field(
+        default_factory=lambda: option('progress.show.metrics', 'epoch'))
     frequency_trial: int = 0
 
     orion_handle = None
@@ -161,12 +166,16 @@ class ProgressView(Observer):
         self.print_fun()
         self.show_progress(epoch)
         self.print_fun()
+        if self.show_metrics == 'epoch':
+            show_dict(task.metrics.value())
 
     def on_end_batch(self, task, step, input=None, context=None):
         self.step = step
         self.max_step = max(step, self.max_step)
 
         self.show_progress(self.epoch, step)
+        if self.show_metrics == 'batch':
+            show_dict(task.metrics.value())
 
     def init_speed_observer(self, task):
         if not self.speed_observer and task:
