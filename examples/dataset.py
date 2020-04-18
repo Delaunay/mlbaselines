@@ -7,7 +7,7 @@ parser.add_argument('dataset', type=str, help='name of the dataset to load')
 args = parser.parse_args()
 
 # can be customized using OLYMPUS_BASE_PATH or Olympus configuration file if found
-base = option('base_path', '/tmp/olympus')
+base = option('data.path', '/tmp/olympus')
 
 # get the dataset
 dataset = Dataset(args.dataset, path=f'{base}/data')

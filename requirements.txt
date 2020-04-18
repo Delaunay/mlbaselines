@@ -17,3 +17,4 @@ gym
 tqdm
 pandas
 filelock
+transformers

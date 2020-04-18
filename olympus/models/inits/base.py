@@ -1,9 +1,24 @@
 import torch
 import torch.nn
 
+from olympus.models.bert import BertWrapper
+
 
 class Initialization:
     def __call__(self, model):
+        if type(model) == BertWrapper:
+            self._bert_init(model)
+        else:
+            return self._general_init(model)
+
+    def _bert_init(self, model):
+        m = model.classifier
+        self.layer_init(m.weight)
+        if m.bias is not None:
+            torch.nn.init.constant_(m.bias, 0.0)
+        model.tie_weights()
+
+    def _general_init(self, model):
         """Init model using given function for Linear and Conv2d, and {0, 1} for BatchNorm."""
 
         for m in model.modules():

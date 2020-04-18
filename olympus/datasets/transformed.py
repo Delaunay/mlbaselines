@@ -8,11 +8,11 @@ class TransformedSubset(Subset):
         self.transform = transform
 
     def __getitem__(self, idx):
-        data, target = super(TransformedSubset, self).__getitem__(idx)
+        data = super(TransformedSubset, self).__getitem__(idx)
+        target = data[-1]
+        data = data[:1]
 
         if self.transform is not None:
-            data = self.transform(data)
+            data = [self.transform(x) for x in data]
 
         return data, target
-
-

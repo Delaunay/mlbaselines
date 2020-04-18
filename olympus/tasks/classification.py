@@ -176,7 +176,8 @@ class Classification(Task):
 
         batch, target = self.preprocessor(input)
 
-        predictions = self.classifier(batch.to(device=self.device))
+        batch = [x.to(device=self.device) for x in batch]
+        predictions = self.classifier(*batch)
         loss = self.criterion(predictions, target.to(device=self.device))
 
         self.optimizer.backward(loss)
@@ -200,7 +201,8 @@ class Classification(Task):
 
         with torch.no_grad():
             batch, target = batch
-            predictions = self.classifier(batch.to(device=self.device))
+            batch = [x.to(device=self.device) for x in batch]
+            predictions = self.classifier(*batch)
             loss = self.criterion(predictions, target.to(device=self.device))
 
         self.model.train()
@@ -208,7 +210,8 @@ class Classification(Task):
 
     def predict_probabilities(self, batch):
         with torch.no_grad():
-            self.classifier.eval()
+            data = [x.to(device=self.device) for x in batch]
+            return self.classifier(*data)
             return self.classifier(batch.to(device=self.device))
 
     def predict(self, batch, target=None):

@@ -18,7 +18,6 @@ from olympus.utils.options import option
 from olympus.utils.storage import StateStorage
 
 DEFAULT_EXP_NAME = 'classification_{dataset}_{model}_{optimizer}_{schedule}_{initializer}'
-base = option('base_path', '/tmp/olympus')
 
 
 def arguments():
@@ -93,10 +92,11 @@ def classification_baseline(model, initializer,
                             dataset, batch_size, device,
                             split_method='original',
                             sampler_seed=0, model_seed=0, storage=None, half=False, hpo_done=False,
+                            data_path='/tmp/olympus',
                             validate=True, hyper_parameters=None, uri_metric=None, **config):
 
     dataset = SplitDataset(
-        Dataset(dataset, path=f'{base}/data'),
+        Dataset(dataset, path=option('data.path', data_path)),
         split_method=split_method
     )
 
@@ -156,7 +156,7 @@ def main(**kwargs):
 
     # save partial results here
     state_storage = StateStorage(
-        folder=option('state.storage', f'{base}/classification'),
+        folder=option('state.storage', '/tpm/olympus/classification'),
         time_buffer=30)
 
     def main_task():

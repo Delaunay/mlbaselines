@@ -42,6 +42,7 @@ if __name__ == '__main__':
             'geffnet': ['geffnet==0.9.3'],
             'rl': ['gym', 'procgen', 'atari_py'],
             'dash': ['plotly', 'plotly-express', 'dash', 'altair'],
+            'nlp': ['transformers']
             # > pip install git+git://github.com/Delaunay/track
             # 'track': ['']
         }
