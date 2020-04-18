@@ -49,7 +49,7 @@ for e in range(epochs):
     losses = []
     event_handler.new_epoch(e + 1)
 
-    for step, (batch, target) in enumerate(loader.train()):
+    for step, ((batch, ), target) in enumerate(loader.train()):
         event_handler.new_batch(step)
 
         optimizer.zero_grad()
