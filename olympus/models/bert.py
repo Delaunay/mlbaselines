@@ -1,10 +1,8 @@
 from transformers import BertForSequenceClassification, BertConfig
-
 from olympus.utils.options import option
 
 
 class BertWrapper(BertForSequenceClassification):
-
     def forward(self, *args, **kwargs):
         result = super(BertWrapper, self).forward(*args, **kwargs)
         return result[0]

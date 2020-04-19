@@ -17,4 +17,7 @@ gym
 tqdm
 pandas
 filelock
+flask
+eventlet
+flask-socketio
 transformers

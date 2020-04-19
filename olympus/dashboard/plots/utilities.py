@@ -1,7 +1,7 @@
 import altair as alt
 
 
-class Matrix:
+class AltairMatrix:
     """Matrix plot"""
 
     def __init__(self, data):

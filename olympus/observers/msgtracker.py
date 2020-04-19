@@ -27,10 +27,8 @@ class _Logger:
         self.client = new_client(uri, database)
         self.uid = None
 
-    def log(self, epoch, data):
+    def log(self, data):
         data['uid'] = self.uid
-        data['epoch'] = epoch
-
         self.client.push(METRIC_QUEUE, self.experiment, data)
 
 
@@ -58,14 +56,14 @@ class MSGQTracker(Observer):
     # end_train push the last metrics without duplicates
     def on_new_epoch(self, task, epoch, context):
         self.epoch = epoch
-        self.client.log(epoch, task.metrics.value())
+        self.client.log(task.metrics.value())
 
     def on_start_train(self, task, step=None):
         pass
 
     def on_end_train(self, task, step=None):
         if task is not None:
-            self.client.log(self.epoch + 1, task.metrics.value())
+            self.client.log(task.metrics.value())
 
     def value(self):
         return {}

@@ -156,7 +156,7 @@ def main(**kwargs):
 
     # save partial results here
     state_storage = StateStorage(
-        folder=option('state.storage', '/tpm/olympus/classification'),
+        folder=option('state.storage', '/tmp/olympus/classification'),
         time_buffer=30)
 
     def main_task():

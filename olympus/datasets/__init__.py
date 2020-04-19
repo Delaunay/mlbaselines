@@ -272,22 +272,24 @@ class DataLoader:
         """Only create them when necessary"""
         if subset_name not in self.loaders:
             self.loaders[subset_name] = self._make_dataloader(
-                subset_name, transform, collate_fn, **kwargs)
+                subset_name, transform=transform, collate_fn=collate_fn, **kwargs)
 
         return self.loaders[subset_name]
 
-    def _make_dataloader(self, subset_name, transform, collate_fn, **kwargs):
+    def _make_dataloader(self, subset_name, **kwargs):
         arguments = copy.deepcopy(self.default_dataloader_args)
         arguments.update(kwargs)
 
+        transform = arguments.pop('transform', None)
         if transform is None:
             transform = self.split_dataset.transforms.get(subset_name, None)
 
         if transform is None:
             transform = lambda x: x
 
+        collate_fn = arguments.get('collate_fn', None)
         if collate_fn is None and hasattr(self.split_dataset, 'get_collate_fn'):
-            collate_fn = self.split_dataset.get_collate_fn()
+            arguments['collate_fn'] = self.split_dataset.get_collate_fn()
 
         dataset_subset = TransformedSubset(
             # Use the original dataset which has a compliant Dataset interface
@@ -295,11 +297,16 @@ class DataLoader:
             getattr(self.split_dataset, subset_name).indices,
             transform)
 
-        sampler = RandomSampler(dataset_subset, self.sampler_seed)
+        batch_sampler = arguments.get('batch_sampler', None)
+        if batch_sampler is not None:
+             batch_sampler = batch_sampler(dataset_subset, self.sampler_seed)
+
+        sampler = None
+        if batch_sampler is None:
+            sampler = arguments.get('sampler', RandomSampler)(dataset_subset, self.sampler_seed)
 
         return ResumableDataLoader(
             dataset=dataset_subset,
             sampler=sampler,
-            collate_fn=collate_fn,
-            **arguments
-        )
+            batch_sampler=batch_sampler,
+            **arguments)

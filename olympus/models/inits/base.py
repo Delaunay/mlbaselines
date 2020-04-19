@@ -1,7 +1,12 @@
 import torch
 import torch.nn
 
-from olympus.models.bert import BertWrapper
+try:
+    from olympus.models.bert import BertWrapper
+
+except ImportError:
+    class BertWrapper:
+        pass
 
 
 class Initialization:

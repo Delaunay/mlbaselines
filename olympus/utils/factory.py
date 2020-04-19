@@ -1,5 +1,6 @@
 from glob import glob
 import os
+from olympus.utils.log import warning
 
 
 def fetch_factories(base_module, base_file_name, function_name='builders'):
@@ -12,7 +13,12 @@ def fetch_factories(base_module, base_file_name, function_name='builders'):
             continue
 
         module_name = module_file.split(".py")[0]
-        module = __import__(".".join([base_module, module_name]), fromlist=[''])
+
+        try:
+            module = __import__(".".join([base_module, module_name]), fromlist=[''])
+        except ImportError as e:
+            warning(f'Could not import {module_name} from {base_file_name} because of {e}')
+            continue
 
         if hasattr(module, function_name):
             builders = getattr(module, function_name)

@@ -32,7 +32,7 @@ if __name__ == '__main__':
         entry_points={
             'console_scripts': [
                 'olympus = olympus.baselines.launch:main',
-                'olympus-dash = olympus.dashboard.dashboard:main',
+                'olympus-dash = olympus.dashboard.main:main',
                 'olympus-mongo = olympus.distributed.mongo:start_mongod',
                 'olympus-port = olympus.distributed.network:get_free_port',
                 'olympus-hpo-worker = olympus.hpo.worker:main'

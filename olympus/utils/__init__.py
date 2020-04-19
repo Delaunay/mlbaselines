@@ -192,6 +192,7 @@ class LazyCall:
             self.obj = self.fun(*self.args, **self.kwargs, **kwargs)
             self.is_processing = False
             return self.obj
+        return self.obj
 
     def __getattr__(self, item):
         if self.obj is None and self.is_processing:
