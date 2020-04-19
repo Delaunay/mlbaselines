@@ -16,6 +16,14 @@ def importance_heatmap_plotly(fanova, columns):
 
 
 def importance_heatmap_altair(fanova):
+    """
+    Examples
+    --------
+
+    .. image:: ../../../docs/_static/plots/importance.png
+        :width: 45 %
+
+    """
     import altair as alt
     alt.themes.enable('dark')
 
@@ -40,6 +48,15 @@ def importance_heatmap_altair(fanova):
 
 
 def marginals_altair(fanova):
+    """
+
+    Examples
+    --------
+
+    .. image:: ../../../docs/_static/plots/marginals.png
+        :width: 45 %
+
+    """
     import altair as alt
     alt.themes.enable('dark')
 

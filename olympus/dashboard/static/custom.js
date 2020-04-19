@@ -4,11 +4,6 @@ log = function(str) {
     console.info(str);
 };
 
-
-socket.on("connect", function() {
-    socket.emit("handshake");
-});
-
 socket.on('disconnect', function() {
     socket.emit("disconnect");
 });
@@ -43,7 +38,11 @@ socket.on("bind", function(data) {
     var prop = data["property"];
 
     var element = document.getElementById(id);
-    element.addEventListener(event, bind_callback(event, id, attr, prop));
+    var handler = bind_callback(event, id, attr, prop);
+    element.addEventListener(event, handler);
+
+    // set the initial value
+    handler();
 });
 
 
@@ -78,6 +77,26 @@ socket.on("set_text", function(data) {
 
     var element = document.getElementById(id)
     element.innerText = data
+});
+
+
+socket.on("get_size", function(data) {
+    log("get_size " + data);
+
+    var id = data["id"];
+    var element = document.getElementById(id)
+
+    var w = element.clientWidth;
+    var h = element.clientHeight;
+
+    socket.emit('get_size_' + id , {
+        "width": w,
+        "height": h
+    });
+});
+
+socket.on("connect", function() {
+    socket.emit("handshake");
 });
 
 log("setup is done");

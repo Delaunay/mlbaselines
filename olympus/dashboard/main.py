@@ -53,6 +53,7 @@ def dashboard():
         Gantt='/queue/gantt',
         Exploration='/queue/space',
         FANOVA='/queue/fanova',
+        Metric='/queue/metric',
         Debug='/'
     )
 

@@ -1,4 +1,5 @@
 from olympus.hpo.parallel import WORK_ITEM, HPO_ITEM, WORKER_LEFT, WORKER_JOIN, RESULT_ITEM, SHUTDOWN
+from olympus.observers.msgtracker import METRIC_ITEM
 
 
 def extract_message(m):
@@ -6,16 +7,30 @@ def extract_message(m):
 
 
 def filter_result(m):
-    return m.mtype == RESULT_ITEM
+    return m.mtype == RESULT_ITEM or m.mtype == METRIC_ITEM
 
 
 def extract_objective(m):
-    params, result = m
-    params['objective'] = result
+    if isinstance(m, (tuple, list)) and len(m) == 2:
+        # Result
+        params, result = m
+        params['objective'] = result
+    else:
+        # Metric
+        params = m
+
     return params
 
 
 def objective_array(messages):
+    """Returns [{uid, epoch=epoch, ..., objective=value}]"""
+    return map(
+        extract_objective, map(
+            extract_message, filter(
+                filter_result, messages)))
+
+
+def metric_array(messages):
     """Returns [{uid, epoch=epoch, ..., objective=value}]"""
     return map(
         extract_objective, map(

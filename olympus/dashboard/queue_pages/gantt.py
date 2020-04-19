@@ -14,6 +14,6 @@ class GanttQueue(InspectQueue):
     def show_queue(self, queue, namespace):
         messages = self.client.messages(queue, namespace)
         work_items, worker_count = extract_work_messages(messages)
-        jobs, annotations = prepare_gantt_array(work_items, worker_count)
-        fig = plot_gantt_plotly(jobs, annotations)
+        jobs, annotations, resources = prepare_gantt_array(work_items, worker_count)
+        fig = plot_gantt_plotly(jobs, annotations, resources)
         return plotly_plot(fig)

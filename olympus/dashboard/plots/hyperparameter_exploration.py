@@ -28,6 +28,15 @@ def scatter_matrix_plotly(data, columns):
 
 
 def scatter_matrix_altair(data, columns):
+    """
+
+    Examples
+    --------
+
+    .. image:: ../../../docs/_static/plots/space_exploration.png
+        :width: 45 %
+
+    """
     import altair as alt
     alt.themes.enable('dark')
 

@@ -41,8 +41,9 @@ if __name__ == '__main__':
         extras_require={
             'geffnet': ['geffnet==0.9.3'],
             'rl': ['gym', 'procgen', 'atari_py'],
-            'dash': ['plotly', 'plotly-express', 'dash', 'altair'],
-            'nlp': ['transformers']
+            'dash': ['plotly', 'plotly-express', 'altair', 'eventlet', 'flask-socketio'],
+            'nlp': ['transformers'],
+            'parallel': ['psycopg2-binary', 'pymongo']
             # > pip install git+git://github.com/Delaunay/track
             # 'track': ['']
         }

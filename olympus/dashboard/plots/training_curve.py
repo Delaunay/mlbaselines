@@ -5,6 +5,13 @@ def plot_results_altair(results, fidelity='epoch'):
     Parameters
     ----------
     results: [{'fidelity': ..., 'objective'...}]
+
+    Examples
+    --------
+
+    .. image:: ../../../docs/_static/plots/objective.png
+        :width: 45 %
+
     """
     import altair as alt
     alt.themes.enable('dark')

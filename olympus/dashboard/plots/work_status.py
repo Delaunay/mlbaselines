@@ -1,7 +1,14 @@
 
 
 def work_status(data):
-    """Return a pie chart"""
+    """Return a pie chart
+
+    Examples
+    --------
+
+    .. image:: ../../../docs/_static/plots/work_status.png
+        :width: 45 %
+    """
     import plotly.graph_objects as go
 
     fig = go.Figure(data=[

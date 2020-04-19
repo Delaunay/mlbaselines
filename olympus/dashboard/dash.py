@@ -23,13 +23,21 @@ def set_attribute(id, attribute, value):
     if not _socketio_ready:
         _pending_bind.append((id, attribute, value))
 
-    debug(f'set_attribute {attribute} of {id} to {value}')
+    debug(f'set_attribute {attribute} of {id}')
 
     socketio().emit('set_attribute', dict(
         id=id,
         attribute=attribute,
         value=value
     ))
+
+
+def get_element_size(id, callback):
+    debug(f'get_element_size of {id}')
+    socketio().emit('get_size', dict(
+        id=id
+    ))
+    register_event(f'get_size_{id}', callback)
 
 
 def bind(id, event, handler, attribute=None, property=None):

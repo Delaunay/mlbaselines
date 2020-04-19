@@ -26,6 +26,9 @@ def prepare_gantt_array(work_items, worker_count):
         messages = monitor.messages(queue, namespace)
         _, _ = prepare_gantt_array(*extract_work_messages(messages))
 
+    .. image:: ../../../docs/_static/hpo/hyperband.png
+        :width: 45 %
+
     """
     workers = {i: None for i in range(worker_count + 1)}
 
@@ -41,6 +44,8 @@ def prepare_gantt_array(work_items, worker_count):
 
     jobs = []
     annotations = []
+    unique_resources = set()
+
     for w in work_items:
         worker_id = find_free_worker(w.read_time, w.actioned_time)
 
@@ -50,10 +55,12 @@ def prepare_gantt_array(work_items, worker_count):
             resource = f'{resource} ({epoch})'
 
         task = f'worker-{worker_id}'
+        unique_resources.add(resource)
         jobs.append(dict(
             Task=task,
             Start=w.read_time,
             Finish=w.actioned_time,
+            epoch=epoch,
             Resource=resource))
 
         # annotations.append(dict(
@@ -62,18 +69,28 @@ def prepare_gantt_array(work_items, worker_count):
         #     text=str(w.uid)[:4],
         #     showarrow=True))
 
-    return jobs, annotations
+    return jobs, annotations, unique_resources
 
 
-def plot_gantt_plotly(jobs, annotations=None):
+def plot_gantt_plotly(jobs, annotations=None, resources=None):
+    import plotly.colors
     import plotly.figure_factory as ff
+    from olympus.dashboard.plots.utilities import colors_1024
+
+    colors = plotly.colors.DEFAULT_PLOTLY_COLORS
+
+    # We need more colors
+    if len(resources) > len(colors):
+        missing = len(resources) - len(colors)
+        colors.extend(colors_1024[-missing - 1:-1])
 
     fig = ff.create_gantt(
-        jobs, title='Work Schedule', index_col='Resource', showgrid_x=True, showgrid_y=True,
-        show_colorbar=True, group_tasks=True, bar_width=0.4)
+        jobs, title='Work Schedule', index_col='Resource', colors=colors, showgrid_x=True, showgrid_y=True,
+        show_colorbar=True, group_tasks=True, bar_width=0.4, reverse_colors=True)
 
     if annotations:
         fig['layout']['annotations'] = annotations
+
     fig.update_layout(template='plotly_dark')
 
     # make the separation between items more obvious

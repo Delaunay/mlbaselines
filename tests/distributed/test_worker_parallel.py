@@ -14,9 +14,9 @@ from olympus.hpo import HPOptimizer
 FIDELITY = Fidelity(1, 30, 10).to_dict()
 
 
-def run_nomad_hpo(hpo_name, uri):
+def run_nomad_hpo(hpo_name, uri, launch_server=True, fidelity=FIDELITY):
     """Worker are converted to HPO when new trials are needed then killed"""
-    with HPOWorkGroup(uri, 'olympus', 'classification', clean=True, launch_server=True) as group:
+    with HPOWorkGroup(uri, 'olympus', 'classification', clean=True, launch_server=launch_server) as group:
         group.launch_workers(10)
 
         params = {
@@ -27,15 +27,18 @@ def run_nomad_hpo(hpo_name, uri):
         }
 
         group.queue_hpo(
-            make_remote_call(HPOptimizer, hpo_name, count=30, fidelity=FIDELITY, space=params),
+            make_remote_call(HPOptimizer, hpo_name, count=30, fidelity=fidelity, space=params),
             make_remote_call(my_trial)
         )
 
         # wait for workers to do their work
         group.wait()
-        group.archive('data.zip')
 
-    os.remove('data.zip')
+        if launch_server:
+            group.archive('data.zip')
+
+    if launch_server:
+        os.remove('data.zip')
 
 
 def run_master_hpo(hpo_name, uri):
@@ -93,5 +96,6 @@ def test_master():
 if __name__ == '__main__':
     # test_master_hpo('cockroach://0.0.0.0:8123', clear=False)
     # test_nomad_rs_hpo('mongo://0.0.0.0:8123', clear=False)
-    test_master()
+    # test_master()
+    run_nomad_hpo('hyperband', 'mongo://127.0.0.1:27017', False, fidelity=Fidelity(1, 100, 2).to_dict())
 

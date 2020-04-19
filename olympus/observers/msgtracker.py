@@ -12,6 +12,7 @@ except ImportError as e:
 
 
 METRIC_QUEUE = 'OLYMETRIC'
+METRIC_ITEM = 200
 
 
 def metric_logger(uri, database, experiment):
@@ -29,7 +30,7 @@ class _Logger:
 
     def log(self, data):
         data['uid'] = self.uid
-        self.client.push(METRIC_QUEUE, self.experiment, data)
+        self.client.push(METRIC_QUEUE, self.experiment, data, mtype=METRIC_ITEM)
 
 
 @dataclass

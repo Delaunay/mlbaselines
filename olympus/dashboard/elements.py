@@ -35,17 +35,32 @@ def div(*items, style=None):
     return f'<div style="{style}">{children}</div>'
 
 
-def div_row(*items):
+def div_row(*items, style=None):
     children = ''.join(items)
-    return f'<div class="row">{children}</div>'
+    attr = []
+
+    if style is not None:
+        attr.append(f'style="{style}"')
+
+    attr = ' '.join(attr)
+    return f'<div class="row" {attr}>{children}</div>'
 
 
-def div_col(*items, size=None):
+def div_col(*items, size=None, style=None, id=None):
     children = ''.join(items)
+    attr = []
+
+    if style is not None:
+        attr.append(f'style="{style}"')
+
+    if id is not None:
+        attr.append(f'id="{id}"')
+
+    attr = ' '.join(attr)
     if size is None:
-        return f'<div class="col">{children}</div>'
+        return f'<div class="col" {attr}>{children}</div>'
 
-    return f'<div class="col-{size}">{children}</div>'
+    return f'<div class="col-{size}" {attr}>{children}</div>'
 
 
 def header(name, level=1):
@@ -133,6 +148,36 @@ def show_messages(messages):
     """
 
 
+def show_agent(agents):
+    def make_row(m):
+        return f"""
+        <tr>
+            <td>{m.uid}</td>
+            <td>{m.time}</td>
+            <td>{m.agent}</td>
+            <td>{m.alive}</td>
+            <td>{m.namespace}</td>
+            <td>{m.message}</td>
+        </tr>
+        """
+    rows = ''.join([make_row(r) for r in agents])
+    return f"""
+    <table class="table">
+        <thead>
+            <th>uid</th>
+            <th>time</th>
+            <th>name</th>
+            <th>alive</th>
+            <th>namespace</th>
+            <th>message</th>
+        </thhead>
+        <tbody>
+            {rows}
+        </tbody>
+    </table>
+    """
+
+
 def menu_item(name, href):
     return f'<li class="nav-item"><a href="{href}" class="nav-link">{name}</a></li>'
 
@@ -162,20 +207,35 @@ def select_dropdown(options, id):
     """
 
 
-def altair_plot(chart):
+def iframe(html, id=None):
+    attr = []
+    if id is not None:
+        attr.append(f'id="{id}"')
+
+    attr = ''.join(attr)
+    return f"""
+        <div style="width: 100%; height: 100%;">
+            <iframe 
+                {attr}
+                style="position: absolute; width: 100%; height: 100%;"
+                frameborder="0"
+                sandbox="allow-scripts" 
+                srcdoc="{escape(html)}">
+            </iframe>
+        </div>
+        """
+
+
+def altair_plot(chart, with_iframe=True):
     """Export an altair chart figure into HTML format"""
     buffer = io.StringIO()
     chart.save(buffer, 'html')
     html = buffer.getvalue()
-    return f"""
-        <iframe 
-            style="border-width: 0px; position: absolute;" 
-            width="100%" 
-            height="100%"
-            sandbox="allow-scripts" 
-            srcdoc="{escape(html)}">
-        </iframe>
-        """
+
+    if not with_iframe:
+        return html
+
+    return iframe(html)
 
 
 def plotly_plot(figure):
