@@ -26,9 +26,6 @@ def prepare_gantt_array(work_items, worker_count):
         messages = monitor.messages(queue, namespace)
         _, _ = prepare_gantt_array(*extract_work_messages(messages))
 
-    .. image:: ../../../docs/_static/hpo/hyperband.png
-        :width: 45 %
-
     """
     workers = {i: None for i in range(worker_count + 1)}
 
@@ -73,6 +70,13 @@ def prepare_gantt_array(work_items, worker_count):
 
 
 def plot_gantt_plotly(jobs, annotations=None, resources=None):
+    """
+
+    Examples
+    --------
+
+    .. image:: ../../../docs/_static/hpo/hyperband.png
+    """
     import plotly.colors
     import plotly.figure_factory as ff
     from olympus.dashboard.plots.utilities import colors_1024

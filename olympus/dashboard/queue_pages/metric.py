@@ -118,6 +118,5 @@ class MetricQueue(InspectQueue):
         self.data = alt.Data(values=data)
         form = self.form(self.columns, self.sample)
         return html.div_row(
-            #  style='margin-bottom:-1000px; padding-bottom: 1000px;')
             html.div_col(form, size=2, style="height: 100vh;"),
             html.div_col(html.iframe("", id=self.graph_id), id='graph_container', style='width: 100vh; height: 100vh;'))

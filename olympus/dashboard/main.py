@@ -12,6 +12,7 @@ from olympus.dashboard.page import Page
 
 
 class MainPage(Page):
+    """Display available routes the user can take"""
     @staticmethod
     def routes():
         return '/'
@@ -30,6 +31,7 @@ class MainPage(Page):
 
 
 def dashboard():
+    """Dashboard entry point for Olympus user"""
     from msgqueue.backends import new_monitor
 
     parser = ArgumentParser()

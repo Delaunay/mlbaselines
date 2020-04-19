@@ -16,7 +16,7 @@ FIDELITY = Fidelity(1, 30, 10).to_dict()
 
 def run_nomad_hpo(hpo_name, uri, launch_server=True, fidelity=FIDELITY):
     """Worker are converted to HPO when new trials are needed then killed"""
-    with HPOWorkGroup(uri, 'olympus', 'classification', clean=True, launch_server=launch_server) as group:
+    with HPOWorkGroup(uri, 'olympus', 'classification_3', clean=True, launch_server=launch_server) as group:
         group.launch_workers(10)
 
         params = {

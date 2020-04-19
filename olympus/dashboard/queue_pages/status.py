@@ -1,7 +1,7 @@
 from collections import defaultdict
 
 from olympus.dashboard.queue_pages.inspect import InspectQueue
-from olympus.dashboard.plots.work_status import work_status
+from olympus.dashboard.plots.work_status import work_status, aggregate_overview_altair, prepare_overview_altair
 import olympus.dashboard.elements as html
 
 
@@ -41,36 +41,6 @@ class StatusQueue(InspectQueue):
                 aggregated[namespace][k] = v
 
         return aggregated
-
-    def altair_overview(self, data):
-        altair_data = []
-        agents = []
-        for namespace, statuses in data.items():
-            altair_data.append(dict(experiment=namespace, message='pending', count=statuses['unread']))
-            altair_data.append(dict(experiment=namespace, message='in-progress', count=statuses['unactioned']))
-            altair_data.append(dict(experiment=namespace, message='finished', count=statuses['actioned']))
-            altair_data.append(dict(experiment=namespace, message='lost', count=statuses['lost']))
-            altair_data.append(dict(experiment=namespace, message='failed', count=statuses['failed']))
-            agents.append(dict(experiment=namespace, message='agents', count=statuses['agent']))
-
-        import altair as alt
-        alt.themes.enable('dark')
-
-        data = alt.Data(values=altair_data)
-        chart = alt.Chart(data, title='Message status per experiment').mark_bar().encode(
-            x=alt.X('count:Q', stack='normalize'),
-            y='experiment:N',
-            color='message:N'
-        )
-
-        data = alt.Data(values=agents)
-        agent_chart = alt.Chart(data, title='Agent per experiment').mark_bar().encode(
-            x=alt.X('count:Q'),
-            y='experiment:N',
-            color='message:N')
-
-        # return chart
-        return alt.vconcat(chart, agent_chart)
 
     def list_experiment(self, queue, experiments, data):
 
@@ -132,7 +102,9 @@ class StatusQueue(InspectQueue):
         self.insert(data, self.aggregate.failed_count(queue))
         self.insert(data, self.aggregate.agent_count())
 
-        chart = self.altair_overview(data)
+        status, agents = prepare_overview_altair(data)
+        chart = aggregate_overview_altair(status, agents)
+
         return html.div(
             html.header('Experiments', level=3),
             html.div_row(

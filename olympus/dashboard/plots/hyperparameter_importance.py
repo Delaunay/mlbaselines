@@ -21,7 +21,6 @@ def importance_heatmap_altair(fanova):
     --------
 
     .. image:: ../../../docs/_static/plots/importance.png
-        :width: 45 %
 
     """
     import altair as alt
@@ -54,7 +53,6 @@ def marginals_altair(fanova):
     --------
 
     .. image:: ../../../docs/_static/plots/marginals.png
-        :width: 45 %
 
     """
     import altair as alt

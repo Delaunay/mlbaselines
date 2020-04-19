@@ -2,6 +2,7 @@ import olympus.dashboard.elements as html
 
 
 class Page:
+    """Generic webpage template users can inherit from"""
     footer = ''
     header = ''
 

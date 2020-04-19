@@ -24,6 +24,7 @@
    :maxdepth: 1
 
    accumulators/index
+   dashboard/index
    baselines/index
    datasets/index
    distributed/index

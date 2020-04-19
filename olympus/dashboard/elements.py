@@ -5,6 +5,7 @@ from flask import url_for, escape
 
 
 def get_resources():
+    """Fetch local resource file"""
     BOOTSTRAP    = url_for('static', filename='bootstrap.min.css')
     DARKLY       = url_for('static', filename='bootstrap.darkly.min.css')
     JQUERY       = url_for('static', filename='jquery-3.4.1.slim.min.js')
@@ -17,16 +18,37 @@ def get_resources():
 
 
 def ul(items):
+    """Generate an unordered list
+
+    Parameters
+    ----------
+    items: list
+        list of DOM element to make a unordered list
+    """
     items = ''.join(f'<li>{i}</li>' for i in items)
     return f'<ul>{items}</ul>'
 
 
 def ol(items):
+    """Generate an ordered list
+
+        Parameters
+        ----------
+        items: list
+            list of DOM element to make a ordered list
+        """
     items = ''.join(f'<li>{i}</li>' for i in items)
     return f'<ul>{items}</ul>'
 
 
 def div(*items, style=None):
+    """Generate a new div
+
+    Parameters
+    ----------
+    items: argument list
+        DOM children of this div
+    """
     children = ''.join(items)
 
     if style is None:
@@ -36,6 +58,13 @@ def div(*items, style=None):
 
 
 def div_row(*items, style=None):
+    """Generate a new div with a row class
+
+    Parameters
+    ----------
+    items: argument list
+        DOM children of this div
+    """
     children = ''.join(items)
     attr = []
 
@@ -47,6 +76,13 @@ def div_row(*items, style=None):
 
 
 def div_col(*items, size=None, style=None, id=None):
+    """Generate a new div with a col class
+
+    Parameters
+    ----------
+    items: argument list
+        DOM children of this div
+    """
     children = ''.join(items)
     attr = []
 
@@ -64,30 +100,94 @@ def div_col(*items, size=None, style=None, id=None):
 
 
 def header(name, level=1):
+    """Generate a new header
+
+    Parameters
+    ----------
+    items: str
+        name of the header
+
+    level: int
+        level of the header
+    """
     return f'<h{level}>{name}</h{level}>'
 
 
 def link(name, ref):
+    """Generate a hyperlink
+
+    Parameters
+    ----------
+    name: str
+        name of the link
+
+    ref: str
+        reference of the link
+    """
     return f'<a href="{ref}">{name}</a>'
 
 
 def span(name):
+    """Generate a new span
+
+    Parameters
+    ----------
+    name: str
+        DOM children of this div
+    """
     return f'<span>{name}</span>'
 
 
 def code(name):
+    """Generate a new code
+
+    Parameters
+    ----------
+    name: str
+        DOM children of this div
+    """
     return f'<code>{escape(name)}</code>'
 
 
 def chain(*args):
+    """Concatenate a list of DOM elements together
+
+    Parameters
+    ----------
+    items: argument list
+        DOM elements
+    """
     return ''.join(args)
 
 
 def pre(v):
+    """Generate a new pre
+
+    Parameters
+    ----------
+    v: str
+        DOM children of this div
+    """
     return f'<pre>{escape(v)}</pre>'
 
 
 def base_page(title, header, body, footer):
+    """Base HTML5 page
+
+    Parameters
+    ----------
+    title: str
+        Title of the page
+
+    header: str
+        Header section of the page
+
+    body: str
+        Body section of the page
+
+    footer: str
+        Footer section of the page
+    """
     DARKLY, BOOTSTRAP_JS, JQUERY, POPPER, SOCKETIO, CUSTOM_JS = get_resources()
     return f"""
     <!doctype html>
@@ -113,6 +213,14 @@ def base_page(title, header, body, footer):
 
 
 def show_messages(messages):
+    """Generate a new table displaying msqqueue messages
+
+    Parameters
+    ----------
+    messages: List[Messages]
+        list of messages
+    """
+
     def make_row(m):
         return f"""
         <tr>
@@ -149,6 +257,13 @@ def show_messages(messages):
 
 
 def show_agent(agents):
+    """Generate a new table displaying msqqueue agents
+
+    Parameters
+    ----------
+    agents: List[Agent]
+        list of agents
+    """
     def make_row(m):
         return f"""
         <tr>
@@ -199,6 +314,16 @@ def navbar(**kwargs):
 
 
 def select_dropdown(options, id):
+    """Generate a new select dropdown form
+
+    Parameters
+    ----------
+    options: List[str]
+        list of options the user can select
+
+    id: str
+        DOM id used to refer to this input form
+    """
     html_options = ''.join(f'<option>{opt}</option>' for opt in options)
     return f"""
     <select class="form-control form-control-lg" id="{id}">
@@ -247,16 +372,6 @@ def plotly_plot(figure):
     html = buffer.getvalue()
 
     return html
-
-    f"""
-            <iframe 
-                style="border-width: 0px;" 
-                width="100%" 
-                height="100%"
-                sandbox="allow-scripts" 
-                srcdoc="{escape(html)}">
-            </iframe>
-            """
 
 
 def pyplot_plot(figure, **save_args):

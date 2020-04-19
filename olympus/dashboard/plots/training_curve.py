@@ -10,7 +10,6 @@ def plot_results_altair(results, fidelity='epoch'):
     --------
 
     .. image:: ../../../docs/_static/plots/objective.png
-        :width: 45 %
 
     """
     import altair as alt

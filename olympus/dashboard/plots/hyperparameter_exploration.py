@@ -34,13 +34,12 @@ def scatter_matrix_altair(data, columns):
     --------
 
     .. image:: ../../../docs/_static/plots/space_exploration.png
-        :width: 45 %
 
     """
     import altair as alt
     alt.themes.enable('dark')
 
-    from dashboard.plots.utilities import AltairMatrix
+    from olympus.dashboard.plots.utilities import AltairMatrix
 
     space = alt.Data(values=data)
 
