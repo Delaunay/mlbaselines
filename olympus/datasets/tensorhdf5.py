@@ -52,7 +52,7 @@ class HDF5Dataset(Dataset):
         if self.target_transform is not None:
             target = self.target_transform(target)
 
-        return dict(batch=sample, target=target)
+        return {'batch': sample, 'target': target, 0: sample, 1: target}
 
     def __len__(self):
         return h5py.File(self.file_name, 'r', libver='latest', swmr=True)['data'].shape[0]
@@ -69,6 +69,6 @@ def generate_hdf5_dataset(file_name, shape=(3, 224, 224), num_class=1000, sample
         data = h5file.create_dataset("data", (samples,) + fake_shape, dtype='i')
         labels = h5file.create_dataset("labels", (samples,), dtype='i')
 
-        for i, (image, target) in enumerate(fake):
-            data[i, :] = image
-            labels[i] = target
+        for i, sample in enumerate(fake):
+            data[i, :] = sample['batch']
+            labels[i] = sample['target']

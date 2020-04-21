@@ -33,7 +33,8 @@ def test_build_dataset(dataset):
     loader = DataLoader(
         splits,
         sampler_seed=1,
-        batch_size=1
+        batch_size=2,
+        num_workers=2
     )
 
     for i, b in enumerate(loader.train()):
@@ -58,7 +59,8 @@ def test_hdf5_dataset(file_name='/tmp/hdf5.h5'):
         assert len(hdf5_dataset) == total_size
 
         for i in range(total_size):
-            img, target = hdf5_dataset[i]
+            sample = hdf5_dataset[i]
+            img = sample['batch']
             print(img.shape)
 
     finally:
@@ -76,7 +78,7 @@ def test_jpeg_dataset(folder='/tmp/img_folder'):
         imgnet = ImagetNet(folder)
         assert len(imgnet) == 128 + 32
 
-        for img, target in imgnet:
+        for sample in imgnet:
             pass
 
     finally:
@@ -93,7 +95,7 @@ def test_tiny_imagenet(folder='/tmp/tiny'):
             f'{folder}/tinyimagenet_val.h5', (3, 32, 32), num_class=10, samples=32)
 
         tiny = TinyImageNet(folder)
-        for img, target in tiny:
+        for sample in tiny:
             pass
 
     finally:

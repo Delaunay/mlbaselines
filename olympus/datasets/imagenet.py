@@ -115,7 +115,10 @@ def generate_jpeg_dataset(folder, shape=(3, 224, 224), num_class=1000, samples=1
     fake = FakeDataset(shape, num_class, samples, 0, 0)
     os.makedirs(folder, exist_ok=True)
 
-    for i, (img, target) in enumerate(fake):
+    for i, sample in enumerate(fake):
+        target = sample['target']
+        img = sample['batch']
+
         class_folder = f'{folder}/{target}'
         os.makedirs(class_folder, exist_ok=True)
 

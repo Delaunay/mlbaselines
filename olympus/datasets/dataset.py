@@ -72,7 +72,7 @@ class AllDataset(TorchDataset):
     def __getitem__(self, idx):
         """Return a sample from the entire dataset"""
         batch, target = self.dataset[idx]
-        return dict(batch=batch, target=target)
+        return {'batch': batch, 'target': target, 0: batch, 1: target}
 
     def __len__(self):
         """Return the number of samples inside the dataset"""
@@ -126,3 +126,6 @@ class AllDataset(TorchDataset):
     def categories():
         """Dataset tags so we can filter what we want depending on the task"""
         return set()
+
+    def collate_fn(self, data):
+        pass
