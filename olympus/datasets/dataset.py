@@ -71,13 +71,27 @@ class AllDataset(TorchDataset):
 
     def __getitem__(self, idx):
         """Return a sample from the entire dataset"""
-        return self.dataset[idx]
+        batch, target = self.dataset[idx]
+        return dict(batch=batch, target=target)
 
     def __len__(self):
         """Return the number of samples inside the dataset"""
         if self._train_size is None:
             return len(self.dataset)
         return self.valid_size + self.train_size + self.test_size
+
+    @property
+    def keys(self):
+        """Return the list of dictionary keys that is returned by __getitem__"""
+        return 'batch', 'target'
+
+    def get_shape(self, key):
+        """Return the shape of a given key"""
+        if key == 'batch':
+            return self.input_shape
+
+        if key == 'target':
+            return self.target_shape
 
     @property
     def input_shape(self):

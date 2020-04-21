@@ -174,7 +174,10 @@ class Classification(Task):
         self.classifier.train()
         self.optimizer.zero_grad()
 
-        batch, target, *_ = self.preprocessor(input)
+        preprocessed_input = self.preprocessor(input)
+
+        batch = preprocessed_input['batch']
+        target = preprocessed_input['target']
 
         batch = [x.to(device=self.device) for x in batch]
         predictions = self.classifier(*batch)

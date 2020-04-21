@@ -49,7 +49,8 @@ class Gaussian(AllDataset):
         self.data = (X, Y)
 
     def __getitem__(self, index):
-        return tuple(subdata[index] for subdata in self.data)
+        X, Y = self.data
+        return dict(batch=X[index], target=Y[index])
 
     def __len__(self):
         return self.size * self.num_classes

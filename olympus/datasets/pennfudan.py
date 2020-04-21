@@ -132,7 +132,7 @@ class _PennFudanDataset:
         # suppose all instances are not crowd
         iscrowd = torch.zeros((num_objs,), dtype=torch.int64)
 
-        target = {}
+        target = dict()
         target["boxes"] = boxes
         target["labels"] = labels
         target["masks"] = masks
@@ -146,7 +146,7 @@ class _PennFudanDataset:
         if self.target_transforms:
             target = self.target_transforms(target)
 
-        return img, target
+        return dict(batch=img, target=target)
 
     def __len__(self):
         return len(self.imgs)

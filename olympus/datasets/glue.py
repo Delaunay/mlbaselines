@@ -14,10 +14,9 @@ logger = logging.getLogger(__name__)
 
 
 class GLUE(AllDataset):
-    """ the General Language Understanding Evaluation (GLUE) benchmark is a collection of
+    """The General Language Understanding Evaluation (GLUE) benchmark is a collection of
     tools for evaluating the performance of models across a diverse set of existing NLU tasks.
     https://gluebenchmark.com/tasks
-
 
     References
     ----------

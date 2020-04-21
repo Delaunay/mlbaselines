@@ -38,8 +38,11 @@ class Accuracy(Metric):
 
         with stream(self.metric_stream):
             with torch.no_grad():
-                for data, target, *_ in self.loader:
-                    accuracy, loss = task.accuracy(data, target)
+                for sample in self.loader:
+                    batch = sample['batch']
+                    target = sample['target']
+
+                    accuracy, loss = task.accuracy(batch, target)
 
                     accs.append(accuracy.detach())
                     losses.append(loss.detach())
@@ -113,14 +116,13 @@ class OnlineTrainAccuracy(Metric):
         self.count = state_dict['count']
 
     def on_end_batch(self, task, step, input, context):
-        _, targets, *_ = input
         predictions = context.get('predictions')
 
         # compute accuracy for the current batch
         if predictions is not None:
             _, predicted = torch.max(predictions, 1)
 
-            target = input[1].to(device=task.device)
+            target = input['target'].to(device=task.device)
 
             loss = task.criterion(predictions, target).item()
             acc = (predicted == target).sum().item() / target.size(0)

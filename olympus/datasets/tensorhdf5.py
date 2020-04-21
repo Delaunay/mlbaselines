@@ -52,7 +52,7 @@ class HDF5Dataset(Dataset):
         if self.target_transform is not None:
             target = self.target_transform(target)
 
-        return sample, target
+        return dict(batch=sample, target=target)
 
     def __len__(self):
         return h5py.File(self.file_name, 'r', libver='latest', swmr=True)['data'].shape[0]
