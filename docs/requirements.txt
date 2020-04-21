@@ -3,3 +3,9 @@ sphinx_rtd_theme
 numpydoc
 sphinxcontrib-bibtex
 sphinx-serve
+psycopg2-binary
+pymongo
+flask
+eventlet
+flask-socketio
+plotly

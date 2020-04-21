@@ -16,7 +16,13 @@ def importance_heatmap_plotly(fanova, columns):
 
 
 def importance_heatmap_altair(fanova):
-    """
+    """Outputs the importance of each hyper-parameter according to FANOVA
+
+    Parameters
+    ----------
+    fanova: FANOVA
+        instance of FANOVA class
+
     Examples
     --------
 
@@ -47,7 +53,12 @@ def importance_heatmap_altair(fanova):
 
 
 def marginals_altair(fanova):
-    """
+    """Outputs the marginal effect of each hyper-parameter according to FANOVA
+
+    Parameters
+    ----------
+    fanova: FANOVA
+        instance of FANOVA class
 
     Examples
     --------

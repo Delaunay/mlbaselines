@@ -1,13 +1,27 @@
 
 
-def plot_results_altair(results, fidelity='epoch'):
-    """
+def plot_mean_objective_altair(results, fidelity='epoch'):
+    """Plot the evolution of the objective averaged over all trials, and show the
+
     Parameters
     ----------
-    results: [{'fidelity': ..., 'objective'...}]
+    results: List[dict(fidelity=str, objective=float)]
 
     Examples
     --------
+
+    .. code-block: python
+
+        results = [
+            dict(epoch=1, objective=0.229, uid=0),
+            dict(epoch=1, objective=0.239, uid=1),
+            dict(epoch=1, objective=0.249, uid=2),
+            dict(epoch=2, objective=0.312, uid=0),
+            dict(epoch=2, objective=0.333, uid=1),
+            dict(epoch=2, objective=0.346, uid=2),
+        ]
+
+        plot_results_altair(results, fidelity=epoch)
 
     .. image:: ../../../docs/_static/plots/objective.png
 
@@ -33,6 +47,6 @@ def plot_results_altair(results, fidelity='epoch'):
 
 plots = {
     'objective': {
-        'altair': plot_results_altair
+        'altair': plot_mean_objective_altair
     }
 }

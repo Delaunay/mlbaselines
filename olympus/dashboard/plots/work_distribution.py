@@ -70,12 +70,26 @@ def prepare_gantt_array(work_items, worker_count):
 
 
 def plot_gantt_plotly(jobs, annotations=None, resources=None):
-    """
+    """Returns a Gantt diagram representing how the work was scheduler among the different
+    workers
 
     Examples
     --------
 
+    .. code-block:: python
+
+        jobs = [
+            dict(Task='worker-0', Start=0, Finish=1, Resource='Trial'),
+            dict(Task='worker-1', Start=1, Finish=2, Resource='HPO'),
+            dict(Task='worker-0', Start=0, Finish=1, Resource='Trial'),
+            dict(Task='worker-1', Start=1, Finish=2, Resource='Trial'),
+        ]
+
+        fig = plot_gantt_plotly(jobs)
+
+
     .. image:: ../../../docs/_static/hpo/hyperband.png
+
     """
     import plotly.colors
     import plotly.figure_factory as ff

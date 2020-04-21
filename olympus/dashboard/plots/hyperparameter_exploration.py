@@ -27,11 +27,33 @@ def scatter_matrix_plotly(data, columns):
     return fig
 
 
-def scatter_matrix_altair(data, columns):
-    """
+def scatter_matrix_altair(configs, columns, color='epoch'):
+    """Plots hyper-parameter space exploration
+
+    Parameters
+    ----------
+    configs: List[dict]
+        A list of configuration tried by the hyper-parameter
+
+    columns: List[str]
+        A list of the hyper-parameters
+
+    color: str
+        Dimension to use to color each points
 
     Examples
     --------
+
+    .. code-block:: python
+
+        columns = ['a', 'b', 'c']
+        data = [
+            dict(a=1, b=2, c=3, epoch=1),
+            dict(a=2, b=1, c=1, epoch=2),
+            dict(a=3, b=3, c=2, epoch=3),
+        ]
+
+        chart = scatter_matrix_altair(data, columns, color)
 
     .. image:: ../../../docs/_static/plots/space_exploration.png
 
@@ -41,8 +63,7 @@ def scatter_matrix_altair(data, columns):
 
     from olympus.dashboard.plots.utilities import AltairMatrix
 
-    space = alt.Data(values=data)
-
+    space = alt.Data(values=configs)
     base = alt.Chart().properties(
         width=120,
         height=120
@@ -53,7 +74,7 @@ def scatter_matrix_altair(data, columns):
         return base.mark_circle(size=5).encode(
             alt.X(row, type='quantitative'),
             alt.Y(col, type='quantitative'),
-            color='epoch:N'
+            color=f'{color}:N'
         ).interactive()
 
     def density_plot(row):
