@@ -38,7 +38,7 @@ class Accuracy(Metric):
 
         with stream(self.metric_stream):
             with torch.no_grad():
-                for data, target in self.loader:
+                for data, target, *_ in self.loader:
                     accuracy, loss = task.accuracy(data, target)
 
                     accs.append(accuracy.detach())
@@ -113,7 +113,7 @@ class OnlineTrainAccuracy(Metric):
         self.count = state_dict['count']
 
     def on_end_batch(self, task, step, input, context):
-        _, targets = input
+        _, targets, *_ = input
         predictions = context.get('predictions')
 
         # compute accuracy for the current batch
