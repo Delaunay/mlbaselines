@@ -166,7 +166,7 @@ class ProgressView(Observer):
         self.print_fun()
         self.show_progress(epoch)
         self.print_fun()
-        if self.show_metrics == 'epoch':
+        if task is not None and self.show_metrics == 'epoch':
             show_dict(task.metrics.value())
 
     def on_end_batch(self, task, step, input=None, context=None):
@@ -174,7 +174,7 @@ class ProgressView(Observer):
         self.max_step = max(step, self.max_step)
 
         self.show_progress(self.epoch, step)
-        if self.show_metrics == 'batch':
+        if task is not None and self.show_metrics == 'batch':
             show_dict(task.metrics.value())
 
     def init_speed_observer(self, task):

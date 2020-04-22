@@ -48,6 +48,10 @@ class RegisteredDatasetNotFound(Exception):
     pass
 
 
+class NotResumable(Exception):
+    pass
+
+
 class Dataset(TorchDataset):
     """Public Interface of the Dataset"""
     def __init__(self, name=None, dataset=None, path=option('data.path', default='/tmp/olympus/data'), **kwargs):
@@ -90,6 +94,12 @@ class Dataset(TorchDataset):
     def get_collate_fn(self):
         if hasattr(type(self.dataset), 'collate_fn'):
             return type(self.dataset).collate_fn
+
+        return None
+
+    def get_collate_to_dict(self):
+        if hasattr(type(self.dataset), 'collate_to_dict'):
+            return type(self.dataset).collate_to_dict
 
         return None
 
@@ -183,16 +193,30 @@ class SplitDataset(TorchDataset):
 class ResumableDataLoader:
     def __init__(self, *args, **kwargs):
         self.loader = torch.utils.data.DataLoader(
-            *args, **kwargs
-        )
+            *args, **kwargs)
 
     def load_state_dict(self, states, strict=False):
-        self.loader.sampler.load_state_dict(states['sampler'])
+        # Pytorch creates a sampler even when BatchSampler is given
+        sampler = self.loader.sampler
+        batch_sampler = self.loader.batch_sampler
+
+        if sampler is not None and hasattr(sampler, 'load_state_dict'):
+            self.loader.sampler.load_state_dict(states['sampler'])
+
+        elif batch_sampler is not None and hasattr(batch_sampler.sampler, 'load_state_dict'):
+            batch_sampler.sampler.load_state_dict(states['sampler'])
+
+        else:
+            raise NotResumable('Your sampler is not resumable')
 
     def state_dict(self, destination=None, prefix='', keep_vars=False):
-        return {
-            'sampler': self.loader.sampler.state_dict()
-        }
+        state = dict()
+
+        # Batch sampler is always there
+        batch_sampler = self.loader.batch_sampler
+        state['sampler'] = batch_sampler.sampler.state_dict()
+
+        return state
 
     def __iter__(self):
         return iter(self.loader)
@@ -202,12 +226,16 @@ class ResumableDataLoader:
 
 
 class DataLoader:
-    """Initialize multiple pyTorch DataLoader using a split data set
+    """Initialize multiple pyTorch DataLoader using a split data set.
+    This class holds common arguments use to initialize dataloaders for train, valid and test sets.
+
+    The data loader for a specific set can be retrieved using ``train()``, ``valid()`` and ``test()``
+    Additionally, user can override an argument for a specific set.
 
     Notes
     -----
-    While Olympus could make this DataLoader fall back to the expected pytorch DataLoader behaviour.
-    It might be risky to do so as ``train``, ``valid`` and ``test`` would return the same set every time.
+
+    Because DataLoader is building new loaders everytime, samplers need to be function calls instead fo actual instance.
 
     Examples
     --------
@@ -276,9 +304,61 @@ class DataLoader:
 
         return self.loaders[subset_name]
 
+    def _collate_to_dict(self, collate, dataset):
+        """Wraps collate function to return a dictionary instead of a tuple
+        The mapping is given by the dataset itself through the function ``collate_to_dict``"""
+        from torch.utils.data.dataloader import default_collate
+
+        if collate is None:
+            collate = default_collate
+
+        if not hasattr(dataset, 'get_collate_to_dict'):
+            return collate
+
+        collate_to_dict = dataset.get_collate_to_dict()
+        if collate_to_dict is None:
+            return collate
+
+        def new_collate(batch):
+            result = collate(batch)
+            return collate_to_dict(result)
+
+        return new_collate
+
+    def _fetch_collate_function(self, collate_fn, dataset):
+        # collate_fn = arguments.get('collate_fn', None)
+
+        # check if the dataset has a special collate function
+        if collate_fn is None and hasattr(self.split_dataset, 'get_collate_fn'):
+            collate_fn = self.split_dataset.get_collate_fn()
+
+        # wraps our collate function to return dictionaries
+        return self._collate_to_dict(collate_fn, dataset)
+
+    def _fetch_sampler(self, sampler, batch_sampler, dataset):
+        # Batch sampler holds the sampler & the sample is the one with the random state
+        if batch_sampler is not None:
+            batch_sampler = batch_sampler(dataset, self.sampler_seed)
+            return 'batch_sampler', batch_sampler
+
+        # Use our own sampler if no sampler is set
+        if sampler is None:
+            sampler = RandomSampler
+
+        return 'sampler', sampler(dataset, self.sampler_seed)
+
     def _make_dataloader(self, subset_name, **kwargs):
+        original_dataset = self.split_dataset.dataset
+
         arguments = copy.deepcopy(self.default_dataloader_args)
         arguments.update(kwargs)
+
+        if 'batch_sampler' in kwargs and 'batch_sampler' not in self.default_dataloader_args:
+            # batch_sampler do not need those args anymore
+            arguments.pop('batch_size', None)
+            arguments.pop('sampler', None)
+            arguments.pop('drop_last', None)
+            arguments.pop('shuffle', None)
 
         transform = arguments.pop('transform', None)
         if transform is None:
@@ -287,26 +367,24 @@ class DataLoader:
         if transform is None:
             transform = lambda x: x
 
-        collate_fn = arguments.get('collate_fn', None)
-        if collate_fn is None and hasattr(self.split_dataset, 'get_collate_fn'):
-            arguments['collate_fn'] = self.split_dataset.get_collate_fn()
+        arguments['collate_fn'] = self._fetch_collate_function(
+            arguments.get('collate_fn', None),
+            original_dataset)
 
+        # Make a transformed split for the given subset
         dataset_subset = TransformedSubset(
             # Use the original dataset which has a compliant Dataset interface
-            self.split_dataset.dataset,
+            original_dataset,
             getattr(self.split_dataset, subset_name).indices,
             transform)
 
-        batch_sampler = arguments.get('batch_sampler', None)
-        if batch_sampler is not None:
-             batch_sampler = batch_sampler(dataset_subset, self.sampler_seed)
+        name, sampler = self._fetch_sampler(
+            arguments.get('sampler'),
+            arguments.get('batch_sampler'),
+            dataset_subset)
 
-        sampler = None
-        if batch_sampler is None:
-            sampler = arguments.get('sampler', RandomSampler)(dataset_subset, self.sampler_seed)
+        arguments[name] = sampler
 
         return ResumableDataLoader(
             dataset=dataset_subset,
-            sampler=sampler,
-            batch_sampler=batch_sampler,
             **arguments)
