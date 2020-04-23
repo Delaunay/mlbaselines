@@ -43,10 +43,11 @@ class TrialWorker(BaseWorker):
             info(f'Disabling message shutdown because {experiment}')
             self.dispatcher[SHUTDOWN] = lambda *args, **kwargs: print('ignoring shutdown signal')
 
-    def run_trial(self, message, _):
+    def run_trial(self, message, context):
         """Run a trial and return its result"""
         state = message.message
         uid = state['kwargs']['uid']
+        state['kwargs']['experiment_name'] = context['namespace']
         result = exec_remote_call(state)
 
         info(f'Finished (trial: {uid}) with (objective: {result:.5f})')
