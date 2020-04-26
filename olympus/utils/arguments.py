@@ -40,6 +40,20 @@ def _insert_hyperparameter(hypers_dict, name, value):
 def parse_arg_file(arg_file, parser, args, hypers_dict):
     """Parse a json file, command line override configuration file
 
+    Parameters
+    ----------
+    arg_file: str
+        file name of the configuratuon file
+
+    parser: ArgumentParser
+        parser to fetch default values
+
+    args: Namespace
+        command line arguments already parsed
+
+    hypers_dict: Dict
+        Dictionary of hyper parameters
+
     Examples
     --------
     >>> {
