@@ -70,10 +70,12 @@ class ClassifierAdversary(Metric):
 
     def adversarial(self, task, batch, target):
         original_images = Variable(batch, requires_grad=True)
+        original_images.grad = None
 
         # freeze model
         for param in task.model.parameters():
             param.requires_grad = False
+            param.grad = None
 
         probabilities = task.model(original_images.to(device=task.device))
         loss = task.criterion(probabilities, target.to(device=task.device))

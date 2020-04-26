@@ -162,3 +162,19 @@ class BatchedTransform(_PreprocessingNode):
             return torch.stack(samples)
 
         return samples
+
+
+class Denormalize:
+    def __init__(self, mean, std, inplace=False):
+        self.mean = - torch.as_tensor(mean, dtype=torch.float32)
+        self.std = 1.0 / torch.as_tensor(std, dtype=torch.float32)
+        self.inplace = inplace
+
+    def __call__(self, tensor):
+        if not self.inplace:
+            tensor = tensor.clone()
+
+        tensor.div_(self.std[:, None, None])
+        tensor.sub_(self.mean[:, None, None])
+        return tensor
+

@@ -11,6 +11,7 @@ Plots
    plots/training_curve
    plots/work_distribution
    plots/work_status
+   plots/saliency.rst
 
 
 DOM elements
