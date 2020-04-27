@@ -12,6 +12,7 @@ Plots
    plots/work_distribution
    plots/work_status
    plots/saliency.rst
+   plots/layer.rst
 
 
 DOM elements

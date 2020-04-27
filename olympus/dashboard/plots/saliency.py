@@ -72,7 +72,15 @@ class GuidedBackprop:
 
     References
     ----------
-    .. [2] https://arxiv.org/pdf/1810.03292v1.pdf
+    .. [1] J. T. Springenberg, A. Dosovitskiy, T. Brox, and M. Riedmiller.
+        "Striving for Simplicity: The All Convolutional Net"
+        https://arxiv.org/abs/1412.6806
+
+    .. [2] K. Simonyan, A. Vedaldi, A. Zisserman.
+        "Deep Inside Convolutional Networks: Visualising Image Classification Models and Saliency Maps"
+        https://arxiv.org/abs/1312.6034
+
+    .. [3] https://arxiv.org/pdf/1810.03292v1.pdf
 
     Examples
     --------
