@@ -1,13 +1,18 @@
 import torch
 import torch.nn as nn
 
+import olympus
 
-class ImplicitFp16Cast(nn.Module):
-    def __init__(self):
-        super(ImplicitFp16Cast, self).__init__()
 
-    def forward(self, input):
-        return input.half()
+class HalveInputs(nn.Module):
+
+    def __init__(self, inner_model):
+        super(HalveInputs, self).__init__()
+        self.inner_model = inner_model
+
+    def forward(self, *args, **kwargs):
+        args = [x.half() for x in args]
+        return self.inner_model(*args)
 
 
 def copy_in_params(net, params):
@@ -46,7 +51,11 @@ def batchnorm_convert_float(module):
 
 
 def network_to_half(network):
-    return nn.Sequential(ImplicitFp16Cast(), batchnorm_convert_float(network.half()))
+    if type(network) == olympus.models.bert.BertWrapper:
+        # do not halve the input for BERT - otherwise the embeddings will crash..
+        return batchnorm_convert_float(network.half())
+    else:
+        return HalveInputs(batchnorm_convert_float(network.half()))
 
 
 def arguments(parser):

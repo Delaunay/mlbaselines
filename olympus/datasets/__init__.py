@@ -7,7 +7,7 @@ from olympus.utils import warning, option, MissingArgument
 from olympus.utils.factory import fetch_factories
 from olympus.datasets.transformed import TransformedSubset
 from olympus.datasets.split import generate_splits
-from olympus.datasets.sampling import RandomSampler
+from olympus.datasets.sampling import RandomSampler, SequentialSampler
 
 
 registered_datasets = fetch_factories('olympus.datasets', __file__)
@@ -377,6 +377,10 @@ class DataLoader:
             original_dataset,
             getattr(self.split_dataset, subset_name).indices,
             transform)
+
+        valid_batch_size = arguments.pop('valid_batch_size', None)
+        if subset_name in ['valid', 'test'] and valid_batch_size:
+            arguments['batch_size'] = valid_batch_size
 
         name, sampler = self._fetch_sampler(
             arguments.get('sampler'),

@@ -225,10 +225,14 @@ class Classification(Task):
         return predicted, loss
 
     def accuracy(self, batch, target):
-        predicted, loss = self.predict(batch, target)
-        acc = (predicted == target.to(device=self.device)).sum()
+        self.model.eval()
 
-        return acc.float() / target.size(0), loss
+        with torch.no_grad():
+            predicted, loss = self.predict(batch, target)
+            acc = (predicted == target.to(device=self.device)).sum()
+
+        self.model.train()
+        return acc.float(), loss
 
     def load_state_dict(self, state, strict=True):
         load_state_dict(self, state, strict, force_default=True)

@@ -38,19 +38,20 @@ class Accuracy(Metric):
 
         with stream(self.metric_stream):
             with torch.no_grad():
+                total = 0
                 for data, target, *_ in self.loader:
                     accuracy, loss = task.accuracy(data, target)
+                    total += data[0].shape[0]
 
                     accs.append(accuracy.detach())
                     losses.append(loss.detach())
 
-                acc = sum([a.item() for a in accs])
+                acc = sum([a.item() for a in accs]) / total
                 loss_acc = sum([l.item() for l in losses])
 
         end = datetime.utcnow()
 
         eval_time = (end - start).total_seconds()
-        acc = (acc / count)
         loss = (loss_acc / count)
 
         return eval_time, acc, loss

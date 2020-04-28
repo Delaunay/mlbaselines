@@ -58,6 +58,29 @@ class RandomSamplerWithReplacement(_BaseSampler):
         return len(self.data_source)
 
 
+class SequentialSampler(Sampler):
+    """Pytorch like Sampler"""
+    def __init__(self, data_source, seed=None, replacement=False, num_samples=None):
+        self.seed = seed
+
+        if num_samples is None:
+            num_samples = len(data_source)
+
+        self.num_samples = num_samples
+
+    def __iter__(self):
+        return iter(range(self.num_samples))
+
+    def __len__(self):
+        return self.num_samples
+
+    def state_dict(self):
+        return {}
+
+    def load_state_dict(self, state_dict):
+        pass
+
+
 class RandomSampler(Sampler):
     """Pytorch like Sampler"""
     def __init__(self, data_source, seed=None, replacement=False, num_samples=None):

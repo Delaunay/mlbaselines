@@ -91,9 +91,13 @@ def classification_baseline(model, initializer,
                             optimizer, schedule,
                             dataset, batch_size, device,
                             split_method='original',
-                            sampler_seed=0, model_seed=0, storage=None, half=False, hpo_done=False,
+                            sampler_seed=0,
+                            init_seed=0,
+                            model_seed=0, storage=None, half=False, hpo_done=False,
                             data_path='/tmp/olympus',
-                            validate=True, hyper_parameters=None, uri_metric=None, **config):
+                            validate=True, hyper_parameters=None, uri_metric=None,
+                            valid_batch_size=None,
+                            **config):
 
     dataset = SplitDataset(
         Dataset(dataset, path=option('data.path', data_path)),
@@ -103,14 +107,15 @@ def classification_baseline(model, initializer,
     loader = DataLoader(
         dataset,
         sampler_seed=sampler_seed,
-        batch_size=batch_size
+        batch_size=batch_size,
+        valid_batch_size=valid_batch_size
     )
 
     input_size, target_size = loader.get_shapes()
 
     init = Initializer(
         initializer,
-        seed=model_seed,
+        seed=init_seed,
         **get_parameters('initializer', hyper_parameters)
     )
 
@@ -118,6 +123,7 @@ def classification_baseline(model, initializer,
         model,
         input_size=input_size,
         output_size=target_size[0],
+        model_seed=model_seed,
         weight_init=init,
         half=half)
 

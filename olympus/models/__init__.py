@@ -98,10 +98,12 @@ class Model(nn.Module):
     _dtype = torch.float32
     _device = torch.device('cpu')
 
-    def __init__(self, name=None, *, half=False, model=None, input_size=None, output_size=None, weight_init=default_init):
+    def __init__(self, name=None, *, half=False, model=None, input_size=None, output_size=None,
+                 model_seed=1, weight_init=default_init):
         super(Model, self).__init__()
         self.transform = lambda x: try_convert(x, self.device, self.dtype)
         self.half = half
+        self.model_seed = model_seed
         self._model = None
 
         # Track defined hyper parameters
@@ -123,7 +125,8 @@ class Model(nn.Module):
                 self.hyper_parameters.space.update(model.get_space())
 
             if isinstance(model, type):
-                self.model_builder = LazyCall(model, input_size=input_size, output_size=output_size)
+                self.model_builder = LazyCall(
+                    model, input_size=input_size, output_size=output_size, model_seed=model_seed)
             else:
                 self.model_builder = LazyCall(lambda *args, **kwargs: model)
 
@@ -134,7 +137,9 @@ class Model(nn.Module):
             if not model_fun:
                 raise RegisteredModelNotFound(name)
 
-            self.model_builder = LazyCall(model_fun, input_size=input_size, output_size=output_size)
+            self.model_builder = LazyCall(
+                model_fun, input_size=input_size, output_size=output_size,
+                model_seed=model_seed)
 
             if hasattr(model_fun, 'get_space'):
                 self.hyper_parameters.space.update(model_fun.get_space())

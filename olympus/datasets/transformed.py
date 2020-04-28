@@ -10,7 +10,7 @@ class TransformedSubset(Subset):
     def __getitem__(self, idx):
         data = super(TransformedSubset, self).__getitem__(idx)
         target = data[-1]
-        data = data[:1]
+        data = data[:-1]
 
         if self.transform is not None:
             data = [self.transform(x) for x in data]

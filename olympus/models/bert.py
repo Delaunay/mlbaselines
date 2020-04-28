@@ -1,5 +1,17 @@
-from transformers import BertForSequenceClassification, BertConfig
+import random
+
+import numpy as np
+import torch
+
 from olympus.utils.options import option
+from transformers import BertForSequenceClassification, BertConfig
+
+
+def set_seed(seed):
+    random.seed(seed)
+    np.random.seed(seed)
+    torch.manual_seed(seed)
+    torch.cuda.manual_seed_all(seed)
 
 
 class BertWrapper(BertForSequenceClassification):
@@ -8,7 +20,8 @@ class BertWrapper(BertForSequenceClassification):
         return result[0]
 
 
-def build_bert(input_size, output_size,  task):
+def build_bert(input_size, output_size, model_seed, task):
+    set_seed(model_seed)
     config = BertConfig.from_pretrained(
         'bert-base-uncased',
         num_labels=2,
@@ -24,20 +37,20 @@ def build_bert(input_size, output_size,  task):
     return model
 
 
-def build_bert_sst2(input_size, output_size):
-    return build_bert(input_size, output_size, 'sst-2')
+def build_bert_sst2(input_size, output_size, model_seed):
+    return build_bert(input_size, output_size, model_seed, 'sst-2')
 
 
-def build_bert_cola(input_size, output_size):
-    return build_bert(input_size, output_size, 'cola')
+def build_bert_cola(input_size, output_size, model_seed):
+    return build_bert(input_size, output_size, model_seed, 'cola')
 
 
-def build_bert_mrpc(input_size, output_size):
-    return build_bert(input_size, output_size, 'mrpc')
+def build_bert_mrpc(input_size, output_size, model_seed):
+    return build_bert(input_size, output_size, model_seed, 'mrpc')
 
 
-def build_bert_rte(input_size, output_size):
-    return build_bert(input_size, output_size, 'rte')
+def build_bert_rte(input_size, output_size, model_seed):
+    return build_bert(input_size, output_size, model_seed, 'rte')
 
 
 builders = {
