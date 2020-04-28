@@ -1,4 +1,4 @@
-import olympus.dashboard.elements as html
+from . import elements as html
 
 
 class Page:
