@@ -1,6 +1,7 @@
 import torch
 
 from torch.nn import Module, CrossEntropyLoss
+from torch.nn.functional import log_softmax
 
 from olympus.observers import ElapsedRealTime, SampleCount, ProgressView, Speed, CheckPointer
 from olympus.metrics import OnlineTrainAccuracy
@@ -208,19 +209,21 @@ class Classification(Task):
         self.model.train()
         return loss.detach()
 
-    def predict_probabilities(self, batch):
+    def predict_scores(self, batch):
         with torch.no_grad():
             data = [x.to(device=self.device) for x in batch]
             return self.classifier(*data)
-            return self.classifier(batch.to(device=self.device))
+
+    def predict_log_probabilities(self, batch):
+        return log_softmax(self.predict_scores(batch), dim=1)
 
     def predict(self, batch, target=None):
-        probabilities = self.predict_probabilities(batch)
-        _, predicted = torch.max(probabilities, 1)
+        scores = self.predict_scores(batch)
+        _, predicted = torch.max(scores, 1)
 
         loss = None
         if target is not None:
-            loss = self.criterion(probabilities, target.to(device=self.device))
+            loss = self.criterion(scores, target.to(device=self.device))
 
         return predicted, loss
 
