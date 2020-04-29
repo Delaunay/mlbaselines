@@ -1,0 +1,17 @@
+function: 'olympus.baselines.vgg11_cifar10.main'
+
+objective: 'validation_error_rate'
+
+variables:
+    random_state: 332
+    bootstrap_seed: 1
+
+defaults: {}
+
+fidelity: null
+
+space:
+    max_depth: 'loguniform(2, 100)'
+    min_samples_split: 'uniform(0, 1)'
+    min_samples_leaf: 'loguniform(1, 100)'
+    min_weight_fraction_leaf: 'uniform(0, 0.5)'
