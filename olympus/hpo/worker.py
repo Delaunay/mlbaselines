@@ -48,7 +48,10 @@ class TrialWorker(BaseWorker):
         state = message.message
         uid = state['kwargs']['uid']
         state['kwargs']['experiment_name'] = context['namespace']
+        state['kwargs']['client'] = self.client
         result = exec_remote_call(state)
+        state['kwargs'].pop('experiment_name')
+        state['kwargs'].pop('client')
 
         info(f'Finished (trial: {uid}) with (objective: {result:.5f})')
         return state['kwargs'], result

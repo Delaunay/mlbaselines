@@ -15,17 +15,21 @@ METRIC_QUEUE = 'OLYMETRIC'
 METRIC_ITEM = 200
 
 
-def metric_logger(uri, database, experiment):
-    return MSGQTracker(client=_Logger(uri, database, experiment))
+def metric_logger(uri=None, database=None, experiment=None, client=None):
+    print(dict(uri=uri, database=database, experiment=experiment, client=client))
+    return MSGQTracker(
+        client=_Logger(uri=uri, database=database, experiment=experiment, client=client))
 
 
 class _Logger:
-    def __init__(self, uri, database, experiment):
+    def __init__(self, uri=None, database=None, experiment=None, client=None):
         if ERROR is not None:
             raise ERROR
 
         self.experiment = experiment
-        self.client = new_client(uri, database)
+        if client is None:
+            client = new_client(uri, database)
+        self.client = client
         self.uid = None
 
     def log(self, data):
