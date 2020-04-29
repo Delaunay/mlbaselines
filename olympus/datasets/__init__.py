@@ -283,18 +283,20 @@ class DataLoader:
         oshape = self.split_dataset.target_shape
         return ishape, oshape
 
-    def get_train_valid_loaders(self, hpo_done=False, transform=None, collate_fn=None, **kwargs):
+    def get_loaders(self, hpo_done=False, transform=None, collate_fn=None, **kwargs):
         """For the final train session we merge train and valid together
         This is an helper function to get the splits needed depending on the context
         """
         if hpo_done:
             train_loader = self.extended_train(transform, collate_fn, **kwargs)
-            valid_loader = self.test(transform, collate_fn, **kwargs)
+            valid_loader = None
+            test_loader = self.test(transform, collate_fn, **kwargs)
         else:
             train_loader = self.train(transform, collate_fn, **kwargs)
             valid_loader = self.valid(transform, collate_fn, **kwargs)
+            test_loader = self.test(transform, collate_fn, **kwargs)
 
-        return train_loader, valid_loader
+        return train_loader, valid_loader, test_loader
 
     def _get_dataloader(self, subset_name, transform=None, collate_fn=None, **kwargs):
         """Only create them when necessary"""
