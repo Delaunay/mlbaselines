@@ -41,7 +41,7 @@ class Classification(Task):
         Where to save checkpoints in case of failures
     """
     def __init__(self, classifier, optimizer, lr_scheduler, dataloader, criterion=None, device=None,
-                 storage=None, preprocessor=None):
+                 storage=None, preprocessor=None, metrics=None):
         super(Classification, self).__init__(device=device)
         criterion = select(criterion, CrossEntropyLoss())
 
@@ -59,6 +59,12 @@ class Classification(Task):
         self.metrics.append(SampleCount().every(batch=1, epoch=1))
         self.metrics.append(OnlineTrainAccuracy())
         self.metrics.append(Speed())
+
+        # All metrics must be before ProgressView and CheckPointer
+        if metrics:
+            for metric in metrics:
+                self.metrics.append(metric)
+
         self.metrics.append(ProgressView(speed_observer=self.metrics.get('Speed')))
 
         if storage:

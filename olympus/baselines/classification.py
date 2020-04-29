@@ -135,18 +135,20 @@ def classification_baseline(model, initializer,
 
     train, valid = loader.get_train_valid_loaders(hpo_done=hpo_done)
 
+    additional_metrics = []
+    if validate:
+        additional_metrics.append(
+            Accuracy(name='validation', loader=valid)
+        )
+
     main_task = Classification(
         classifier=model,
         optimizer=optimizer,
         lr_scheduler=lr_schedule,
         dataloader=train,
         device=device,
-        storage=storage)
-
-    if validate:
-        main_task.metrics.append(
-            Accuracy(name='validation', loader=valid)
-        )
+        storage=storage,
+        metrics=additional_metrics)
 
     return main_task
 

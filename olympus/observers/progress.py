@@ -159,6 +159,18 @@ class ProgressView(Observer):
 
         return ''
 
+    def on_start_train(self, task, step=None):
+        print('Starting')
+        show_dict(task.metrics.value())
+
+    def on_resume_train(self, task, epoch):
+        print('Resuming at epoch', epoch)
+        show_dict(task.metrics.value())
+
+    def on_end_train(self, task, step=None):
+        print('Completed training')
+        show_dict(task.metrics.value())
+
     def on_end_epoch(self, task, epoch, context):
         self.epoch = epoch
         self.max_epoch = max(self.epoch, self.max_epoch)

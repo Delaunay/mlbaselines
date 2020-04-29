@@ -56,7 +56,7 @@ class Accuracy(Metric):
 
         return eval_time, acc, loss
 
-    def on_new_epoch(self, task, epoch, context):
+    def on_end_epoch(self, task, epoch, context):
         # I would like to make this completely async
         # but I do not think I can do it easily
         # Good enough for now
@@ -67,10 +67,7 @@ class Accuracy(Metric):
         self.losses.append(loss)
 
     def on_start_train(self, task, step=None):
-        self.on_new_epoch(task, step, None)
-
-    def on_end_train(self, task, step=None):
-        self.on_new_epoch(task, step, None)
+        self.on_end_epoch(task, step, None)
 
     def value(self):
         if not self.accuracies:
