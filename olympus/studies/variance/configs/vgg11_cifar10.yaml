@@ -1,0 +1,21 @@
+function: 'olympus.baselines.vgg11_cifar10.main'
+
+objective: 'validation_error_rate'
+
+variables:
+    init_seed: 1
+    bootstrap_seed: 2
+    transform_seed: 3
+    sampler_seed: 4
+
+fidelity:
+    min: 1
+    max: 120
+    base: 4
+    name: 'epoch'
+
+space:
+    learning_rate: 'loguniform(0.001, 0.5)'
+    momentum: 'uniform(0.80, 0.99)'
+    weight_decay: 'loguniform(10e-6, 10e-2)'
+    gamma: 'uniform(0.96, 0.999)'
