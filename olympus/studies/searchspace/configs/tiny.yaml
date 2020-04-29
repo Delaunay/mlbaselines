@@ -1,0 +1,13 @@
+function: 'olympus.baselines.tiny.main'
+
+variables:
+    random_state: 1
+    bootstrap_seed: 1
+
+fidelity: null
+
+space:
+    max_depth: 'loguniform(1, 100)'
+    min_samples_split: 'uniform(0, 1)'
+    min_samples_leaf: 'loguniform(1, 100)'
+    min_weight_fraction_leaf: 'uniform(0, 1)'

@@ -1,0 +1,17 @@
+function: 'olympus.baselines.bert_glue.main'
+
+objective: 'validation_error_rate'
+
+variables:
+    init_seed: 1
+    bootstrap_seed: 2
+    sampler_seed: 3
+
+fidelity: null
+
+space:
+    learning_rate: 'loguniform(0.00001, 0.001)'
+    beta1: 'loguniform(0.8, 0.99)'
+    beta2: 'loguniform(0.8, 0.999)'
+    weight_decay: 'loguniform(10e-6, 10e-2)'
+    init_std: 'loguniform(0.01, 0.5)'
