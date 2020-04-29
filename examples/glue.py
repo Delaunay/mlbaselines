@@ -30,7 +30,7 @@ def main():
 
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
     task = classification_baseline(
-        "bert-{}".format(args.task), 'normal', 'adam', 'none', "glue-{}".format(args.task),
+        "bert-{}".format(args.task), 'normal', 'adam', 'warmup', "glue-{}".format(args.task),
         args.batch_size, device, storage=storage, half=args.fp16, hpo_done=True)
 
     task.init(
@@ -40,7 +40,10 @@ def main():
             'beta1': 0.9,
             'beta2': 0.999,
             'weight_decay': 0.01},
-        lr_schedule={})
+        lr_schedule={
+            'warmup_steps': warmup,
+            'max_steps': epoch * len(task.dataloader),
+            'iterations': 'step'})
 
     task.fit(epochs=args.epochs)
     pprint.pprint(task.metrics.value())
