@@ -75,6 +75,7 @@ class Accuracy(Metric):
 
         return {
             f'{self.name}_accuracy': self.accuracies[-1],
+            f'{self.name}_error_rate': 1 - self.accuracies[-1],
             f'{self.name}_loss': self.losses[-1],
             f'{self.name}_time': self.eval_time.avg
         }
