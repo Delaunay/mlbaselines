@@ -6,7 +6,7 @@ from olympus.hpo.fidelity import Fidelity
 from olympus.utils import new_seed, warning
 
 
-class _Trial:
+class Trial:
     def __init__(self, params_instance):
         self.params = params_instance
         self.objectives = []
@@ -35,7 +35,7 @@ class _Trial:
 
     @staticmethod
     def from_dict(state):
-        t = _Trial(state['params'])
+        t = Trial(state['params'])
         t.objectives = state['objectives']
         return t
 
@@ -97,7 +97,7 @@ class HyperParameterOptimizer:
         self.manual_insert = 0
         self.manual_samples = []
         self.manual_fidelity = []
-        self.trials = dict()
+        self.trials = OrderedDict()
 
     def insert_manual_sample(self, sample=None, fidelity_override=None, **kwargs):
         """Can be used to force a specific configuration to be considered
@@ -180,7 +180,7 @@ class HyperParameterOptimizer:
 
         # Register all the samples
         for s in samples:
-            t = _Trial(s)
+            t = Trial(s)
             trials.append(t)
             self.trials[s[self.identity]] = t
 
@@ -238,9 +238,9 @@ class HyperParameterOptimizer:
         self.manual_insert = state['manual_insert']
         self.seed_time = state['seed_time']
         self.fidelity = Fidelity.from_dict(state['fidelity'])
-        self.trials = {
-            k: _Trial.from_dict(t) for k, t in state['trials']
-        }
+        self.trials = OrderedDict(
+            (k, Trial.from_dict(t)) for k, t in state['trials']
+        )
         return self
 
     @staticmethod

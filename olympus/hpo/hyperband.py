@@ -3,13 +3,13 @@ from dataclasses import dataclass, field
 
 from sspace import Space
 from olympus.hpo.fidelity import Fidelity
-from olympus.hpo.optimizer import HyperParameterOptimizer, _Trial, LogicError, WaitingForTrials, OptimizationIsDone
+from olympus.hpo.optimizer import HyperParameterOptimizer, Trial, LogicError, WaitingForTrials, OptimizationIsDone
 from olympus.utils import new_seed
 
 
 @dataclass
 class _Bracket:
-    trials: List[_Trial] = field(default_factory=list)
+    trials: List[Trial] = field(default_factory=list)
     rung: int = 1
 
     def append(self, t):
