@@ -165,8 +165,10 @@ class Classification(Task):
     def epoch(self, epoch, context):
         self.current_epoch = epoch
         self.metrics.new_epoch(epoch, context)
+        iterations = len(self.dataloader) * (epoch - 1)
 
         for step, mini_batch in enumerate(self.dataloader):
+            step += iterations
             self.metrics.new_batch(step, mini_batch, None)
 
             results = self.step(step, mini_batch, context)

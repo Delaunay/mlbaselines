@@ -185,8 +185,7 @@ class ProgressView(Observer):
             show_dict(task.metrics.value())
 
     def on_end_batch(self, task, step, input=None, context=None):
-        self.step = step
-        self.max_step = max(step, self.max_step)
+        self.step = step % self.max_step
 
         self.show_progress(self.epoch, step)
         if task is not None and self.show_metrics == 'batch':
