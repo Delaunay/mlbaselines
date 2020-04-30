@@ -1,0 +1,9 @@
+export OLYMPUS_DATA_PATH=$SCRATCH/data
+export GATEWAY=beluga2
+export MONGODB_HOST={DB_IP}
+export SIMUL_HPO_DB={DB_NAME}
+export SIMUL_HPO_DB_PASSWORD={DB_PASSWORD}
+
+export OLYMPUS_STATE_STORAGE=$SCRATCH/data/checkpoints
+
+export PATH=$PATH:$HOME/.local/bin:$HOME/bin

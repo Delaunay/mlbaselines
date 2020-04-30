@@ -5,6 +5,9 @@ Search Space Experiments
 Installation
 ------------
 
+Locally
+=======
+
 .. code-block:: bash
 
    $ git clone git@github.com:mila-iqia/olympus.git
@@ -20,6 +23,35 @@ you can install them with:
 Make sure to download the data you need and set
 the environment variable ``OLYMPUS_DATA_PATH`` to the
 folder where the data is stored.
+
+Clusters
+========
+
+To setup on the clusters, copy the corresponding file
+in your home from `olympus/studies/search_space/{cluster_name}.rc` and
+add `source {cluster_name}.rc` at the end of your `.bashrc` file.
+
+Make sure to replace all these templates with proper values.
+
+:{DB_URL}:
+:{DB_NAME}:
+:{DB_PASSWORD}:
+
+If using beluga, copy the wheels in `olympus/wheels/beluga/` to `$WHEEL_DIR`
+and git clone the repo at $PROJECT/repos/.
+
+Download your data and save it in `$OLYMPUS_DATA_PATH`.
+
+You can use the corresponding file 
+`olympus/studies/search_space/{cluster_name}.sh` to submit jobs.
+You will need to replace the following templates
+
+:{NUM_JOBS}:           Number of jobs to submit on the cluster.
+:{TASK}:               The task name.
+:{DATA_FOLDER_NAME}:   The name of the dataset folder under $OLYMPUS_DATA_PATH.
+:{ACCOUNT}:            Account for compute-canada allocation.
+:{DATA_FOLDER_NAME}:   This is to copy your specific dataset to local drive, not all datasets.
+:{NUM_WORKER_PER_GPU}: Number of workers that can run on the same GPU simultaneously.
 
 Configuration
 -------------
@@ -96,7 +128,11 @@ The master process can be started using the ``main.py`` script:
 
 This will register a random search algorithm in the database and wait for
 the algorithm to complete before parsing the results and saving them
-in ``olympus/studies/searchspace/results/tiny.json``.
+in ``olympus/studies/searchspace/results/tiny.json``. You can run this
+from your laptop, no need to run it on the cluster. The script is resumable.
+Also, once it has registered the hyperparameter optimization, the worker are able to do most
+of the work, so as long as the script completed registering the tasks it can be stopped
+for a while and workers will do their job anyhow.
 
 To execute the trials you must start workers with:
 
@@ -116,7 +152,7 @@ OLYMPUS_MODEL_CACHE to the folder where they are saved.
 And finally don't forget to set OLYMPUS_DATA_PATH.
 
 For execution on the cluster (namely on Beluga) see the example script at
-``olympus/studies/searchspace/slurm.sh``
+``olympus/studies/searchspace/{cluster_name}.sh``. The workers will do the heavy job.
 
 Results
 -------
