@@ -23,7 +23,7 @@ DATABASE = 'olympus'
 NAMESPACE = 'test-hpo'
 CONFIG = {
     'name': 'random_search',
-    'seed': 1, 'count': 1,
+    'seed': 0, 'count': 1,
     'fidelity': Fidelity(1, 10, name='epoch').to_dict(),
     'space': {
         'a': 'uniform(lower=-1, upper=1)',
@@ -73,18 +73,20 @@ def test_convert_xarray_to_scipy_results(client):
 
     scipy_results = xarray_to_scipy_results(config['space'], 'obj', data)
 
-    assert scipy_results.x[0] == data.a.values[8, 0]
-    assert scipy_results.x[1] == data.b.values[8, 0]
-    assert scipy_results.x[2] == data.c.values[8, 0]
-    assert scipy_results.x[3] == numpy.log(data.d.values[8, 0])
-    assert scipy_results.fun == data.obj.values[0, 8, 0]
+    min_idx = numpy.argmin(data.obj.values[0, :, 0])
+
+    assert scipy_results.x[0] == data.a.values[min_idx, 0]
+    assert scipy_results.x[1] == data.b.values[min_idx, 0]
+    assert scipy_results.x[2] == data.c.values[min_idx, 0]
+    assert scipy_results.x[3] == numpy.log(data.d.values[min_idx, 0])
+    assert scipy_results.fun == data.obj.values[0, min_idx, 0]
     assert len(scipy_results.x_iters) == num_trials
 
 
 @pytest.mark.usefixtures('clean_mongodb')
 def test_plot(client):
     config = copy.deepcopy(CONFIG)
-    num_trials = 50
+    num_trials = 10
     config['count'] = num_trials
     config['fidelity'] = Fidelity(0, 0, name='epoch').to_dict()
 
