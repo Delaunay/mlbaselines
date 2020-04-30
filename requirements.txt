@@ -11,3 +11,5 @@ h5py
 tqdm
 pandas
 filelock
+scikit-optimize
+matplotlib

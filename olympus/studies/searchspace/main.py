@@ -16,6 +16,7 @@ from olympus.hpo.parallel import make_remote_call, RESULT_QUEUE, WORK_QUEUE, HPO
 from olympus.hpo.worker import HPOWorkGroup
 from olympus.utils import info
 from olympus.utils.functional import flatten
+from olympus.studies.searchspace.plot import plot
 
 
 def register_hpo(client, namespace, function, config, defaults):
@@ -209,11 +210,11 @@ def load_results(namespace, save_dir):
     return data
 
 
-def run(uri, database, namespace, function, fidelity, space, count, variables, save_dir='.',
-        sleep_time=60):
+def run(uri, database, namespace, function, fidelity, space, count, variables, 
+        plot_filename, objective, save_dir='.', sleep_time=60):
     if fidelity is None:
         fidelity = Fidelity(0, 0, name='epoch').to_dict()
-        space['epoch'] = 'uniform(0, 1)'
+        # space['epoch'] = 'uniform(0, 1)'
 
     config = {
         'name': 'random_search',
@@ -233,10 +234,9 @@ def run(uri, database, namespace, function, fidelity, space, count, variables, s
     # get the result of the HPO
     print(f'HPO is done')
     data = fetch_hpo_valid_curves(client, namespace, list(sorted(variables.keys())))
-    print(data)
     save_results(namespace, data, save_dir)
 
-    # TODO: Make the grid plot out of the results (with fanova)
+    plot(space, objective, data, plot_filename, model_seed=1)
 
 
 def run_from_config_file(uri, database, namespace, config_file, **kwargs):
@@ -257,6 +257,7 @@ def main(args=None):
     parser.add_argument('--sleep-time', default=60, type=int)
     parser.add_argument('--max-trials', default=200, type=int)
     parser.add_argument('--save-dir', default='.', type=str)
+    parser.add_argument('--plot-filename', default=None, type=str)
 
     args = parser.parse_args(args)
 
@@ -264,10 +265,13 @@ def main(args=None):
     if namespace is None:
         namespace = '.'.join(os.path.basename(args.config).split('.')[:-1])
 
+    if args.plot_filename is None:
+        args.plot_filename = namespace + '.png'
+
     run_from_config_file(
         args.uri, args.database, namespace, args.config,
         sleep_time=args.sleep_time, count=args.max_trials,
-        save_dir=args.save_dir)
+        save_dir=args.save_dir, plot_filename=args.plot_filename)
 
 
 if __name__ == '__main__':
