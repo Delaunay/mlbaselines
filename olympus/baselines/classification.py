@@ -147,9 +147,15 @@ def classification_baseline(model, initializer,
     train, valid, test = loader.get_loaders(hpo_done=hpo_done)
 
     additional_metrics = []
-    if validate:
+
+    if validate and valid:
         additional_metrics.append(
             Accuracy(name='validation', loader=valid)
+        )
+
+    if validate and test:
+        additional_metrics.append(
+            Accuracy(name='test', loader=test)
         )
 
     main_task = Classification(
@@ -160,16 +166,6 @@ def classification_baseline(model, initializer,
         device=device,
         storage=storage,
         metrics=additional_metrics)
-
-    if validate and valid:
-        main_task.metrics.append(
-            Accuracy(name='validation', loader=valid)
-        )
-
-    if validate and test:
-        main_task.metrics.append(
-            Accuracy(name='test', loader=test)
-        )
 
     return main_task
 
