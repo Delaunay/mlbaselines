@@ -84,6 +84,15 @@ def arguments():
     parser.add_argument(
         '--database', type=str, default='olympus',
         help='which database to use')
+    parser.add_argument(
+        '--rank', type=int, default=1,
+        help='Rank of worker for distributed training')
+    parser.add_argument(
+        '--world-size', type=int, default=1,
+        help='Number of workers for distributed training')
+    parser.add_argument(
+        '--dist-url', type=str,
+        help='Connection URL for distributed training')
 
     return parser
 
