@@ -305,7 +305,3 @@ def test_save_load_results(client):
     save_results(NAMESPACE, data, '.')
 
     assert load_results(NAMESPACE, '.')
-
-
-def test_integration():
-    assert False

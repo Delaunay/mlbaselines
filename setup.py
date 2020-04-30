@@ -26,6 +26,10 @@ if __name__ == '__main__':
             'olympus.baselines',
             'olympus.tasks',
             'olympus.utils',
+            'olympus.studies',
+            'olympus.studies.hpo',
+            'olympus.studies.searchspace',
+            'olympus.studies.variance'
         ],
         setup_requires=['setuptools'],
         tests_require=['pytest', 'flake8', 'codecov', 'pytest-cov'],

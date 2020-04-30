@@ -27,17 +27,13 @@ def env(namespace, median):
 
 def get_medians(data, medians, objective):
     median_seeds = dict()
+    max_epoch = max(data.epoch.values)
 
     for median in medians:
-        median_data = data.loc[dict(seed=median)]
-        print(median_data)
+        median_data = data.loc[dict(seed=median, epoch=max_epoch)]
         results = median_data[objective].values.reshape(-1)
         idx = numpy.argsort(results)
         median_index = idx[(len(results) - 1) // 2]
-        print(median_data[median])
-        print(median_data[median].shape)
-        print(median_index)
-        print(median_data[median].values[median_index])
         median_seeds[median] = int(median_data[median].values[median_index])
 
     return median_seeds

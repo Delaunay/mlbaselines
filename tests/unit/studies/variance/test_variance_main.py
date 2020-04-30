@@ -13,9 +13,10 @@ from olympus.hpo import Fidelity
 from olympus.hpo.parallel import make_remote_call, RESULT_QUEUE, WORK_QUEUE, WORK_ITEM, HPO_ITEM
 from olympus.hpo.worker import TrialWorker
 from olympus.observers.msgtracker import MSGQTracker, METRIC_QUEUE, METRIC_ITEM, metric_logger
+from olympus.studies.searchspace.main import create_valid_curves_xarray
 from olympus.studies.variance.main import (
     generate, fetch_registered, env, register, remaining, fetch_results, get_medians,
-    save_results, load_results)
+    save_results, load_results, create_trials)
 
 import pytest
 
@@ -64,36 +65,39 @@ def client():
 
 
 def build_data(size):
+
+    # TODO: variables is needed to stack the data for diff variables. For the get_median tests
+    #        and others..... 
+
+    epochs = 5
+    defaults = {'a': 0, 'b': 1, 'c': 2, 'd': 3}
+    params = {'c': 2, 'd': 3, 'epoch': epochs}
     variables = 'abc'
-    order = range(size)
+    configs = generate(range(size), variables, defaults=defaults)
+
     n_vars = len(variables)
-    n_seeds = len(order)
-    objectives = numpy.arange(n_vars * n_seeds)
+    n_seeds = size
+
+    objectives = numpy.arange(n_vars * n_seeds * (epochs + 1))
     numpy.random.RandomState(0).shuffle(objectives)
-    objectives = objectives.reshape((n_vars, n_seeds))
-    uids = numpy.zeros((n_vars, n_seeds)).astype(str)
-    seeds = numpy.arange(n_vars * n_seeds * n_vars).reshape((n_vars, n_seeds, n_vars)).astype(int)
+    objectives = objectives.reshape((epochs + 1, n_seeds, n_vars))
 
-    coords = {
-        'vars': list(variables),
-        'order': order,
-        'uid': (('vars', 'order'), uids)}
+    metrics = dict()
+    for var_i, (variable, v_configs) in enumerate(configs.items()):
+        for seed_i, config in enumerate(v_configs):
+            metrics[config['uid']] = [
+                {'epoch': i, 'objective': objectives[i, seed_i, var_i]}
+                for i in range(epochs + 1)]
 
-    for i, variable in enumerate(variables):
-        coords[variable] = (('vars', 'order'), seeds[:, :, i])
+    data = []
+    param_names = list(sorted(params.keys()))
+    for variable in configs.keys():
+        trials = create_trials(configs[variable], params, metrics)
+        data.append(
+            create_valid_curves_xarray(
+                trials, metrics, list(variables), epochs, param_names, seed=variable))
 
-    objectives = xarray.DataArray(
-        objectives,
-        dims=['vars', 'order'],
-        coords=coords)
-
-    data_vars = {'objectives': (('vars', 'order'), objectives)}
-
-    data = xarray.Dataset(
-        data_vars=data_vars,
-        coords=coords)
-
-    return data
+    return xarray.combine_by_coords(data)
 
 
 def test_generate():
@@ -213,12 +217,13 @@ def test_remaining(client):
 def test_fetch_results_non_completed(client):
     defaults = {'a': 0, 'b': 1}
     params = {'c': 2, 'd': 3, 'epoch': 0}
+    medians = ['a']
     configs = generate(range(2), 'ab', params)
     namespace = 'test'
     register(client, foo, namespace, configs)
 
     with pytest.raises(RuntimeError) as exc:
-        fetch_results(client, namespace, configs, params)
+        fetch_results(client, namespace, configs, medians, params)
 
     assert exc.match('Not all trials are completed')
 
@@ -227,6 +232,7 @@ def test_fetch_results_non_completed(client):
 def test_fetch_results_corrupt_completed(client):
     defaults = {'a': 0, 'b': 1}
     params = {'c': 2, 'd': 3, 'epoch': 0}
+    medians = ['a']
     num_items = 2
     configs = generate(range(num_items), 'ab', defaults=defaults)
     namespace = 'test'
@@ -238,7 +244,7 @@ def test_fetch_results_corrupt_completed(client):
             client.mark_actioned(WORK_QUEUE, workitem)
 
     with pytest.raises(RuntimeError) as exc:
-        fetch_results(client, namespace, configs, params)
+        fetch_results(client, namespace, configs, medians, params)
 
     assert exc.match('Nothing found in result queue for trial')
 
@@ -248,6 +254,7 @@ def test_fetch_results_all_completed(client):
     defaults = {'a': 1000, 'b': 1001}
     params = {'c': 2, 'd': 3, 'epoch': 5}
     defaults.update(params)
+    medians = ['a']
     num_items = 2
     configs = generate(range(num_items), 'ab', defaults=defaults)
     namespace = 'test'
@@ -258,8 +265,9 @@ def test_fetch_results_all_completed(client):
     worker.timeout = 1
     worker.run()
 
-    data = fetch_results(client, namespace, configs, params)
+    data = fetch_results(client, namespace, configs, medians, params)
 
+    assert data.medians == ['a']
     assert data.noise.values.tolist() == ['a', 'b']
     assert data.params.values.tolist() == ['c', 'd']
     assert data.order.values.tolist() == [0, 1]
@@ -281,26 +289,26 @@ def test_fetch_results_all_completed(client):
 
 def test_get_medians_odd():
     data = build_data(5)
-    median_seeds = get_medians(data, ['a'])
-    assert median_seeds == {'a': 6}
+    median_seeds = get_medians(data, ['a'], 'objective')
+    assert median_seeds == {'a': 1}
 
-    median_seeds = get_medians(data, ['a', 'b'])
-    assert median_seeds == {'a': 6, 'b': 28}
+    median_seeds = get_medians(data, ['a', 'b'], 'objective')
+    assert median_seeds == {'a': 1, 'b': 4}
 
-    median_seeds = get_medians(data, ['b', 'c'])
-    assert median_seeds == {'b': 28, 'c': 41}
+    median_seeds = get_medians(data, ['b', 'c'], 'objective')
+    assert median_seeds == {'b': 4, 'c': 3}
 
 
 def test_get_medians_even():
     data = build_data(4)
-    median_seeds = get_medians(data, ['a'])
-    assert median_seeds == {'a': 0}
+    median_seeds = get_medians(data, ['a'], 'objective')
+    assert median_seeds == {'a': 1}
 
-    median_seeds = get_medians(data, ['a', 'b'])
-    assert median_seeds == {'a': 0, 'b': 13}
+    median_seeds = get_medians(data, ['a', 'b'], 'objective')
+    assert median_seeds == {'a': 1, 'b': 3}
 
-    median_seeds = get_medians(data, ['b', 'c'])
-    assert median_seeds == {'b': 13, 'c': 29}
+    median_seeds = get_medians(data, ['b', 'c'], 'objective')
+    assert median_seeds == {'b': 3, 'c': 1}
 
 
 def test_save_load_results():
@@ -309,7 +317,3 @@ def test_save_load_results():
     save_results('test', data, '.')
 
     assert load_results('test') == data
-
-
-def test_add_integration():
-    assert False

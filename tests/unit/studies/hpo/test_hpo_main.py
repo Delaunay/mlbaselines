@@ -202,6 +202,7 @@ def test_generate_hyperband():
     assert False
 
 
+@pytest.mark.skip(reason='Requires integration of RoBO')
 def test_generate_bayesopt():
     defaults = {'a': 0, 'b': 1, 'c': 2, 'd': 3}
     budget = 200
@@ -226,7 +227,8 @@ def test_generate_bayesopt():
 
 
 def test_generate_hpos():
-    hpos = ['grid_search', 'noisy_grid_search', 'random_search', 'hyperband', 'bayesopt']
+    hpos = ['grid_search', 'nudged_grid_search', 'noisy_grid_search', 'random_search']
+    #       , 'hyperband', 'bayesopt']
     num_experiments = 10
     budget = 200
     fidelity = 'fidelity(1, 10)'
@@ -242,8 +244,12 @@ def test_generate_hpos():
 
     assert len(configs) == len(hpos)
     assert len(configs['grid_search']) == 1
+    assert len(configs['nudged_grid_search']) == 1
     assert configs['grid_search'][0]['name'] == 'grid_search'
-    for hpo in hpos[1:]:
+    assert configs['grid_search'][0].get('nudge') is None
+    assert configs['nudged_grid_search'][0]['name'] == 'grid_search'
+    assert configs['nudged_grid_search'][0]['nudge'] == 0.5
+    for hpo in hpos[2:]:
         for i in range(num_experiments):
             assert configs[hpo][i]['name'] == hpo
             assert configs[hpo][i]['seed'] == i
@@ -252,7 +258,8 @@ def test_generate_hpos():
 @pytest.mark.usefixtures('clean_mongodb')
 def test_register_hpos(client):
     namespace = 'test-hpo'
-    hpos = ['grid_search', 'noisy_grid_search', 'random_search', 'hyperband', 'bayesopt']
+    hpos = ['grid_search', 'nudged_grid_search', 'noisy_grid_search', 'random_search'] 
+    #       , 'hyperband', 'bayesopt']
     num_experiments = 10
     budget = 200
     fidelity = Fidelity(1, 10, name='d').to_dict()
@@ -278,9 +285,10 @@ def test_register_hpos(client):
 
 
 @pytest.mark.usefixtures('clean_mongodb')
-def test_register_hpos_resume(client):
+def test_register_hpos_resume(client, monkeypatch):
     namespace = 'test-hpo'
-    hpos = ['grid_search', 'noisy_grid_search', 'random_search', 'hyperband', 'bayesopt']
+    hpos = ['grid_search', 'nudged_grid_search', 'noisy_grid_search', 'random_search'] 
+    #       , 'hyperband', 'bayesopt']
     num_experiments = 10
     budget = 200
     fidelity = Fidelity(1, 10, name='d').to_dict()
@@ -300,10 +308,18 @@ def test_register_hpos_resume(client):
     assert len(set(new_namespaces)) == len(configs)
 
     more_configs = generate_hpos(range(num_experiments + 2), hpos, budget, fidelity, search_space)
-    new_namespaces = register_hpos(client, namespace, foo, more_configs, defaults)
+
+    # Save new namespaces for test
+    new_namespaces = defaultdict(list)
+    def mock_register_hpo(client, namespace, function, config, defaults):
+        new_namespaces[config['name']].append(namespace)
+        return register_hpo(client, namespace, function, config, defaults)
+    monkeypatch.setattr('olympus.studies.hpo.main.register_hpo', mock_register_hpo)
+    namespaces = register_hpos(client, namespace, foo, more_configs, defaults)
     assert (len(set(sum(new_namespaces.values(), []))) == 
             len(sum(more_configs.values(), [])) - len(sum(configs.values(), [])))
 
+    # Verify new registered configs
     for hpo, configs in more_configs.items():
         for config in configs:
             messages = client.monitor().messages(WORK_QUEUE, env(namespace, config['namespace']),
@@ -472,14 +488,10 @@ def test_save_results(client):
 
     data = consolidate_results(data)
 
-    save_results('test', data)
+    save_results('test', data, '.')
 
-    loaded_data = load_results('test')
+    loaded_data = load_results('test', '.')
 
     assert len(loaded_data) == 2
     assert loaded_data['hpo-1'] == data['hpo-1']
     assert loaded_data['hpo-2'] == data['hpo-2']
-
-
-def test_add_integration():
-    assert False
