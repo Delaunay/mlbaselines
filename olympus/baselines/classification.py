@@ -11,8 +11,9 @@ from olympus.tasks import Classification
 from olympus.hpo import HPOptimizer, Fidelity
 from olympus.tasks.hpo import HPO
 
-from olympus.utils import fetch_device, set_verbose_level, show_dict, show_hyperparameter_space, get_parameters
-from olympus.utils import required
+from olympus.utils import (
+    fetch_device, set_verbose_level, show_dict, show_hyperparameter_space, get_parameters,
+    set_seeds, required)
 from olympus.utils.functional import flatten
 from olympus.utils.options import option
 from olympus.utils.storage import StateStorage
@@ -93,11 +94,13 @@ def classification_baseline(model, initializer,
                             split_method='original',
                             sampler_seed=0,
                             init_seed=0,
-                            model_seed=0, storage=None, half=False, hpo_done=False,
+                            global_seed=0, storage=None, half=False, hpo_done=False,
                             data_path='/tmp/olympus',
                             validate=True, hyper_parameters=None, uri_metric=None,
                             valid_batch_size=None,
                             **config):
+
+    set_seeds(global_seed)
 
     dataset = SplitDataset(
         Dataset(dataset, path=option('data.path', data_path)),
@@ -123,7 +126,6 @@ def classification_baseline(model, initializer,
         model,
         input_size=input_size,
         output_size=target_size[0],
-        model_seed=model_seed,
         weight_init=init,
         half=half)
 
