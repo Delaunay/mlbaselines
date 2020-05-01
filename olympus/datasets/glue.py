@@ -9,6 +9,7 @@ from transformers import glue_output_modes as output_modes
 from transformers import glue_processors as processors
 
 from olympus.datasets.dataset import AllDataset
+from olympus.utils.options import option
 
 logger = logging.getLogger(__name__)
 
@@ -38,10 +39,12 @@ class GLUE(AllDataset):
         # and sequence size..
         max_seq_length = 128
 
+        cache_dir = option('tokenizer.cache', '/tmp/olympus/cache_tok')
+        logger.info('tokenizer cache folder: {}'.format(cache_dir))
         tokenizer = BertTokenizer.from_pretrained(
             'bert-base-uncased',
             do_lower_case=True,
-            cache_dir=None,
+            cache_dir=cache_dir,
         )
 
         try:

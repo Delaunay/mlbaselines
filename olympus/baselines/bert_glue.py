@@ -1,3 +1,5 @@
+import argparse
+import logging
 import os
 import shutil
 
@@ -6,23 +8,30 @@ from olympus.observers.msgtracker import metric_logger
 from olympus.baselines.classification import classification_baseline
 from olympus.utils.options import options, set_option
 from olympus.utils.storage import StateStorage
-from olympus.utils import fetch_device, show_dict
+from olympus.utils import fetch_device, show_dict, set_seeds
+
+logger = logging.getLogger(__name__)
 
 
-def main(task='rte', bootstraping_seed=1, sampler_seed=1, init_seed=1,
+def main(task='rte', bootstrapping_seed=1, sampler_seed=1, init_seed=1, global_seed=1,
          learning_rate=0.00002, beta1=0.9, beta2=0.999, weight_decay=0.0,
          batch_size=32, weight_init='normal',
          warmup=0,
          init_std=0.2, epoch=3, half=False, hpo_done=False,
          uid=None, experiment_name=None, client=None, clean_on_exit=True):
 
+    print('seeds: init {} / global {} / sampler {} / bootstrapping {}'.format(
+        init_seed, global_seed, sampler_seed, bootstrapping_seed))
+
+    set_seeds(global_seed)
+
     base_folder = options('state.storage', '/tmp/storage')
     storage = StateStorage(folder=base_folder, time_buffer=5 * 60)
 
-    sampling_method = {
-        'name': 'bootstrap', 'ratio': 1,
-        'split_ratio': 0.1666, 
-        'seed': bootstraping_seed}
+    # sampling_method = {
+    #     'name': 'bootstrap', 'ratio': 1,
+    #     'split_ratio': 0.1666,
+    #     'seed': bootstraping_seed}
 
     task = classification_baseline(
         "bert-{}".format(task), 'normal', 'adam',
@@ -61,11 +70,31 @@ def main(task='rte', bootstraping_seed=1, sampler_seed=1, init_seed=1,
         shutil.rmtree(base_folder, ignore_errors=True)
         print('Removed checkpoints at', base_folder)
    
-    return float(task.metrics.value()['validation_accuracy'])
-    # return float(task.metrics.value()['validation_error_rate'])
+    return task.metrics.value().get('validation_error_rate', None)
 
 
 if __name__ == '__main__':
+    parser = argparse.ArgumentParser()
+    parser.add_argument('--task', help='either rte or sst2', required=True)
+    parser.add_argument('--batch-size', type=int, default=1)
+    parser.add_argument('--epoch', type=int, default=3)
+    parser.add_argument('--lr', type=float, default=0.00001)
+    parser.add_argument('--seed-init', type=int, default=1)
+    parser.add_argument('--seed-bootstrapping', type=int, default=1)
+    parser.add_argument('--seed-sampler', type=int, default=1)
+    parser.add_argument('--seed-global', type=int, default=1)
+    parser.add_argument('--warmup', type=int, default=0)
+    parser.add_argument('--weight-decay', type=float, default=0.0)
+    parser.add_argument('--fp16', action='store_true')
+    parser.add_argument('--redirect-log', help='will intercept any stdout/err and log it',
+                        action='store_true')
+    args = parser.parse_args()
+
+    logging.basicConfig(level=logging.INFO)
     set_option('model.cache', 'cache')
     set_option('state.storage', 'storage')
-    main(task='sst2', epoch=3, bootstraping_seed=1, sampler_seed=1, init_seed=4, hpo_done=True)
+
+    main(task=args.task, bootstrapping_seed=args.seed_bootstrapping, sampler_seed=args.seed_sampler,
+         init_seed=args.seed_init, global_seed=args.seed_global, learning_rate=args.lr,
+         weight_decay=args.weight_decay, batch_size=args.batch_size, weight_init='normal',
+         warmup=args.warmup, init_std=0.2, epoch=args.epoch, half=args.fp16, hpo_done=True)
