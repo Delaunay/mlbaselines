@@ -222,6 +222,11 @@ def show_messages(messages):
     """
 
     def make_row(m):
+        try:
+            data = json.dumps(m.message, indent=2)
+        except TypeError as e:
+            data = f'Not json serializable {e}'
+
         return f"""
         <tr>
             <td>{m.uid}</td>
@@ -232,7 +237,7 @@ def show_messages(messages):
             <td>{m.actioned}</td>
             <td>{m.actioned_time}</td>
             <td>{m.replying_to}</td>
-            <td><pre>{json.dumps(m.message, indent=2)}</pre></td>
+            <td><pre>{data}</pre></td>
         </tr>
         """
     rows = ''.join([make_row(r) for r in messages])

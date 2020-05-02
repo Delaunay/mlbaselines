@@ -22,7 +22,7 @@ class InspectQueue(Page):
     def list_namespaces(self, queue):
         return html.div(
             html.header(queue, level=4),
-            html.ul(html.link(n, f'/{self.base_path}/{queue}/{n}') for n in self.client.namespaces()))
+            html.ul(html.link(n, f'/{self.base_path}/{queue}/{n}') for n in self.client.namespaces(queue)))
 
     def show_queue(self, queue, namespace):
         messages = self.client.messages(queue, namespace)
