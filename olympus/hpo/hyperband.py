@@ -4,7 +4,7 @@ from dataclasses import dataclass, field
 from sspace import Space
 from olympus.hpo.fidelity import Fidelity
 from olympus.hpo.optimizer import HyperParameterOptimizer, Trial, LogicError, WaitingForTrials, OptimizationIsDone
-from olympus.utils import new_seed
+from olympus.utils import new_seed, compress_dict, decompress_dict
 
 
 @dataclass
@@ -220,19 +220,27 @@ class Hyperband(HyperParameterOptimizer):
 
         return budgets
 
-    def state_dict(self):
-        state = super().state_dict()
+    def state_dict(self, compressed=True):
+        state = super(Hyperband, self).state_dict(compressed=False)
         state['brackets'] = [b.to_dict() for b in self.brackets]
         state['offset'] = self.offset
+
+        if compressed:
+            state = compress_dict(state)
+
         return state
 
     @staticmethod
     def from_dict(state):
+        state = decompress_dict(state)
+
         hpo = Hyperband(state['fidelity'], state['space'], state['seed'])
         hpo.load_state_dict(state)
         return hpo
 
     def load_state_dict(self, state):
+        state = decompress_dict(state)
+
         super(Hyperband, self).load_state_dict(state)
         self.offset = state['offset']
         self.brackets = [

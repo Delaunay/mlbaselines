@@ -2,7 +2,7 @@ from sspace import Space
 
 from olympus.hpo.optimizer import HyperParameterOptimizer, WaitingForTrials, OptimizationIsDone
 from olympus.hpo.fidelity import Fidelity
-from olympus.utils import new_seed
+from olympus.utils import new_seed, compress_dict, decompress_dict
 
 
 class RandomSearch(HyperParameterOptimizer):
@@ -55,12 +55,18 @@ class RandomSearch(HyperParameterOptimizer):
         }
 
     def load_state_dict(self, state):
+        state = decompress_dict(state)
+
         super(RandomSearch, self).load_state_dict(state)
         self.count = state['count']
 
-    def state_dict(self):
-        state = super(RandomSearch, self).state_dict()
+    def state_dict(self, compressed=True):
+        state = super(RandomSearch, self).state_dict(compressed=False)
         state['count'] = self.count
+
+        if compressed:
+            state = compress_dict(state)
+
         return state
 
     def remaining(self):

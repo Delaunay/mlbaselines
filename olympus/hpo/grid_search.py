@@ -6,7 +6,7 @@ from orion.algo.grid_search.gridsearch import GridSearch as OrionGridSearch, Noi
 
 from olympus.hpo.optimizer import Trial, HyperParameterOptimizer, WaitingForTrials, OptimizationIsDone
 from olympus.hpo.fidelity import Fidelity
-from olympus.utils import new_seed
+from olympus.utils import new_seed, compress_dict, decompress_dict
 from olympus.utils.functional import unflatten
 
 
@@ -78,12 +78,18 @@ class GridSearch(HyperParameterOptimizer):
         }
 
     def load_state_dict(self, state):
+        state = decompress_dict(state)
+
         super(GridSearch, self).load_state_dict(state)
         self.count = state['count']
 
-    def state_dict(self):
-        state = super(GridSearch, self).state_dict()
+    def state_dict(self, compressed=True):
+        state = super(GridSearch, self).state_dict(compressed=False)
         state['count'] = self.count
+
+        if compressed:
+            state = compress_dict(state)
+
         return state
 
     def remaining(self):

@@ -3,6 +3,10 @@ import time
 from typing import Callable, Optional, TypeVar
 from urllib.parse import urlparse
 
+import base64
+import bson
+import zlib
+
 import numpy
 
 import torch
@@ -35,6 +39,26 @@ def show_dict(dictionary, indent=0):
     for k, v in dictionary.items():
         print(f'{k:>30}: {v}')
     print(' ' * indent + '-' * 80)
+
+
+def compress_dict(state):
+    """Compress a state dictionary and return a json friendly compressed state"""
+    binary = bson.encode(state)
+    compressed_json = base64.b64encode(zlib.compress(binary))
+    crc32 = zlib.crc32(binary)
+    return dict(zlib=compressed_json, crc32=crc32)
+
+
+def decompress_dict(state):
+    """Decompress a state dictionary and return its json"""
+    if 'zlib' in state:
+        binary = base64.b64decode(state['zlib'])
+        decompressed_bson = zlib.decompress(binary)
+        assert zlib.crc32(decompressed_bson) == state['crc32'], 'State is corrupted'
+
+        return bson.decode(decompressed_bson)
+
+    return state
 
 
 class TimeThrottler:

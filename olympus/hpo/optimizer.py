@@ -3,7 +3,7 @@ from collections import OrderedDict
 from sspace import Space
 
 from olympus.hpo.fidelity import Fidelity
-from olympus.utils import new_seed, warning
+from olympus.utils import new_seed, warning, compress_dict, decompress_dict
 
 
 class Trial:
@@ -216,21 +216,28 @@ class HyperParameterOptimizer:
         except KeyError as e:
             raise TrialDoesNotExist(f'with (uid: {identity})') from e
 
-    def state_dict(self):
-        return {
+    def state_dict(self, compressed=False):
+        state = {
             'fidelity': self.fidelity.to_dict(),
             'seed': self.seed,
             'seed_time': self.seed_time,
+            'manual_insert': self.manual_insert,
             'space': self.space.serialize(),
             'manual_samples': self.manual_samples,
             'manual_fidelity': self.manual_fidelity,
-            'manual_insert': self.manual_insert,
             'trials': [
                 (k, trial.state_dict()) for k, trial in self.trials.items()
             ]
         }
 
+        if compressed:
+            state = compress_dict(state)
+
+        return state
+
     def load_state_dict(self, state):
+        state = decompress_dict(state)
+
         self.space = Space.from_dict(state['space'])
         self.seed = state['seed']
         self.manual_samples = state['manual_samples']
