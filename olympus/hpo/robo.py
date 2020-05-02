@@ -24,7 +24,7 @@ from sspace.space import compute_identity
 from olympus.hpo.optimizer import Trial, HyperParameterOptimizer, WaitingForTrials, OptimizationIsDone
 from olympus.hpo.fidelity import Fidelity
 from olympus.utils import new_seed
-from olympus.utils.functional import unflatten
+from olympus.utils.functional import unflatten, encode_rng_state, decode_rng_state
 
 
 def build_model(lower, upper, model_type="gp_mcmc", model_seed=1, prior_seed=1):
@@ -335,11 +335,11 @@ class RoBO(HyperParameterOptimizer):
         super(RoBO, self).load_state_dict(state)
         self.count = state['count']
         state['count'] = self.count
+        numpy.random.set_state(decode_rng_state(state['global_oh_my_god_numpy_rng_state']))
+        self.robo.maximize_func.rng.set_state(decode_rng_state(state['maximizer_rng_state']))
         model = self.robo.model
-        model.rng.set_state(state['model_rng_state'])
-        model.prior.rng.set_state(state['prior_rng_state'])
-        self.robo.maximize_func.rng.set_state(state['maximizer_rng_state'])
-        numpy.random.set_state(state['global_oh_my_god_numpy_rng_state'])
+        model.rng.set_state(decode_rng_state(state['model_rng_state']))
+        model.prior.rng.set_state(decode_rng_state(state['prior_rng_state']))
         if self.model_type == 'gp_mcmc':
             if state.get('model_p0', None) is not None:
                 model.p0 = numpy.array(state['model_p0'])
@@ -354,16 +354,12 @@ class RoBO(HyperParameterOptimizer):
     def state_dict(self):
         state = super(RoBO, self).state_dict()
         state['count'] = self.count
+        state['global_oh_my_god_numpy_rng_state'] = encode_rng_state(numpy.random.get_state())
+        state['maximizer_rng_state'] = encode_rng_state(self.robo.maximize_func.rng.get_state())
         model = self.robo.model
-        state['model_rng_state'] = model.rng.get_state()
-        state['prior_rng_state'] = model.prior.rng.get_state()
-        state['maximizer_rng_state'] = self.robo.maximize_func.rng.get_state()
-        state['global_oh_my_god_numpy_rng_state'] = numpy.random.get_state()
+        state['model_rng_state'] = encode_rng_state(model.rng.get_state())
+        state['prior_rng_state'] = encode_rng_state(model.prior.rng.get_state())
         if self.model_type == 'gp_mcmc':
-            # for all models
-            # save kernel
-            # Seams like models share the same rng object
-            # May need to save p0
             if hasattr(model, 'p0'):
                 state['model_p0'] = model.p0.tolist()
         else:
@@ -373,3 +369,8 @@ class RoBO(HyperParameterOptimizer):
 
     def remaining(self):
         return self.count - self.count_done()
+
+
+builders = {
+    'robo': RoBO
+}
