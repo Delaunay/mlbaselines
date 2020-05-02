@@ -39,6 +39,9 @@ class Trial:
         t.objectives = state['objectives']
         return t
 
+    def __eq__(self, other):
+        return self.params == other.params and self.objectives == other.objectives
+
 
 class UnknownTrial(Exception):
     pass
