@@ -99,7 +99,7 @@ class Model(nn.Module):
     _device = torch.device('cpu')
 
     def __init__(self, name=None, *, half=False, model=None, input_size=None, output_size=None,
-                 weight_init=default_init):
+                 weight_init=default_init, **kwargs):
         super(Model, self).__init__()
         self.transform = lambda x: try_convert(x, self.device, self.dtype)
         self.half = half
@@ -143,6 +143,9 @@ class Model(nn.Module):
                 self.hyper_parameters.space.update(model_fun.get_space())
         else:
             raise MissingArgument('Model or Name need to be set')
+
+        # Any Additional parameters set Hyper parameters
+        self.hyper_parameters.add_parameters(**kwargs)
 
     @property
     def dtype(self):
