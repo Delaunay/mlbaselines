@@ -38,11 +38,13 @@ if __name__ == '__main__':
     model = Model(
         model=MyCustomNASModel,
         input_size=(290,),
-        output_size=(10,)
+        output_size=(10,),
+        # Fix this hyper-parameter right away
+        l1=21
     )
 
     # If you use an hyper parameter optimizer, it will generate this for you
-    model.init(l1=32, l2=33, l3=33, l4=32)
+    model.init(l2=33, l3=33, l4=32)
 
     input = torch.randn((10, 290))
     out = model(input)

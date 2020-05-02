@@ -165,7 +165,12 @@ class Model(nn.Module):
 
     def init(self, override=False, initializer=None, **model_hyperparams):
 
-        self._model = self.model_builder.invoke(**model_hyperparams)
+        self.hyper_parameters.add_parameters(**model_hyperparams)
+
+        params = self.hyper_parameters.parameters(strict=True)
+        _ = params.pop('initializer', initializer)
+
+        self._model = self.model_builder.invoke(**params)
 
         if initializer:
             self.weight_init.init(**initializer)

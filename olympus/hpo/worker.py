@@ -27,12 +27,23 @@ class TrialWorker(BaseWorker):
         Experiment this worker should be working on, if None will work on all experiments.
         If no experiments are specified then it will shutdown only in case of timeout
 
+    hpo_allowed: bool
+        Can HPO run on this worker
+
+    work_allowed: bool
+        Can work items run on this worker
+
     """
-    def __init__(self, uri, database, id, experiment=None):
+    def __init__(self, uri, database, id, experiment=None, hpo_allowed=True, work_allowed=True):
         super(TrialWorker, self).__init__(uri, database, experiment, id, WORK_QUEUE, RESULT_QUEUE)
         self.namespaced = experiment is not None
-        self.new_handler(WORK_ITEM, self.run_trial)
-        self.new_handler(HPO_ITEM, self.run_hpo)
+
+        if work_allowed:
+            self.new_handler(WORK_ITEM, self.run_trial)
+
+        if hpo_allowed:
+            self.new_handler(HPO_ITEM, self.run_hpo)
+
         self.new_handler(WORKER_JOIN, self.ignore_message)
 
         self.timeout = option('worker.timeout', 5 * 60, type=int)
@@ -210,6 +221,12 @@ def main():
 
     parser.add_argument('--rank', type=int, default=os.getpid(),
                         help='Rank or ID of the worker, defaults to PID')
+
+    parser.add_argument('--hpo-allowed', type=bool, default=True,
+                        help='Can HPO run on this worker')
+
+    parser.add_argument('--work-allowed', type=bool, default=True,
+                        help='Can trials run on this worker')
 
     args = parser.parse_args()
     worker = TrialWorker(args.uri, args.database, args.rank, args.experiment)

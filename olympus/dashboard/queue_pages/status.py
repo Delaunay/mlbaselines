@@ -1,4 +1,5 @@
 from collections import defaultdict
+from functools import partial
 
 from olympus.dashboard.queue_pages.inspect import InspectQueue
 from olympus.dashboard.plots.work_status import work_status, aggregate_overview_altair, prepare_overview_altair
@@ -7,6 +8,14 @@ import olympus.dashboard.elements as html
 
 class StatusQueue(InspectQueue):
     base_path = 'queue/status'
+
+    def routes(self):
+        return [
+            f'/{self.base_path}',
+            f'/{self.base_path}/<string:queue>',
+            f'/{self.base_path}/<string:queue>/<string:namespace>',
+            f'/{self.base_path}/<string:queue>/<int:substr>',
+        ]
 
     def __init__(self, client):
         super(StatusQueue, self).__init__(client)
@@ -23,12 +32,12 @@ class StatusQueue(InspectQueue):
             unique_agents[a.agent] = a
         return list(unique_agents.values())
 
-    def main(self, queue=None, namespace=None):
+    def main(self, queue=None, namespace=None, substr=None):
         if queue is None:
             return self.list_queues()
 
         if namespace is None:
-            return self.show_overview(queue)
+            return self.show_overview(queue, substr)
 
         return self.show_queue(queue, namespace)
 
@@ -85,7 +94,7 @@ class StatusQueue(InspectQueue):
             html.header(f'{name} {agents}', level=5),
             html.div_col(html.plotly_plot(fig), size=4))
 
-    def show_overview(self, queue):
+    def show_overview(self, queue, substr=None):
         # Try to show an overview of the entire system
         if self.aggregate is None:
             try:
@@ -93,13 +102,17 @@ class StatusQueue(InspectQueue):
             except:
                 return self.list_namespaces(queue)
 
+        groupby = type(self.aggregate).group_by_namespace
+        if substr is not None:
+            groupby = partial(type(self.aggregate).group_by_substring, length=substr)
+
         data = defaultdict(lambda: dict(unread=0, unactioned=0, actioned=0, lost=0, failed=0, agent=0))
 
-        self.insert(data, self.aggregate.unread_count(queue))
-        self.insert(data, self.aggregate.unactioned_count(queue))
-        self.insert(data, self.aggregate.actioned_count(queue))
-        self.insert(data, self.aggregate.lost_count(queue))
-        self.insert(data, self.aggregate.failed_count(queue))
+        self.insert(data, self.aggregate.unread_count(queue, groupby=groupby))
+        self.insert(data, self.aggregate.unactioned_count(queue, groupby=groupby))
+        self.insert(data, self.aggregate.actioned_count(queue, groupby=groupby))
+        self.insert(data, self.aggregate.lost_count(queue, groupby=groupby))
+        self.insert(data, self.aggregate.failed_count(queue, groupby=groupby))
         self.insert(data, self.aggregate.agent_count())
 
         status, agents = prepare_overview_altair(data)
