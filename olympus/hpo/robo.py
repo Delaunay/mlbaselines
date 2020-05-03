@@ -2,6 +2,7 @@ import numpy
 
 import george
 
+
 from robo.priors.default_priors import DefaultPrior
 from robo.models.wrapper_bohamiann import WrapperBohamiann
 from robo.models.gaussian_process import GaussianProcess
@@ -23,7 +24,7 @@ from sspace.space import compute_identity
 
 from olympus.hpo.optimizer import Trial, HyperParameterOptimizer, WaitingForTrials, OptimizationIsDone
 from olympus.hpo.fidelity import Fidelity
-from olympus.utils import new_seed
+from olympus.utils import new_seed, compress_dict, decompress_dict
 from olympus.utils.functional import unflatten, encode_rng_state, decode_rng_state
 
 
@@ -90,6 +91,8 @@ def build_model(lower, upper, model_type="gp_mcmc", model_seed=1, prior_seed=1):
         model = WrapperBohamiann()
 
     elif model_type == "dngo":
+        from pybnn.dngo import DNGO
+
         model = DNGO()
 
     else:
@@ -214,8 +217,8 @@ class RoBO(HyperParameterOptimizer):
         self.n_init = n_init
         self.model_type = model_type
 
-        assert (n_init <= count,
-                "Number of initial design point has to be <= than the number of trials")
+        assert n_init <= count, \
+            "Number of initial design point has to be <= than the number of trials"
 
         lower, upper = build_bounds(self.orion_space)
 
@@ -332,6 +335,8 @@ class RoBO(HyperParameterOptimizer):
         }
 
     def load_state_dict(self, state):
+        state = decompress_dict(state)
+
         super(RoBO, self).load_state_dict(state)
         self.count = state['count']
         state['count'] = self.count
@@ -351,7 +356,7 @@ class RoBO(HyperParameterOptimizer):
             model.kernel.set_parameter_vector(state['model_kernel_parameter_vector'])
             model.noise = state['noise']
 
-    def state_dict(self):
+    def state_dict(self, compressed=True):
         state = super(RoBO, self).state_dict()
         state['count'] = self.count
         state['global_oh_my_god_numpy_rng_state'] = encode_rng_state(numpy.random.get_state())
@@ -365,6 +370,10 @@ class RoBO(HyperParameterOptimizer):
         else:
             state['model_kernel_parameter_vector'] = model.kernel.get_parameter_vector().tolist()
             state['noise'] = model.noise
+
+        if compressed:
+            state = compress_dict(state)
+
         return state
 
     def remaining(self):

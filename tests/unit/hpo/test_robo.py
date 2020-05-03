@@ -49,7 +49,6 @@ def get_robo_results(count):
 
 
 def build_robo(model_type, n_init=2, count=5):
-    #params = Space.from_dict({
     params = {
         'x': 'uniform(-5, 10)',
         'y': 'uniform(0, 15)'

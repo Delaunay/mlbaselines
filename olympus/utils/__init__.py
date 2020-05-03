@@ -1,6 +1,6 @@
 import random
 import time
-from typing import Callable, Optional, TypeVar
+from typing import Callable, Optional, TypeVar, Dict, NoReturn, Union
 from urllib.parse import urlparse
 
 import base64
@@ -34,14 +34,14 @@ def fetch_device():
     return torch.device(option('device.type', default))
 
 
-def show_dict(dictionary, indent=0):
+def show_dict(dictionary: Dict, indent: int = 0) -> NoReturn:
     print(' ' * indent + '-' * 80)
     for k, v in dictionary.items():
         print(f'{k:>30}: {v}')
     print(' ' * indent + '-' * 80)
 
 
-def compress_dict(state):
+def compress_dict(state: Dict) -> Dict:
     """Compress a state dictionary and return a json friendly compressed state"""
     binary = bson.encode(state)
     compressed_json = base64.b64encode(zlib.compress(binary))
@@ -49,7 +49,7 @@ def compress_dict(state):
     return dict(zlib=compressed_json, crc32=crc32)
 
 
-def decompress_dict(state):
+def decompress_dict(state: Dict) -> Dict:
     """Decompress a state dictionary and return its json"""
     if 'zlib' in state:
         binary = base64.b64decode(state['zlib'])
@@ -62,7 +62,24 @@ def decompress_dict(state):
 
 
 class TimeThrottler:
-    """Limit how often the function `fun` is called in seconds"""
+    """Limit how often the function `fun` is called in seconds
+
+    Examples
+    --------
+
+    .. code-block:: python
+
+        throttled_print = TimeThrottler(print, every=1)
+
+        # Only prints 0
+        for i in range(0, 10):
+            throttled_print(i)
+
+        # Prints 0 to 9
+        for i in range(0, 10):
+            throttled_print(i)
+            time.sleep(1)
+    """
     def __init__(self, fun: Callable[[A], R], every=10):
         self.fun = fun
         self.last_time: float = 0
@@ -79,7 +96,7 @@ class TimeThrottler:
         return None
 
 
-def parse_uri_options(options):
+def parse_uri_options(options: str) -> Dict:
     if not options:
         return dict()
 
@@ -92,7 +109,7 @@ def parse_uri_options(options):
     return opt
 
 
-def parse_uri(uri):
+def parse_uri(uri: str) -> Dict:
     parsed = urlparse(uri)
     netloc = parsed.netloc
 
@@ -121,7 +138,7 @@ def parse_uri(uri):
     return arguments
 
 
-def get_storage(uri, objective=None):
+def get_storage(uri: str, objective=None):
     """Shorten the storage config from orion that is super long an super confusing
         <storage_type>:<database>:<file or address>
 
@@ -150,7 +167,7 @@ def get_storage(uri, objective=None):
         }
 
 
-def get_value(item):
+def get_value(item: Union[float, torch.Tensor]) -> float:
     if isinstance(item, torch.Tensor):
         return item.item()
     return item
@@ -254,11 +271,13 @@ class HyperParameters:
         self.current_parameters = kwargs
 
     def check_correct_parameters(self, kwargs):
+        """Checks that the new parameter exist inside the space definition"""
         for k, v in kwargs.items():
             if k not in self.space:
                 raise WrongParameter(f'{k} is not a valid parameter, pick from: {self.space.keys()}')
 
     def missing_parameters(self):
+        """Returns a dictionary of missing parameters"""
         missing = {}
         for k, v in self.space.items():
             if k not in self.current_parameters:
@@ -267,10 +286,12 @@ class HyperParameters:
         return missing
 
     def add_parameters(self, **kwargs):
+        """Insert a new parameter value"""
         self.check_correct_parameters(kwargs)
         self.current_parameters.update(kwargs)
 
     def parameters(self, strict=False):
+        """Returns all the parameters and checks if any are missing"""
         if strict:
             missing = self.missing_parameters()
             if missing:
@@ -279,6 +300,7 @@ class HyperParameters:
         return self.current_parameters
 
 
+# Tracks global seeds
 SEEDS = {}
 
 
@@ -288,6 +310,8 @@ def new_seed(**kwargs):
     import random
     assert len(kwargs) == 1, 'Only single seed can be registered'
 
+    # Allow user to force seed to change seeds automatically each time the program is ran
+    # Disabled by default
     automatic_seeding = option('seeding.random', default=False, type=bool)
 
     for name, value in kwargs.items():
@@ -307,10 +331,12 @@ def new_seed(**kwargs):
 
 
 def get_seeds():
+    """Returns a set of seed that are used by the program"""
     return SEEDS
 
 
 def set_seeds(seed):
+    """Set most commonly used global seeds"""
     if torch.cuda.is_available():
         torch.backends.cudnn.benchmark = False
         torch.cuda.manual_seed_all(new_seed(torch_cuda=seed))

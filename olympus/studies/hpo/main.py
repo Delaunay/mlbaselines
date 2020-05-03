@@ -2,7 +2,8 @@ import argparse
 from collections import defaultdict
 import json
 import time
-
+import os
+import copy
 import numpy
 
 from msgqueue.backends import new_client
@@ -132,15 +133,14 @@ def fetch_hpos_valid_curves(client, namespaces, variables, data):
     return remainings
 
 
-
 def generate_grid_search_tests(client, budget, namespace):
-
     uids = fetch_registered_tests(client, env(namespace, 'tests'))
 
     for trial in hpo.trials:
         if trial.uid in uids:
             print(f'Trial {trial.uid} already registered.')
             continue
+
         trial_remote_call = copy.deepcopy(remote_call)
         trial_remote_call['kwargs']['hpo_done'] = True
         register_test(client, env(namespace, 'tests'), trial_remote_call)

@@ -352,7 +352,7 @@ def iframe(html, id=None):
         <div style="width: 100%; height: 100%;">
             <iframe 
                 {attr}
-                style="position: absolute; width: 95%; height: 95%;"
+                style="position: absolute; width: 98%; height: 99%;"
                 frameborder="0"
                 sandbox="allow-scripts" 
                 srcdoc="{escape(html)}">

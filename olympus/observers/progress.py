@@ -228,7 +228,9 @@ class SampleCount(Observer):
         self.epoch = epoch
 
     def on_end_batch(self, task, step, input=None, context=None):
-        if hasattr(input, '__getitem__'):
+        if hasattr(input, 'shape'):
+            batch_size = input.shape[0]
+        elif hasattr(input, '__getitem__'):
             batch_size = len(input[0])
         else:
             batch_size = input.size(0)

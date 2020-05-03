@@ -57,7 +57,7 @@ def prepare_gantt_array(work_items, worker_count):
             Task=task,
             Start=w.read_time,
             Finish=w.actioned_time,
-            epoch=epoch,
+            epoch=str(epoch),
             Resource=resource))
 
         # annotations.append(dict(
@@ -66,7 +66,7 @@ def prepare_gantt_array(work_items, worker_count):
         #     text=str(w.uid)[:4],
         #     showarrow=True))
 
-    jobs = sorted(jobs, key=lambda item: item['epoch'])
+    jobs = sorted(jobs, key=lambda item: int(item['epoch']))
     return jobs, annotations, unique_resources
 
 
@@ -104,7 +104,7 @@ def plot_gantt_plotly(jobs, annotations=None, resources=None):
         colors.extend(colors_1024[-missing - 1:-1])
 
     fig = ff.create_gantt(
-        jobs, title='Work Schedule', index_col='Resource', colors=colors, showgrid_x=True, showgrid_y=True,
+        jobs, title='Work Schedule', index_col='epoch', colors=colors, showgrid_x=True, showgrid_y=True,
         show_colorbar=True, group_tasks=True, bar_width=0.4, reverse_colors=True)
 
     if annotations:

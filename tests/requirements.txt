@@ -4,3 +4,4 @@ codecov
 coverage
 pymongo
 psycopg2-binary
+xarray

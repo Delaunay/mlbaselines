@@ -21,6 +21,7 @@ from olympus.hpo.parallel import (
     exec_remote_call, make_remote_call, RESULT_QUEUE, WORK_QUEUE, WORK_ITEM, HPO_ITEM)
 from olympus.hpo.worker import TrialWorker
 from olympus.hpo import Fidelity
+from olympus.utils import decompress_dict
 
 
 URI = 'mongo://127.0.0.1:27017'
@@ -52,7 +53,6 @@ def foo(uid, a, b, c, d, e=1, epoch=0, experiment_name=NAMESPACE,
     return result + i
 
 
-
 @pytest.fixture
 def clean_mongodb():
     client = pymongo.MongoClient(URI.replace('mongo', 'mongodb'))
@@ -64,8 +64,6 @@ def clean_mongodb():
 @pytest.fixture
 def client():
     return new_client(URI, DATABASE)
-
-
 
 
 @pytest.mark.usefixtures('clean_mongodb')
@@ -94,8 +92,13 @@ def test_register_hpo_is_actionable(client):
     assert client.monitor().read_count(WORK_QUEUE, namespace, mtype=HPO_ITEM) == 2
 
     messages = client.monitor().unread_messages(RESULT_QUEUE, namespace, mtype=HPO_ITEM)
-    assert len(messages[0].message['hpo_state']['trials']) == 1
-    assert messages[0].message['hpo_state']['trials'][0][1]['objectives'] == [10.715799430116764]
+
+    compressed_state = messages[0].message.get('hpo_state')
+    assert compressed_state is not None
+    state = decompress_dict(compressed_state)
+
+    assert len(state['trials']) == 1
+    assert state['trials'][0][1]['objectives'] == [10.715799430116764]
 
 
 @pytest.mark.usefixtures('clean_mongodb')
@@ -153,7 +156,7 @@ def test_get_hpo_completed(client):
     hpo, remote_call = get_hpo(client, NAMESPACE)
 
     assert len(hpo.trials) == 1
-    state_dict = hpo.state_dict()
+    state_dict = hpo.state_dict(compressed=False)
     assert state_dict['seed'] == CONFIG['seed']
     assert state_dict['fidelity'] == CONFIG['fidelity']
     state_dict['space'].pop('uid')
@@ -177,6 +180,8 @@ SHUFFLED = 2
 MISSING_EPOCH = 3
 MISSING_FIELD = 4
 EMPTY = 5
+
+
 def populate_metrics(client):
     def log_metric(uid, data):
         data['uid'] = uid

@@ -5,8 +5,25 @@ import torch
 from torch.utils.data import DataLoader
 
 from olympus.observers.observer import Metric
+from olympus.utils import error
 from olympus.utils.stat import StatStream
 from olympus.utils.cuda import Stream, stream
+
+
+class NotFittedError(Exception):
+    pass
+
+
+def detach(f):
+    if isinstance(f, torch.Tensor):
+        return f.detach()
+    return f
+
+
+def item(f):
+    if isinstance(f, torch.Tensor):
+        return f.item()
+    return f
 
 
 @dataclass
@@ -39,15 +56,15 @@ class Accuracy(Metric):
         with stream(self.metric_stream):
             with torch.no_grad():
                 total = 0
-                for data, target, *_ in self.loader:
+                for data, *_, target in self.loader:
                     accuracy, loss = task.accuracy(data, target)
                     total += data[0].shape[0]
 
-                    accs.append(accuracy.detach())
-                    losses.append(loss.detach())
+                    accs.append(detach(accuracy))
+                    losses.append(detach(loss))
 
-                acc = sum([a.item() for a in accs]) / total
-                loss_acc = sum([l.item() for l in losses])
+                acc = sum([item(a) for a in accs]) / total
+                loss_acc = sum([item(l) for l in losses])
 
         end = datetime.utcnow()
 
@@ -56,7 +73,7 @@ class Accuracy(Metric):
 
         return eval_time, acc, loss
 
-    def on_end_epoch(self, task, epoch, context):
+    def get_accuracy(self, task, epoch, context):
         # I would like to make this completely async
         # but I do not think I can do it easily
         # Good enough for now
@@ -66,8 +83,18 @@ class Accuracy(Metric):
         self.accuracies.append(acc)
         self.losses.append(loss)
 
+    def on_end_epoch(self, task, epoch, context):
+        self.get_accuracy(task, epoch, context)
+
+    def on_end_train(self, task, step=None):
+        self.get_accuracy(task, step, None)
+
     def on_start_train(self, task, step=None):
-        self.on_end_epoch(task, step, None)
+        try:
+            self.get_accuracy(task, step, None)
+        except NotFittedError:
+            # error('')
+            pass
 
     def value(self):
         if not self.accuracies:

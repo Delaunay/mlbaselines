@@ -87,4 +87,5 @@ track_*
 
 out.txt
 *.zip
-
+*.json
+*.png

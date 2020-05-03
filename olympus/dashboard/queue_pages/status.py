@@ -6,6 +6,62 @@ from olympus.dashboard.plots.work_status import work_status, aggregate_overview_
 import olympus.dashboard.elements as html
 
 
+def list_experiment_stats(base_path, queue, experiments, data):
+    def show_expriment(n):
+        status = data.get(n, {})
+        link = html.link(n, ref=f'/{base_path}/{queue}/{n}')
+        row = f"""
+            <tbody>
+                <tr>
+                    <td>{link}</td>
+                    <td>{status.get("lost", 0)}</td>
+                    <td>{status.get("failed", 0)}</td>
+                    <td>{status.get("agent", 0)}</td>
+                    <td>{status.get("runtime_actioned", 0):0.2f}</td>
+                </tr>
+            </tbody>"""
+        return row
+
+    rows = ''.join([show_expriment(name) for name in filter(lambda e: e is not None, experiments)])
+
+    return html.div(
+        html.header(f'Details {queue}', level=4),
+        f"""
+        <table class="table table-hover table-striped table-sm">
+            <thead>
+                <tr>
+                    <th>Experiment</th>
+                    <th>Lost</th>
+                    <th>Failed</th>
+                    <th>Agents</th>
+                    <th>Runtime</th>
+                </tr>
+            </thead>
+            <tbody>
+                {rows}
+            </tbody>
+        </table>""")
+
+
+def insert(aggregated, metrics, key):
+    for metric in metrics:
+        namespace = metric.pop('_id')
+        aggregated[namespace][namespace] = namespace
+
+        for k, v in metric.items():
+            if k == 'runtime':
+                aggregated[namespace][f'{k}_{key}'] = v
+
+            elif v is not None:
+                aggregated[namespace][k] = v
+
+    return aggregated
+
+
+def make_status_overview():
+    pass
+
+
 class StatusQueue(InspectQueue):
     base_path = 'queue/status'
 
@@ -41,57 +97,6 @@ class StatusQueue(InspectQueue):
 
         return self.show_queue(queue, namespace)
 
-    @staticmethod
-    def insert(aggregated, metrics, key):
-        for metric in metrics:
-            namespace = metric.pop('_id')
-            aggregated[namespace][namespace] = namespace
-
-            for k, v in metric.items():
-                if k == 'runtime':
-                    aggregated[namespace][f'{k}_{key}'] = v
-
-                elif v is not None:
-                    aggregated[namespace][k] = v
-
-        return aggregated
-
-    def list_experiment(self, queue, experiments, data):
-        def show_expriment(n):
-            status = data.get(n, {})
-            link = html.link(n, ref=f'/{self.base_path}/{queue}/{n}')
-            row = f"""
-                <tbody>
-                    <tr>
-                        <td>{link}</td>
-                        <td>{status.get("lost", 0)}</td>
-                        <td>{status.get("failed", 0)}</td>
-                        <td>{status.get("agent", 0)}</td>
-                        <td>{status.get("runtime_actioned", 0):0.2f}</td>
-                    </tr>
-                </tbody>"""
-            return row
-
-        rows = ''.join([show_expriment(name) for name in filter(lambda e: e is not None, experiments)])
-
-        return html.div(
-            html.header(f'Details {queue}', level=4),
-            f"""
-            <table class="table table-hover table-striped table-sm">
-                <thead>
-                    <tr>
-                        <th>Experiment</th>
-                        <th>Lost</th>
-                        <th>Failed</th>
-                        <th>Agents</th>
-                        <th>Runtime</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    {rows}
-                </tbody>
-            </table>""")
-
     def show_namespace(self, name, status, agents):
         fig = work_status(status)
         fig.update_layout(template='plotly_dark')
@@ -114,12 +119,12 @@ class StatusQueue(InspectQueue):
 
         data = defaultdict(lambda: dict(unread=0, unactioned=0, actioned=0, lost=0, failed=0, agent=0, runtime=0))
 
-        self.insert(data, self.aggregate.unread_count(queue, groupby=groupby), 'unread')
-        self.insert(data, self.aggregate.unactioned_count(queue, groupby=groupby), 'unactioned')
-        self.insert(data, self.aggregate.actioned_count(queue, groupby=groupby), 'actioned')
-        self.insert(data, self.aggregate.lost_count(queue, groupby=groupby), 'lost')
-        self.insert(data, self.aggregate.failed_count(queue, groupby=groupby), 'failed')
-        self.insert(data, self.aggregate.agent_count(), 'argent')
+        insert(data, self.aggregate.unread_count(queue, groupby=groupby), 'unread')
+        insert(data, self.aggregate.unactioned_count(queue, groupby=groupby), 'unactioned')
+        insert(data, self.aggregate.actioned_count(queue, groupby=groupby), 'actioned')
+        insert(data, self.aggregate.lost_count(queue, groupby=groupby), 'lost')
+        insert(data, self.aggregate.failed_count(queue, groupby=groupby), 'failed')
+        insert(data, self.aggregate.agent_count(), 'argent')
 
         for group, info in data.items():
             print(group, info)
@@ -131,7 +136,7 @@ class StatusQueue(InspectQueue):
             html.header('Experiments', level=3),
             html.div_row(
                 html.div_col(html.altair_plot(chart), style='height:500px;', size=5),
-                html.div_col(self.list_experiment(queue, data.keys(), data))
+                html.div_col(list_experiment_stats(self.base_path, queue, data.keys(), data))
             )
         )
 

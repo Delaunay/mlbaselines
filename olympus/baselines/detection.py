@@ -116,7 +116,7 @@ def detection_baseline(model, weight_init,
 
     lr_schedule = LRSchedule(lr_scheduler)
 
-    train, valid = loader.get_train_valid_loaders(hpo_done)
+    train, valid, test = loader.get_loaders(hpo_done=hpo_done)
 
     main_task = ObjectDetection(
         detector=model,
@@ -128,8 +128,12 @@ def detection_baseline(model, weight_init,
         criterion=reduce_loss,
         logger=logger)
 
+    name = 'validation'
+    if hpo_done:
+        name = 'test'
+
     main_task.metrics.append(
-        Loss(name='validation', loader=valid)
+        Loss(name=name, loader=test)
     )
 
     return main_task

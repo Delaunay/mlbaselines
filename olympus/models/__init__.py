@@ -163,16 +163,16 @@ class Model(nn.Module):
         """Get currently defined parameter space"""
         return self.hyper_parameters.parameters(strict=False)
 
-    def init(self, override=False, initializer=None, **model_hyperparams):
+    def init(self, override=False, **model_hyperparams):
 
         self.hyper_parameters.add_parameters(**model_hyperparams)
 
         params = self.hyper_parameters.parameters(strict=True)
-        _ = params.pop('initializer', initializer)
+        initializer = params.pop('initializer', {})
 
         self._model = self.model_builder.invoke(**params)
 
-        if initializer:
+        if isinstance(initializer, dict):
             self.weight_init.init(**initializer)
 
         self.weight_init(self._model)

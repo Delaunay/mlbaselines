@@ -2,10 +2,9 @@ import argparse
 from collections import OrderedDict
 import copy
 import json
-import hashlib
 import numpy
 import time
-
+import os
 import yaml
 
 import xarray
@@ -148,7 +147,6 @@ def create_trials(configs, params, metrics):
         trials[uid] = Trial(params)
 
     return trials
-
 
     raise NotImplementedError('Fetch metrics like in HPO!')
 

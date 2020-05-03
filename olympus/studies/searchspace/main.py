@@ -13,8 +13,6 @@ from olympus.hpo import HPOptimizer
 from olympus.hpo.fidelity import Fidelity
 from olympus.observers.msgtracker import METRIC_QUEUE
 from olympus.hpo.parallel import make_remote_call, RESULT_QUEUE, WORK_QUEUE, HPO_ITEM
-from olympus.hpo.worker import HPOWorkGroup
-from olympus.utils import info
 from olympus.utils.functional import flatten
 from olympus.studies.searchspace.plot import plot
 
@@ -75,8 +73,6 @@ def get_array_names(metrics):
             keys |= set(values.keys())
 
     return keys
-
-
 
 
 def fetch_metrics(client, namespace):

@@ -1,7 +1,11 @@
 import torch
 import torch.nn as nn
 
-import olympus
+try:
+    from olympus.models.bert import BertWrapper
+except ImportError:
+    class BertWrapper:
+        pass
 
 
 class HalveInputs(nn.Module):
@@ -51,8 +55,8 @@ def batchnorm_convert_float(module):
 
 
 def network_to_half(network):
-    if type(network) == olympus.models.bert.BertWrapper:
-        # do not halve the input for BERT - otherwise the embeddings will crash..
+    if isinstance(network, BertWrapper):
+        # do not halve the input for BERT - otherwise the embeddings will crash.
         return batchnorm_convert_float(network.half())
     else:
         return HalveInputs(batchnorm_convert_float(network.half()))

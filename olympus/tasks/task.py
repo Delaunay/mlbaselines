@@ -82,7 +82,7 @@ class Task:
     def summary(self):
         print(GenerateSummary().task_summary(self))
 
-    def get_space(self, **fidelities):
+    def get_space(self):
         """Return missing hyper parameters that need to be set using `init`"""
         raise NotImplementedError()
 

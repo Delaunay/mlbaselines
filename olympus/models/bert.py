@@ -1,22 +1,5 @@
-import logging
-import os
-import random
-
-import numpy as np
-import torch
-
+from olympus.utils import option, info
 from transformers import BertForSequenceClassification, BertConfig
-
-from olympus.utils.options import option
-
-logger = logging.getLogger(__name__)
-
-
-def set_seed(seed):
-    random.seed(seed)
-    np.random.seed(seed)
-    torch.manual_seed(seed)
-    torch.cuda.manual_seed_all(seed)
 
 
 class BertWrapper(BertForSequenceClassification):
@@ -27,12 +10,14 @@ class BertWrapper(BertForSequenceClassification):
 
 def build_bert(input_size, output_size, task):
     cache_dir = option('model.cache', '/tmp/olympus/cache')
-    logger.info('model cache folder: {}'.format(cache_dir))
+    info('model cache folder: {}'.format(cache_dir))
+
     config = BertConfig.from_pretrained(
         'bert-base-uncased',
         num_labels=2,
         finetuning_task=task,
         cache_dir=cache_dir)
+
     model = BertWrapper.from_pretrained(
         'bert-base-uncased',
         from_tf=False,

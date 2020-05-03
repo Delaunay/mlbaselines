@@ -16,7 +16,6 @@ METRIC_ITEM = 200
 
 
 def metric_logger(uri=None, database=None, experiment=None, client=None):
-    print(dict(uri=uri, database=database, experiment=experiment, client=client))
     return MSGQTracker(
         client=_Logger(uri=uri, database=database, experiment=experiment, client=client))
 

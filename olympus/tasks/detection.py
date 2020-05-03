@@ -101,7 +101,7 @@ class ObjectDetection(Task):
     def step(self, step, input, context):
         images, targets = input
 
-        images = list(image.to(self.device) for image in images)
+        images = list(image[0].to(self.device) for image in images)
         targets = [{k: v.to(self.device) for k, v in t.items()} for t in targets]
 
         self.model.train()
@@ -138,7 +138,7 @@ class ObjectDetection(Task):
         with torch.no_grad():
             images, targets = batch
 
-            images = list(image.to(self.device) for image in images)
+            images = list(image[0].to(self.device) for image in images)
             targets = [{k: v.to(self.device) for k, v in t.items()} for t in targets]
 
             loss_dict = self.model(images, targets)

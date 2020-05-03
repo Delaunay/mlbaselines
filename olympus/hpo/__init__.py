@@ -93,8 +93,8 @@ class HPOptimizer:
     def load_state_dict(self, state):
         return self.hpo.load_state_dict(state)
 
-    def state_dict(self):
-        return self.hpo.state_dict()
+    def state_dict(self, compressed=True):
+        return self.hpo.state_dict(compressed=compressed)
 
     def info(self):
         return self.hpo.info()

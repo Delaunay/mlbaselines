@@ -6,6 +6,7 @@ python:
   - "3.7"
 
 install:
+  - apt-get install mongodb-server libeigen3-dev swig
   - make travis-install
 
 jobs:

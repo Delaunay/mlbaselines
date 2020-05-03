@@ -12,7 +12,7 @@ def test_hyperband_api():
         'a': 'uniform(0, 1)'
     })
 
-    hpo = Hyperband(Fidelity(0, 1000, 10, 'epochs'), params)
+    hpo = Hyperband(Fidelity(0, 100, 10, 'epochs'), params)
     assert not hpo.is_done()
 
     for rung in range(3):
@@ -50,7 +50,7 @@ def test_hyperband_simple_sequential():
         'a': 'uniform(0, 1)'
     })
 
-    hpo = Hyperband(Fidelity(0, 1000, 10, 'epochs'), params)
+    hpo = Hyperband(Fidelity(0, 100, 10, 'epochs'), params)
 
     for params in hpo:
         hpo.observe(params, result=random.uniform(0, 1))
