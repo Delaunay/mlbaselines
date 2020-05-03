@@ -42,17 +42,21 @@ class StatusQueue(InspectQueue):
         return self.show_queue(queue, namespace)
 
     @staticmethod
-    def insert(aggregated, metrics):
+    def insert(aggregated, metrics, key):
         for metric in metrics:
             namespace = metric.pop('_id')
             aggregated[namespace][namespace] = namespace
+
             for k, v in metric.items():
-                aggregated[namespace][k] = v
+                if k == 'runtime':
+                    aggregated[namespace][f'{k}_{key}'] = v
+
+                elif v is not None:
+                    aggregated[namespace][k] = v
 
         return aggregated
 
     def list_experiment(self, queue, experiments, data):
-
         def show_expriment(n):
             status = data.get(n, {})
             link = html.link(n, ref=f'/{self.base_path}/{queue}/{n}')
@@ -63,6 +67,7 @@ class StatusQueue(InspectQueue):
                         <td>{status.get("lost", 0)}</td>
                         <td>{status.get("failed", 0)}</td>
                         <td>{status.get("agent", 0)}</td>
+                        <td>{status.get("runtime_actioned", 0):0.2f}</td>
                     </tr>
                 </tbody>"""
             return row
@@ -79,6 +84,7 @@ class StatusQueue(InspectQueue):
                         <th>Lost</th>
                         <th>Failed</th>
                         <th>Agents</th>
+                        <th>Runtime</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -106,14 +112,17 @@ class StatusQueue(InspectQueue):
         if substr is not None:
             groupby = partial(type(self.aggregate).group_by_substring, length=substr)
 
-        data = defaultdict(lambda: dict(unread=0, unactioned=0, actioned=0, lost=0, failed=0, agent=0))
+        data = defaultdict(lambda: dict(unread=0, unactioned=0, actioned=0, lost=0, failed=0, agent=0, runtime=0))
 
-        self.insert(data, self.aggregate.unread_count(queue, groupby=groupby))
-        self.insert(data, self.aggregate.unactioned_count(queue, groupby=groupby))
-        self.insert(data, self.aggregate.actioned_count(queue, groupby=groupby))
-        self.insert(data, self.aggregate.lost_count(queue, groupby=groupby))
-        self.insert(data, self.aggregate.failed_count(queue, groupby=groupby))
-        self.insert(data, self.aggregate.agent_count())
+        self.insert(data, self.aggregate.unread_count(queue, groupby=groupby), 'unread')
+        self.insert(data, self.aggregate.unactioned_count(queue, groupby=groupby), 'unactioned')
+        self.insert(data, self.aggregate.actioned_count(queue, groupby=groupby), 'actioned')
+        self.insert(data, self.aggregate.lost_count(queue, groupby=groupby), 'lost')
+        self.insert(data, self.aggregate.failed_count(queue, groupby=groupby), 'failed')
+        self.insert(data, self.aggregate.agent_count(), 'argent')
+
+        for group, info in data.items():
+            print(group, info)
 
         status, agents = prepare_overview_altair(data)
         chart = aggregate_overview_altair(status, agents)

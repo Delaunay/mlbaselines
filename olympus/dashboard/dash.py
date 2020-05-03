@@ -1,14 +1,75 @@
 from flask import Flask
 from flask_socketio import SocketIO
 
-from olympus.utils import debug, info
+from olympus.utils import debug, info, error
+from olympus.hpo.parallel import exec_remote_call
+
+from threading import Thread
+from multiprocessing import Process, Pool
 
 _socketio = None
 _socketio_ready = False
+_host = None
+_port = None
+_pool = None
+
+
+def host():
+    return _host
+
+
+def port():
+    return _port
 
 
 def socketio():
     return _socketio
+
+
+def _decorated_mp(host, port, fun, *args, **kwargs):
+    import socketio
+
+    r = fun(*args, **kwargs)
+
+    if 'module' in r and 'function' in r:
+        # make a client to the flask server
+        socket = socketio.Client()
+        socket.connect(f'http://{host}:{port}')
+        socket.emit('remote_process_result', r)
+
+    else:
+        error(f'(result: {r}) is is not a remote call')
+
+
+def async_thread_call(fun, *args, **kwargs):
+    """Runs a function async and execute the resulting remote function call"""
+    t = Thread(
+        target=_decorated_mp,
+        args=(host(), port(), fun) + args,
+        kwargs=kwargs)
+
+    t.start()
+    return t
+
+
+def async_process_call(fun, *args, **kwargs):
+    p = Process(
+        target=_decorated_mp,
+        args=(host(), port(), fun) + args,
+        kwargs=kwargs)
+
+    p.start()
+    return p
+
+
+def async_call(fun, *args, **kwargs):
+    if _pool is not None:
+        return _pool.apply_async(
+            _decorated_mp,
+            args=(host(), port(), fun) + args,
+            kwds=kwargs)
+    else:
+        error('Pool was not created, restart your server')
 
 
 def register_event(event, handler, namespace='/'):
@@ -44,7 +105,8 @@ def set_attribute(id, attribute, value):
         new value of the attribute
     """
     if not _socketio_ready:
-        _pending_bind.append((id, attribute, value))
+        _pending_attr.append((id, attribute, value))
+        return
 
     debug(f'set_attribute {attribute} of {id}')
 
@@ -52,6 +114,25 @@ def set_attribute(id, attribute, value):
         id=id,
         attribute=attribute,
         value=value
+    ))
+
+
+def set_html(id, value):
+    """Set the attribute of an element on the webpage
+
+    Parameters
+    ----------
+    id: str
+        id of the DOM element
+
+    value: json
+        new value of the attribute
+    """
+    debug(f'set_html of {id}')
+
+    socketio().emit('set_html', dict(
+        id=id,
+        html=value
     ))
 
 
@@ -96,6 +177,7 @@ def bind(id, event, handler, attribute=None, property=None):
     """
     if not _socketio_ready:
         _pending_bind.append((id, event, handler, attribute, property))
+        return
 
     debug(f'binding `{id}` with `{event}` to `{handler}`')
     # ask javascript to listen to events for a particular kind of event on our element
@@ -147,10 +229,32 @@ class Dashboard:
 
         self.on_event('handshake', handshake_event)
         self.on_event('disconnect', disconnect_event)
+        self.on_event('remote_process_result', exec_remote_call)
 
-    def run(self):
+    @staticmethod
+    def init_worker():
+        # Make the worker ignore KeyboardInterrupts
+        # since the master process is going to do the cleanup
+        import signal
+        signal.signal(signal.SIGINT, signal.SIG_IGN)
+
+    def __enter__(self):
+        global _pool
+        _pool = Pool(4, self.init_worker)
+        return self
+
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        if _pool is not None:
+            _pool.close()
+            _pool.terminate()
+
+    def run(self, host='127.0.0.1', port=5000):
         """Run the flask App"""
-        return self.socket.run(self.app)
+        global _host, _port
+
+        _port = port
+        _host = host
+        return self.socket.run(self.app, host, port)
 
     def add_page(self, page, route=None, header=None, **kwargs):
         """Add a new page to the dashboard

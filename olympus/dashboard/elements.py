@@ -41,7 +41,7 @@ def ol(items):
     return f'<ul>{items}</ul>'
 
 
-def div(*items, style=None):
+def div(*items, style=None, id=None):
     """Generate a new div
 
     Parameters
@@ -50,11 +50,16 @@ def div(*items, style=None):
         DOM children of this div
     """
     children = ''.join(items)
+    attr = []
 
-    if style is None:
-        return f'<div>{children}</div>'
+    if style is not None:
+        attr.append(f'style="{style}"')
 
-    return f'<div style="{style}">{children}</div>'
+    if id is not None:
+        attr.append(f'id="{id}"')
+
+    attr = ' '.join(attr)
+    return f'<div {attr}>{children}</div>'
 
 
 def div_row(*items, style=None):
@@ -347,7 +352,7 @@ def iframe(html, id=None):
         <div style="width: 100%; height: 100%;">
             <iframe 
                 {attr}
-                style="position: absolute; width: 100%; height: 100%;"
+                style="position: absolute; width: 95%; height: 95%;"
                 frameborder="0"
                 sandbox="allow-scripts" 
                 srcdoc="{escape(html)}">
@@ -368,12 +373,12 @@ def altair_plot(chart, with_iframe=True):
     return iframe(html)
 
 
-def plotly_plot(figure):
+def plotly_plot(figure, full_html=False):
     """Export a plotly figure into HTML format"""
     import plotly.io
 
     buffer = io.StringIO()
-    plotly.io.write_html(figure, buffer, auto_play=False, full_html=False)
+    plotly.io.write_html(figure, buffer, auto_play=False, full_html=full_html)
     html = buffer.getvalue()
 
     return html
@@ -389,3 +394,17 @@ def pyplot_plot(figure, **save_args):
     encoded = base64.b64encode(out_img.read()).decode("ascii").replace("\n", "")
     uri = "data:image/png;base64,{}".format(encoded)
     return f"""<img src="{uri}"/>"""
+
+
+def spinner():
+    return """
+<div class="text-center">
+  <div class="spinner-border" role="status">
+    <span class="sr-only">Loading...</span>
+  </div>
+</div>
+    """
+
+
+def iframe_spinner():
+    return base_page('', '', spinner(), '')

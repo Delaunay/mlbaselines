@@ -47,7 +47,7 @@ def prepare_gantt_array(work_items, worker_count):
         worker_id = find_free_worker(w.read_time, w.actioned_time)
 
         resource = mappings.get(w.mtype)
-        epoch = dict(w.message.get('kwargs', [])).get('epoch', None)
+        epoch = dict(w.message.get('kwargs', [])).get('epoch', 0)
         if epoch is not None:
             resource = f'{resource} ({epoch})'
 
@@ -66,6 +66,7 @@ def prepare_gantt_array(work_items, worker_count):
         #     text=str(w.uid)[:4],
         #     showarrow=True))
 
+    jobs = sorted(jobs, key=lambda item: item['epoch'])
     return jobs, annotations, unique_resources
 
 

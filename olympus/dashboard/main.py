@@ -73,7 +73,8 @@ def dashboard():
 
 
 def main():
-    return dashboard().run()
+    with dashboard() as dash:
+        dash.run()
 
 
 if __name__ == '__main__':
