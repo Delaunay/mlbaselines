@@ -92,9 +92,6 @@ class Model(nn.Module):
     MissingArgument:
         if name nor model were not set
     """
-    MODEL_BASE_SPACE = {
-        'initializer': 'choices({})'.format(list(known_initialization()))
-    }
     _dtype = torch.float32
     _device = torch.device('cpu')
 
@@ -106,17 +103,18 @@ class Model(nn.Module):
         self._model = None
 
         # Track defined hyper parameters
-        self.hyper_parameters = HyperParameters(space=Model.MODEL_BASE_SPACE)
+        self.hyper_parameters = HyperParameters(space=dict())
 
         # If init is set then we can add its hyper parameters
         self.weight_init = weight_init
         if weight_init is not None:
+            if isinstance(weight_init, str):
+                self.weight_init = Initializer(weight_init)
+
             # replace weight init by its own hyper parameters
-            space = weight_init.get_space()
+            space = self.weight_init.get_space()
             if space:
                 self.hyper_parameters.space.update(dict(initializer=space))
-            else:
-                self.hyper_parameters.add_parameters(initializer=weight_init.name)
 
         # Make a Lazy Model that will be initialized once all the hyper parameters are set
         if model:
@@ -164,17 +162,14 @@ class Model(nn.Module):
         return self.hyper_parameters.parameters(strict=False)
 
     def init(self, override=False, **model_hyperparams):
-
         self.hyper_parameters.add_parameters(**model_hyperparams)
-
         params = self.hyper_parameters.parameters(strict=True)
+
         initializer = params.pop('initializer', {})
-
-        self._model = self.model_builder.invoke(**params)
-
         if isinstance(initializer, dict):
             self.weight_init.init(**initializer)
 
+        self._model = self.model_builder.invoke(**params)
         self.weight_init(self._model)
 
         if self.half:

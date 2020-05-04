@@ -12,6 +12,7 @@ optimizers = known_optimizers()
 def test_build_optimizer(optimizer, batch_size=1):
     model = Model('logreg', input_size=(1, 28, 28), output_size=(10,))
 
+
     optimizer = Optimizer(
         optimizer,
         params=model.parameters()

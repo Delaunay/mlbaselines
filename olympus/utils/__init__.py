@@ -254,6 +254,44 @@ class WrongParameter(Exception):
     pass
 
 
+def missing_params(space, kwargs, missing):
+    for k, v in space.items():
+
+        if not isinstance(v, dict):
+            if k not in kwargs:
+                missing[k] = v
+
+        else:
+            if k not in kwargs:
+                missing[k] = v
+                continue
+
+            if k not in missing:
+                missing[k] = {}
+
+            sub_missing = missing_params(v, kwargs[k], missing[k])
+
+            # If nothing is missing pop it
+            if len(sub_missing) == 0:
+                missing.pop(k)
+
+    return missing
+
+
+def update_params(space, kwargs, params):
+    for k, v in kwargs.items():
+        if k not in space:
+            raise WrongParameter(f'{k} is not a valid parameter, pick from: {space.keys()}')
+
+        if isinstance(v, dict):
+            if k not in params:
+                params[k] = {}
+
+            return update_params(space[k], v, params[k])
+        else:
+            params[k] = v
+
+
 class HyperParameters:
     """Keeps track of mandatory hyper parameters
 
@@ -267,28 +305,16 @@ class HyperParameters:
     """
     def __init__(self, space, **kwargs):
         self.space = space
-        self.check_correct_parameters(kwargs)
-        self.current_parameters = kwargs
-
-    def check_correct_parameters(self, kwargs):
-        """Checks that the new parameter exist inside the space definition"""
-        for k, v in kwargs.items():
-            if k not in self.space:
-                raise WrongParameter(f'{k} is not a valid parameter, pick from: {self.space.keys()}')
+        self.current_parameters = {}
+        self.add_parameters(**kwargs)
 
     def missing_parameters(self):
         """Returns a dictionary of missing parameters"""
-        missing = {}
-        for k, v in self.space.items():
-            if k not in self.current_parameters:
-                missing[k] = v
-
-        return missing
+        return missing_params(self.space, self.current_parameters, {})
 
     def add_parameters(self, **kwargs):
         """Insert a new parameter value"""
-        self.check_correct_parameters(kwargs)
-        self.current_parameters.update(kwargs)
+        update_params(self.space, kwargs, self.current_parameters)
 
     def parameters(self, strict=False):
         """Returns all the parameters and checks if any are missing"""
