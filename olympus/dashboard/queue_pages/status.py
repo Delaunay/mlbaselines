@@ -58,10 +58,6 @@ def insert(aggregated, metrics, key):
     return aggregated
 
 
-def make_status_overview():
-    pass
-
-
 class StatusQueue(InspectQueue):
     base_path = 'queue/status'
 

@@ -1,6 +1,8 @@
 import json
 import io
 import base64
+import uuid
+
 from flask import url_for, escape
 
 
@@ -408,3 +410,53 @@ def spinner():
 
 def iframe_spinner():
     return base_page('', '', spinner(), '')
+
+
+def show_exception():
+    import traceback
+    return pre(traceback.format_exc())
+
+
+# Helpers to random Plots asynchronously
+def _async_plot(callback, *args, plot_id, to_html, **kwargs):
+    from olympus.dashboard.dash import set_attribute
+    from olympus.hpo.parallel import make_remote_call
+
+    try:
+        chart = callback(*args, **kwargs)
+
+        if chart is None:
+            return make_remote_call(
+                set_attribute, plot_id, 'srcdoc', 'Not available')
+
+        html_chart = to_html(chart)
+
+        return make_remote_call(
+            set_attribute, plot_id, 'srcdoc', html_chart)
+
+    except:
+        return make_remote_call(
+            set_attribute, plot_id, 'srcdoc', show_exception())
+
+
+def _make_async_plot(to_html):
+    def _plot_async_base(fun, *args, id=None, **kwargs):
+        from olympus.dashboard.dash import async_call
+
+        if id is None:
+            id = uuid.uuid4().hex[0:16]
+
+        async_call(_async_plot, fun, *args, plot_id=id, to_html=to_html, **kwargs)
+
+        # Returns an empty iframe
+        return iframe(iframe_spinner(), id=id)
+    return _plot_async_base
+
+
+def plotly_plot_full(plot):
+    return plotly_plot(plot, full_html=True)
+
+
+async_altair_plot = _make_async_plot(altair_plot)
+async_plotly_plot = _make_async_plot(plotly_plot_full)
+async_pyplot_plot = _make_async_plot(pyplot_plot)

@@ -4,6 +4,7 @@ from flask_socketio import SocketIO
 from olympus.utils import debug, info, error
 from olympus.hpo.parallel import exec_remote_call
 
+import traceback
 from threading import Thread
 from multiprocessing import Process, Pool
 
@@ -29,13 +30,23 @@ def socketio():
 def _decorated_mp(host, port, fun, *args, **kwargs):
     import socketio
 
-    r = fun(*args, **kwargs)
+    r = None
+    exception = None
+    try:
+        r = fun(*args, **kwargs)
+    except:
+        exception = traceback.format_exc()
 
     if 'module' in r and 'function' in r:
         # make a client to the flask server
         socket = socketio.Client()
         socket.connect(f'http://{host}:{port}')
-        socket.emit('remote_process_result', r)
+
+        if r is not None:
+            socket.emit('remote_process_result', r)
+
+        if exception is not None:
+            socket.emit('remote_process_error', exception)
 
     else:
         error(f'(result: {r}) is is not a remote call')
@@ -214,6 +225,10 @@ def disconnect_event():
     info('SocketIO disconnected')
 
 
+def handle_error(msg):
+    print(msg)
+
+
 class Dashboard:
     """Dashboard entry point"""
     def __init__(self, name=__name__, secret='__secret__'):
@@ -230,6 +245,7 @@ class Dashboard:
         self.on_event('handshake', handshake_event)
         self.on_event('disconnect', disconnect_event)
         self.on_event('remote_process_result', exec_remote_call)
+        self.on_event('remote_process_error', handle_error)
 
     @staticmethod
     def init_worker():
