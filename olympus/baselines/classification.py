@@ -110,13 +110,14 @@ def classification_baseline(model, initializer,
                             data_path='/tmp/olympus',
                             validate=True, hyper_parameters=None, uri_metric=None,
                             valid_batch_size=None,
+                            cache=None, transform=False,
                             **config):
 
     set_seeds(global_seed)
 
     dataset = SplitDataset(
         Dataset(dataset, path=option('data.path', data_path), transform=transform,
-                transform_seed=transform_seed),
+                transform_seed=transform_seed, cache=cache),
         split_method=split_method
     )
 

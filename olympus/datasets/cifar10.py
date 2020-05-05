@@ -51,11 +51,16 @@ class CIFAR10(AllDataset):
             transforms.Normalize((0.4914, 0.4822, 0.4465), (0.2023, 0.1994, 0.2010))]
 
         rng = numpy.random.RandomState(transform_seed)
-        train_transform = [
-            to_pil_image,
-            RandomCrop(32, padding=4, seed=rng.randint(2**30)),
-            RandomHorizontalFlip(seed=rng.randint(2**30)),
-            transforms.ToTensor()] + transformations
+
+        if transform:
+            train_transform = [
+                to_pil_image,
+                RandomCrop(32, padding=4, seed=rng.randint(2**30)),
+                RandomHorizontalFlip(seed=rng.randint(2**30)),
+                transforms.ToTensor()] + transformations
+
+        else:
+            train_transform = transformations
 
         transformations = dict(
             train=Compose(train_transform),
