@@ -35,7 +35,6 @@ class WarmUpLR(LRScheduleAdapter):
     def step(self, step=None, metrics=None):
         if self.iterations == 'step':
             self.schedule.step(step)
-        print(self.schedule.get_lr())
 
     @staticmethod
     def get_space():

@@ -15,6 +15,7 @@ logger = logging.getLogger(__name__)
 
 def main(task='rte', bootstrapping_seed=1, sampler_seed=1, init_seed=1, global_seed=1,
          learning_rate=0.00002, beta1=0.9, beta2=0.999, weight_decay=0.0,
+         attention_probs_dropout_prob=0.1, hidden_dropout_prob=0.1,
          batch_size=32, weight_init='normal',
          warmup=0,
          init_std=0.2, epoch=3, half=False, hpo_done=False,
@@ -44,7 +45,10 @@ def main(task='rte', bootstrapping_seed=1, sampler_seed=1, init_seed=1, global_s
         storage=storage, half=half, hpo_done=hpo_done, verbose=False, validate=True)
 
     hyperparameters = dict(
-        model={'initializer': {'mean': 0.0, 'std': init_std}},
+        model={
+            'initializer': {'mean': 0.0, 'std': init_std},
+            'attention_probs_dropout_prob': attention_probs_dropout_prob,
+            'hidden_dropout_prob': hidden_dropout_prob},
         optimizer={
             'lr': learning_rate,
             'beta1': beta1,
@@ -85,6 +89,8 @@ if __name__ == '__main__':
     parser.add_argument('--seed-global', type=int, default=1)
     parser.add_argument('--warmup', type=int, default=0)
     parser.add_argument('--weight-decay', type=float, default=0.0)
+    parser.add_argument('--attention-dropout', type=float, default=0.1)
+    parser.add_argument('--hidden-dropout', type=float, default=0.1)
     parser.add_argument('--fp16', action='store_true')
     parser.add_argument('--redirect-log', help='will intercept any stdout/err and log it',
                         action='store_true')
@@ -96,5 +102,7 @@ if __name__ == '__main__':
 
     main(task=args.task, bootstrapping_seed=args.seed_bootstrapping, sampler_seed=args.seed_sampler,
          init_seed=args.seed_init, global_seed=args.seed_global, learning_rate=args.lr,
+         attention_probs_dropout_prob=args.attention_dropout,
+         hidden_dropout_prob=args.hidden_dropout,
          weight_decay=args.weight_decay, batch_size=args.batch_size, weight_init='normal',
          warmup=args.warmup, init_std=0.2, epoch=args.epoch, half=args.fp16, hpo_done=True)

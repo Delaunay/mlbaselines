@@ -287,7 +287,7 @@ def update_params(space, kwargs, params):
             if k not in params:
                 params[k] = {}
 
-            return update_params(space[k], v, params[k])
+            update_params(space[k], v, params[k])
         else:
             params[k] = v
 
