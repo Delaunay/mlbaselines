@@ -15,7 +15,7 @@ storage = StateStorage(folder='./checkpoints', time_buffer=5 * 60)
 
 task = classification_baseline(
     "vgg11", 'glorot_uniform', 'sgd', 'exponential', "cifar10", 128, torch.device('cuda'),
-    storage=storage, half=False)
+    storage=storage, half=False, transform=False, cache=torch.device('cuda'))
 
 
 task.init(
