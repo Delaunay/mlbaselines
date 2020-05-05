@@ -209,7 +209,7 @@ class Model(nn.Module):
 
     def to(self, *args, **kwargs):
         self._device, self._dtype, *_ = torch._C._nn._parse_to(*args, **kwargs)
-        super().to(*args, **kwargs)
+        super(Model, self).to(*args, **kwargs)
         return self
 
     def act(self, *args, **kwargs):
