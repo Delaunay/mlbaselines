@@ -3,6 +3,8 @@ import logging
 import os
 import shutil
 
+import torch
+
 from olympus.observers.msgtracker import metric_logger
 
 from olympus.baselines.classification import classification_baseline
@@ -37,7 +39,8 @@ def main(task='rte', bootstrapping_seed=1, sampler_seed=1, init_seed=1, global_s
         sampling_method='original',
         sampler_seed=sampler_seed, init_seed=init_seed,
         batch_size=batch_size, device=fetch_device(),
-        storage=storage, half=half, hpo_done=hpo_done, verbose=False, validate=True)
+        storage=storage, half=half, hpo_done=hpo_done, verbose=False, validate=True,
+        cache=torch.device('cuda'))
 
     hyperparameters = dict(
         model={
