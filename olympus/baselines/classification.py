@@ -110,7 +110,7 @@ def classification_baseline(model, initializer,
                             data_path='/tmp/olympus',
                             validate=True, hyper_parameters=None, uri_metric=None,
                             valid_batch_size=None,
-                            cache=None, transform=False,
+                            cache=None,
                             **config):
 
     set_seeds(global_seed)

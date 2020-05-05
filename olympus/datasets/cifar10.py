@@ -46,7 +46,7 @@ class CIFAR10(AllDataset):
     .. [1] Alex Krizhevsky, "Learning Multiple Layers of Features from Tiny Images", 2009.
 
     """
-    def __init__(self, data_path, transform=True, transform_seed=0):
+    def __init__(self, data_path, transform=True, transform_seed=0, cache=None):
         transformations = [
             transforms.Normalize((0.4914, 0.4822, 0.4465), (0.2023, 0.1994, 0.2010))]
 
