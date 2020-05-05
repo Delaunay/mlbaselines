@@ -6,12 +6,13 @@ variables:
     init_seed: 1
     bootstrap_seed: 2
     sampler_seed: 3
+    global_seed: 4
 
 fidelity: null
 
 space:
     learning_rate: 'loguniform(0.00001, 0.001)'
-    beta1: 'loguniform(0.8, 0.99)'
-    beta2: 'loguniform(0.8, 0.999)'
+    attention_probs_dropout_prob: 'uniform(0.0, 0.5)'
+    hidden_dropout_prob: 'uniform(0.0, 0.5)'
     weight_decay: 'loguniform(10e-6, 10e-2)'
     init_std: 'loguniform(0.01, 0.5)'
