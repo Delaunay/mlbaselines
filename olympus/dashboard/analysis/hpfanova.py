@@ -45,8 +45,12 @@ class FANOVA:
         self._importance = np.zeros((self.size, self.size))
         self._importance_std = np.zeros_like(self._importance)
         self.vis = Visualizer(self.fanova, Space.from_dict(hp_space).instantiate(), '/tmp', 'objective')
+        self.computed = False
 
-        self._compute_importance()
+    def _gen(self):
+        if not self.computed:
+            self._compute_importance()
+            self.computed = True
 
     def compute_marginal(self, index, marginals=None):
         """Compute the effect a change on the hyper parameter value has on the objective value
@@ -55,7 +59,7 @@ class FANOVA:
         -------
         returns a list of dictionaries (name, objective, value, std)
         """
-        data = self.vis.generate_marginal(index)
+        data = self.vis.generate_marginal(index, resolution=100)
         marginals = select(marginals, [])
 
         # (mean, std, grid)
@@ -105,6 +109,7 @@ class FANOVA:
         -------
         Importance matrix of pairs of hyper parameters
         """
+        self._gen()
         return self._importance
 
     @property
@@ -115,6 +120,7 @@ class FANOVA:
         -------
         Standard deviation of the importance matrix of pairs of hyper parameters
         """
+        self._gen()
         return self._importance_std
 
     def _compute_importance(self):

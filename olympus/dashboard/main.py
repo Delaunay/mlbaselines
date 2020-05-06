@@ -6,6 +6,8 @@ from argparse import ArgumentParser
 
 from olympus.dashboard.queue_pages import InspectQueue, SpaceQueue, ResultQueue, MetricQueue
 from olympus.dashboard.queue_pages import GanttQueue, FANVOAQueue, LogsQueue, StatusQueue
+from olympus.dashboard.pages.experiment import ExperimentOverview
+from olympus.dashboard.pages.study import StudyOverview
 import olympus.dashboard.elements as html
 from olympus.dashboard.dash import Dashboard
 from olympus.dashboard.page import Page
@@ -49,14 +51,9 @@ def dashboard():
     client = new_monitor(args.uri, args.database)
 
     navbar = html.navbar(
-        Status='/queue/status',
-        Inspect='/queue/inspect',
-        Result='/queue/result',
-        Gantt='/queue/gantt',
-        Exploration='/queue/space',
-        FANOVA='/queue/fanova',
-        Metric='/queue/metric',
-        Debug='/'
+        Experiments='/experiment',
+        Studies='/study',
+        Debug='/',
     )
 
     dash.add_page(MainPage(dash), header=navbar)
@@ -68,6 +65,8 @@ def dashboard():
     dash.add_page(FANVOAQueue(client), header=navbar)
     dash.add_page(LogsQueue(client), header=navbar)
     dash.add_page(MetricQueue(client), header=navbar)
+    dash.add_page(ExperimentOverview(client), header=navbar)
+    dash.add_page(StudyOverview(client), header=navbar)
 
     return dash
 

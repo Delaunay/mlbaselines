@@ -128,6 +128,19 @@ def set_attribute(id, attribute, value):
     ))
 
 
+def redirect(url):
+    """Set the attribute of an element on the webpage
+
+    Parameters
+    ----------
+    url: str
+        url to redirect the client to
+
+    """
+    debug(f'redirect ot {url}')
+    socketio().emit('redirect', dict(url=url))
+
+
 def set_html(id, value):
     """Set the attribute of an element on the webpage
 

@@ -23,9 +23,7 @@ def list_experiment_stats(base_path, queue, experiments, data):
         return row
 
     rows = ''.join([show_expriment(name) for name in filter(lambda e: e is not None, experiments)])
-
     return html.div(
-        html.header(f'Details {queue}', level=4),
         f"""
         <table class="table table-hover table-striped table-sm">
             <thead>
@@ -84,12 +82,12 @@ class StatusQueue(InspectQueue):
             unique_agents[a.agent] = a
         return list(unique_agents.values())
 
-    def main(self, queue=None, namespace=None, substr=None):
+    def main(self, queue=None, namespace=None, substr=None, delimiter=None):
         if queue is None:
             return self.list_queues()
 
         if namespace is None:
-            return self.show_overview(queue, substr)
+            return self.show_overview(queue, substr, delimiter)
 
         return self.show_queue(queue, namespace)
 
@@ -101,7 +99,7 @@ class StatusQueue(InspectQueue):
             html.header(f'{name} {agents}', level=5),
             html.div_col(html.plotly_plot(fig), size=4))
 
-    def show_overview(self, queue, substr=None):
+    def show_overview(self, queue, substr=None, delimiter=None):
         # Try to show an overview of the entire system
         if self.aggregate is None:
             try:
@@ -111,7 +109,7 @@ class StatusQueue(InspectQueue):
 
         groupby = type(self.aggregate).group_by_namespace
         if substr is not None:
-            groupby = partial(type(self.aggregate).group_by_substring, length=substr)
+            groupby = partial(type(self.aggregate).group_by_substring, group=substr, delimiter=delimiter)
 
         data = defaultdict(lambda: dict(unread=0, unactioned=0, actioned=0, lost=0, failed=0, agent=0, runtime=0))
 
@@ -129,7 +127,7 @@ class StatusQueue(InspectQueue):
         chart = aggregate_overview_altair(status, agents)
 
         return html.div(
-            html.header('Experiments', level=3),
+            html.header('Status', level=3),
             html.div_row(
                 html.div_col(html.altair_plot(chart), style='height:500px;', size=5),
                 html.div_col(list_experiment_stats(self.base_path, queue, data.keys(), data))
@@ -161,7 +159,7 @@ class StatusQueue(InspectQueue):
         fig.update_layout(template='plotly_dark')
 
         return html.div(
-            html.header(f'Status of {queue}/{namespace}', level=3),
+            html.header(f'Status', level=3),
             html.div_row(
                 html.div_col(
                     html.header('Tasks', level=5),

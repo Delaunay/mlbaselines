@@ -57,6 +57,14 @@ socket.on("set_html", function(data) {
 });
 
 
+socket.on("redirect", function(data) {
+    log("redirect to " + data);
+
+    var url = data["url"];
+    window.location.href = url;
+});
+
+
 socket.on("set_attribute", function(data) {
     log("set_attribute " + data);
 

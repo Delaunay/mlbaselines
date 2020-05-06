@@ -24,8 +24,12 @@ class InspectQueue(Page):
             html.header(queue, level=4),
             html.ul(html.link(n, f'/{self.base_path}/{queue}/{n}') for n in self.client.namespaces(queue)))
 
-    def show_queue(self, queue, namespace):
-        messages = self.client.messages(queue, namespace)
+    def show_queue(self, queue, namespace, delimiter=None):
+        args = (queue, namespace)
+        if delimiter:
+            args += delimiter,
+
+        messages = self.client.messages(*args)
         return html.div(
             html.header('/'.join([queue, namespace]), level=4),
             html.show_messages(messages))

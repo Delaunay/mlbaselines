@@ -40,7 +40,7 @@ class MetricQueue(InspectQueue):
 
     def set_size(self, data):
         self.width = data['width'] * 0.80
-        self.height = data['height'] * 0.80
+        self.height = data['height'] * 0.70
 
     def guess_datatype(self, label):
         from datetime import datetime
@@ -88,16 +88,16 @@ class MetricQueue(InspectQueue):
         options.insert(0, None)
         form_html = html.div(
             html.div(
-                html.header('X axis', level=5),
+                'X axis',
                 html.select_dropdown(options, 'x-label')),
             html.div(
-                html.header('Y axis', level=5),
+                'Y axis',
                 html.select_dropdown(options, 'y-label')),
             html.div(
-                html.header('Colors', level=5),
+                'Colors',
                 html.select_dropdown(options, 'colors')),
             html.div(
-                html.header('Data Example', level=5),
+                'Data Example',
                 html.pre(json.dumps(sample, indent=2))
             )
         )
@@ -108,10 +108,16 @@ class MetricQueue(InspectQueue):
         bind('colors', 'change', self.set_attribute_callback('colors'), property='selectedIndex')
         return form_html
 
-    def show_queue(self, queue, namespace):
-        messages = self.client.messages(queue, namespace)
+    def show_queue(self, queue, namespace, delimiter=None):
+        args = (queue, namespace)
+        if delimiter:
+            args += delimiter,
+
+        messages = self.client.messages(*args)
         data = list(objective_array(messages))
-        assert len(data) > 0
+
+        if len(data) == 0:
+            return "No Metric"
 
         self.sample = data[-1]
         self.columns = list(data[-1].keys())

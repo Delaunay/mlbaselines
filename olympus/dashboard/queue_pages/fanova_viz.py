@@ -2,7 +2,7 @@ from olympus.dashboard.queue_pages.inspect import InspectQueue
 from olympus.dashboard.queue_pages.utilities import extract_last_results
 from olympus.dashboard.plots.hyperparameter_importance import importance_heatmap_altair, marginals_altair
 import olympus.dashboard.elements as html
-from olympus.dashboard.elements import altair_plot
+from olympus.dashboard.elements import async_altair_plot
 from olympus.dashboard.analysis.hpfanova import FANOVA
 
 import pandas as pd
@@ -45,17 +45,14 @@ class FANVOAQueue(InspectQueue):
                 a: 'uniform(0, 1)' for a in columns
             })
 
-        imp = importance_heatmap_altair(fanova)
-        marginals = marginals_altair(fanova)
-
         page = html.div(
             html.div(
                 html.header('Importance', level=4),
-                altair_plot(imp),
+                async_altair_plot(importance_heatmap_altair, fanova),
                 style="height:300px;"),
             html.div(
                 html.header('Marginals', level=4),
-                altair_plot(marginals),
+                async_altair_plot(marginals_altair, fanova),
                 style="height:300px;"))
 
         return page
