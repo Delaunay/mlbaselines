@@ -608,18 +608,16 @@ def print_status(client, namespace, namespaces):
 def run(uri, database, namespace, function, num_experiments, budget, fidelity, space, objective,
         variables, defaults, sleep_time=60, do_full_train=False, save_dir='.'):
 
-    # TODO: Implement all algos
-    # hpos = ['grid_search', 'nudged_grid_search', 'noisy_grid_search', 'random_search',
-    #         'hyperband', 'bayesopt']
+    # TODO: Add hyperband
     hpos = ['grid_search', 'nudged_grid_search', 'noisy_grid_search', 'random_search',
             'bayesopt']
 
     if fidelity is None:
         fidelity = Fidelity(1, 1, name='epoch').to_dict()
-        # TODO: Do we need epoch is space? Because this will confuse grid search.
-        # space['epoch'] = 'uniform(0, 1)'
-        # TODO: Add back when hyperband is implemented
-        # hpos.remove(hpos.index('hyperband'))
+
+    # TODO: Add back when hyperband is implemented
+    # if fidelity['min'] == fidelity['max']:
+    #     hpos.remove(hpos.index('hyperband'))
 
     if num_experiments is None:
         num_experiments = 2

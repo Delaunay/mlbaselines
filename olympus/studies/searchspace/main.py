@@ -212,8 +212,6 @@ def run(uri, database, namespace, function, fidelity, space, count, variables,
 
     defaults.update(variables)
 
-    defaults.update(variables)
-
     config = {
         'name': 'random_search',
         'fidelity': fidelity,
