@@ -69,6 +69,9 @@ class MSGQTracker(Observer):
         if task is not None:
             self.client.log(task.metrics.value())
 
+    def log(self, **kwargs):
+        return self.client.log(kwargs)
+
     def value(self):
         return {}
 

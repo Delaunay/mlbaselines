@@ -14,10 +14,10 @@ from olympus.hpo import HPOptimizer
 FIDELITY = Fidelity(1, 30, 10).to_dict()
 
 
-def run_nomad_hpo(hpo_name, uri, launch_server=True, fidelity=FIDELITY):
+def run_nomad_hpo(hpo_name, uri, launch_server=True, fidelity=FIDELITY, group='nomad', workers=10):
     """Worker are converted to HPO when new trials are needed then killed"""
-    with HPOWorkGroup(uri, 'olympus', 'classification_3', clean=True, launch_server=launch_server) as group:
-        group.launch_workers(10)
+    with HPOWorkGroup(uri, 'olympus', f'classification-{group}-1', clean=True, launch_server=launch_server) as group:
+        group.launch_workers(workers)
 
         params = {
             'a': 'uniform(0, 1)',
@@ -52,7 +52,7 @@ def run_master_hpo(hpo_name, uri):
 
     hpo = HPOptimizer(hpo_name, count=30, fidelity=FIDELITY, space=params)
 
-    with HPOWorkGroup(uri, 'olympus', 'classification', clean=True, launch_server=True) as group:
+    with HPOWorkGroup(uri, 'olympus', 'classification-master-1', clean=True, launch_server=True) as group:
         group.launch_workers(10)
 
         group.run_hpo(hpo, my_trial)
@@ -97,5 +97,18 @@ if __name__ == '__main__':
     # test_master_hpo('cockroach://0.0.0.0:8123', clear=False)
     # test_nomad_rs_hpo('mongo://0.0.0.0:8123', clear=False)
     # test_master()
-    run_nomad_hpo('hyperband', 'mongo://127.0.0.1:27017', False, fidelity=Fidelity(1, 100, 2).to_dict())
+    import multiprocessing
+    from olympus.hpo import Fidelity
+
+    workers = []
+    for i in range(10):
+        p = multiprocessing.Process(
+            target=run_nomad_hpo,
+            args=('hyperband', 'mongo://127.0.0.1:27017', False),
+            kwargs=dict(fidelity=Fidelity(1, 30, 2).to_dict(), group=f'nomad{i}', workers=10 + i))
+        p.start()
+        workers.append(p)
+
+    for w in workers:
+        w.join()
 

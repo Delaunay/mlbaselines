@@ -186,6 +186,15 @@ class HPOWorkGroup:
         }
         return self.client.push(WORK_QUEUE, self.experiment, mtype=HPO_ITEM, message=hpo)
 
+    def queue_work(self, fun, *args, namespace=None, **kwargs):
+        """Queue work items for the workers"""
+        message = make_remote_call(fun, *args, **kwargs)
+
+        if namespace is None:
+            namespace = self.experiment
+
+        return self.client.push(WORK_QUEUE, namespace, mtype=WORK_ITEM, message=message)
+
     def run_hpo(self, hpo, fun, *args, **kwargs):
         """Launch a master HPO"""
         state = {

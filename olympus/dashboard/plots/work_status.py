@@ -50,7 +50,7 @@ def prepare_overview_altair(data):
     return altair_data, agents
 
 
-def aggregate_overview_altair(status, agents):
+def aggregate_overview_altair(status, name='experiment'):
     """
     Parameters
     ----------
@@ -70,11 +70,7 @@ def aggregate_overview_altair(status, agents):
             dict(experiment='classification', status='finished', count=12)
         ]
 
-        agents = [
-            dict(experiment='classification', agents='agents', count=10)
-        ]
-
-        chart = aggregate_overview_altair(status, agents)
+        chart = aggregate_overview_altair(status)
 
     .. image:: ../../../docs/_static/plots/aggregate_overview.png
 
@@ -83,17 +79,10 @@ def aggregate_overview_altair(status, agents):
     alt.themes.enable('dark')
 
     data = alt.Data(values=status)
-    chart = alt.Chart(data, title='Message status per experiment').mark_bar().encode(
+    chart = alt.Chart(data, title=f'Message status per {name}').mark_bar().encode(
         x=alt.X('count:Q', stack='normalize'),
         y='experiment:N',
         color='status:N'
     )
 
-    data = alt.Data(values=agents)
-    agent_chart = alt.Chart(data, title='Agent per experiment').mark_bar().encode(
-        x=alt.X('count:Q'),
-        y='experiment:N',
-        color='agents:N')
-
-    # return chart
-    return alt.vconcat(chart, agent_chart)
+    return chart

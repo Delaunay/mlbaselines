@@ -45,6 +45,8 @@ class StudyOverview(Page):
 
         return html.div(
             html.header('Study prefix', level=5),
+            'A study is a group of experiment, experiment belonging to the same study should'
+            'start with the same name for example <code>mystudy_exp1</code>, <code>my_study_exp2</code>',
             html.text_input('study_prefix', placeholder='Study prefix')
         )
 
@@ -52,12 +54,12 @@ class StudyOverview(Page):
         if study is None:
             return self.select_study()
 
-        self.title = f'Study {study}'
+        self.title = f'Study {study.capitalize()}'
         section_html = self.sections.get(
             section, self.no_section)(study, section)
 
         return html.div_col(
-            html.header(f'Study: {study}'),
+            html.header(f'Study: {study.capitalize()}'),
             html.div_row(
                 self.sidebar(study),
                 html.div_col(section_html, classes='col py-2')), classes="container-fluid")
@@ -69,7 +71,7 @@ class StudyOverview(Page):
         return f'No section named {section}'
 
     def status(self, study, section):
-        return StatusQueue(self.client).main(WORK_QUEUE, None, study, delimiter=self.delimiter)
+        return StatusQueue(self.client).show_overview(WORK_QUEUE, study, delimiter=self.delimiter)
 
     def metrics(self, study, section):
         return MetricQueue(self.client.aggregate_monitor()).show_queue(METRIC_QUEUE, study, delimiter=self.delimiter)

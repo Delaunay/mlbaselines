@@ -6,10 +6,14 @@ from olympus.dashboard.plots.work_status import work_status, aggregate_overview_
 import olympus.dashboard.elements as html
 
 
-def list_experiment_stats(base_path, queue, experiments, data):
+def list_experiment_stats(base_path, queue, experiments, data, nolink):
     def show_expriment(n):
         status = data.get(n, {})
-        link = html.link(n, ref=f'/{base_path}/{queue}/{n}')
+        if not nolink:
+            link = html.link(n, ref=f'/{base_path}/{queue}/{n}')
+        else:
+            link = n
+
         row = f"""
             <tbody>
                 <tr>
@@ -64,7 +68,6 @@ class StatusQueue(InspectQueue):
             f'/{self.base_path}',
             f'/{self.base_path}/<string:queue>',
             f'/{self.base_path}/<string:queue>/<string:namespace>',
-            f'/{self.base_path}/<string:queue>/<int:substr>',
         ]
 
     def __init__(self, client):
@@ -82,12 +85,12 @@ class StatusQueue(InspectQueue):
             unique_agents[a.agent] = a
         return list(unique_agents.values())
 
-    def main(self, queue=None, namespace=None, substr=None, delimiter=None):
+    def main(self, queue=None, namespace=None, group=None, delimiter=None):
         if queue is None:
             return self.list_queues()
 
         if namespace is None:
-            return self.show_overview(queue, substr, delimiter)
+            return self.show_overview(queue, group, delimiter)
 
         return self.show_queue(queue, namespace)
 
@@ -99,38 +102,37 @@ class StatusQueue(InspectQueue):
             html.header(f'{name} {agents}', level=5),
             html.div_col(html.plotly_plot(fig), size=4))
 
-    def show_overview(self, queue, substr=None, delimiter=None):
+    def show_overview(self, queue, group=None, delimiter=None):
         # Try to show an overview of the entire system
         if self.aggregate is None:
             try:
                 self.aggregate = self.client.aggregate_monitor()
-            except:
+            except Exception as  e:
+                print(e)
                 return self.list_namespaces(queue)
 
-        groupby = type(self.aggregate).group_by_namespace
-        if substr is not None:
-            groupby = partial(type(self.aggregate).group_by_substring, group=substr, delimiter=delimiter)
-
         data = defaultdict(lambda: dict(unread=0, unactioned=0, actioned=0, lost=0, failed=0, agent=0, runtime=0))
-
-        insert(data, self.aggregate.unread_count(queue, groupby=groupby), 'unread')
-        insert(data, self.aggregate.unactioned_count(queue, groupby=groupby), 'unactioned')
-        insert(data, self.aggregate.actioned_count(queue, groupby=groupby), 'actioned')
-        insert(data, self.aggregate.lost_count(queue, groupby=groupby), 'lost')
-        insert(data, self.aggregate.failed_count(queue, groupby=groupby), 'failed')
-        insert(data, self.aggregate.agent_count(), 'argent')
+        insert(data, self.aggregate.unread_count(queue, group, delimiter=delimiter), 'unread')
+        insert(data, self.aggregate.unactioned_count(queue, group, delimiter=delimiter), 'unactioned')
+        insert(data, self.aggregate.actioned_count(queue, group, delimiter=delimiter), 'actioned')
+        insert(data, self.aggregate.lost_count(queue, group, delimiter=delimiter), 'lost')
+        insert(data, self.aggregate.failed_count(queue, group, delimiter=delimiter), 'failed')
 
         for group, info in data.items():
             print(group, info)
 
+        name = 'experiment'
+        if delimiter is not None:
+            name = 'study'
+
         status, agents = prepare_overview_altair(data)
-        chart = aggregate_overview_altair(status, agents)
+        chart = aggregate_overview_altair(status, name)
 
         return html.div(
             html.header('Status', level=3),
             html.div_row(
-                html.div_col(html.altair_plot(chart), style='height:500px;', size=5),
-                html.div_col(list_experiment_stats(self.base_path, queue, data.keys(), data))
+                html.div_col(html.altair_plot(chart), style='height:100vh;', size=5),
+                html.div_col(list_experiment_stats(self.base_path, queue, data.keys(), data, nolink=delimiter is not None))
             )
         )
 

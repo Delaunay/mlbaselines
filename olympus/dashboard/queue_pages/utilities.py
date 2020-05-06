@@ -1,9 +1,22 @@
 from olympus.hpo.parallel import WORK_ITEM, HPO_ITEM, WORKER_LEFT, WORKER_JOIN, RESULT_ITEM, SHUTDOWN
 from olympus.observers.msgtracker import METRIC_ITEM
 
+from msgqueue.backends.queue import Message
+from datetime import datetime
 
-def extract_message(m):
-    return m.message
+
+def extract_message(m: Message):
+    data = m.message
+    data['g1'] = m.g1
+    data['g0'] = m.g0
+    if m.read_time:
+        data['read_time'] = m.read_time.toordinal()
+
+    if m.actioned_time:
+        data['actioned_time'] = m.actioned_time.toordinal()
+
+    data['created_time'] = m.time.toordinal()
+    return data
 
 
 def filter_result(m):

@@ -287,7 +287,7 @@ def show_agent(agents) -> HTML:
     def make_row(m):
         return f"""
         <tr>
-            <td>{m.uid}</td>
+            <td><a href="/queue/logs/0/{m.uid}">{m.uid}</a></td>
             <td>{m.time}</td>
             <td>{m.agent}</td>
             <td>{m.alive}</td>
