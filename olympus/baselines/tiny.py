@@ -160,8 +160,9 @@ def main(max_depth=None,
     # Setup the task
     task = SklearnTask(DecisionTree(random_state))
 
-    # Compute validation accuracy
+    # Compute validation and test accuracy
     task.metrics.append(Accuracy(name='validation', loader=[dataset_splits['valid']]))
+    task.metrics.append(Accuracy(name='test', loader=[dataset_splits['test']]))
 
     # Save the result of your experiment inside a db
     task.metrics.append(metric_logger(
