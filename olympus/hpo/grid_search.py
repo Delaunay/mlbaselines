@@ -1,6 +1,8 @@
 from sspace import Space
 from sspace.space import compute_identity
 
+import numpy
+
 import orion.algo.base
 from orion.algo.grid_search.gridsearch import GridSearch as OrionGridSearch, NoisyGridSearch as OrionNoisyGridSearch
 
@@ -105,11 +107,14 @@ class NoisyGridSearch(GridSearch):
     """
 
     def __init__(self, fidelity: Fidelity, space: Space, seed=new_seed(hpo_sampler=0), n_points=5,
-                 deltas=None, pool_size=None, **kwargs):
+                 count=None, deltas=None, pool_size=None, **kwargs):
         super(NoisyGridSearch, self).__init__(
             fidelity, space, seed=seed, n_points=n_points, pool_size=pool_size, **kwargs)
         self.orion_space = self.space.instantiate('Orion')
         self.grid = OrionNoisyGridSearch(self.orion_space, n_points=n_points, deltas=deltas, seed=seed).grid
+        numpy.random.RandomState(seed).shuffle(self.grid)
+        if count is not None:
+            self.count = count
 
 
 builders = {
