@@ -143,9 +143,15 @@ def main(max_depth=None,
          min_weight_fraction_leaf=0,
          random_state=1,
          bootstrap_seed=1,
+         epoch=0,
          uid=None,
          experiment_name=None,
          client=None):
+
+    max_depth = int(max_depth) if max_depth is not None else None
+    min_samples_split = max(1e-5, min_samples_split)
+    min_samples_leaf = int(min_samples_leaf)
+    min_weight_fraction_leaf = int(min_weight_fraction_leaf)
 
     # Load Dataset
     data, target = sklearn.datasets.load_breast_cancer(return_X_y=True)
