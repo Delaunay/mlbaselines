@@ -1,0 +1,26 @@
+function: 'olympus.baselines.bert_glue.main'
+
+objective: 'validation_error_rate'
+
+variables:
+    init_seed: 1
+    sampler_seed: 2
+    global_seed: 3
+
+medians: ['init_seed']
+
+defaults:
+    half: True
+    beta1: 0.9
+    beta2: 0.999
+    batch_size: 32
+    warmup: 0
+    epoch: 3
+    task: 'rte'
+
+params:
+    learning_rate: 0.00002
+    attention_probs_dropout_prob: 0.1
+    hidden_dropout_prob: 0.1
+    weight_decay: 0.0
+    init_std: 0.2

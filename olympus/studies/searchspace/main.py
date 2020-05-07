@@ -207,8 +207,9 @@ def load_results(namespace, save_dir):
 def run(uri, database, namespace, function, fidelity, space, count, variables, 
         plot_filename, objective, defaults, save_dir='.', sleep_time=60):
     if fidelity is None:
-        fidelity = Fidelity(0, 0, name='epoch').to_dict()
-        # space['epoch'] = 'uniform(0, 1)'
+        fidelity = Fidelity(1, 1, name='epoch').to_dict()
+
+    defaults.update(variables)
 
     defaults.update(variables)
 

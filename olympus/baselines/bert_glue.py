@@ -63,9 +63,8 @@ def main(task='rte', bootstrapping_seed=1, sampler_seed=1, init_seed=1, global_s
 
     if client is not None:
         task.metrics.append(metric_logger(client=client, experiment=experiment_name))
-        task.metrics.new_trial(hyperparameters, uid)
 
-    task.init(**hyperparameters)
+    task.init(uid=uid, **hyperparameters)
 
     task.fit(epochs=epoch)
 
