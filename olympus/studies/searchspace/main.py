@@ -28,39 +28,37 @@ def register_hpo(client, namespace, function, config, defaults):
 
 
 def is_registered(client, namespace):
-    return get_hpo_work_state(client, namespace) is not None
+    return client.db[WORK_QUEUE].count({'namespace':namespace, 'mtype': HPO_ITEM}) > 0
 
 
 def is_hpo_completed(client, namespace):
-    return get_hpo_result_state(client, namespace) is not None
+    return client.monitor().unread_count(RESULT_QUEUE, namespace, mtype=HPO_ITEM) > 0
 
 
 def get_hpo_work_state(client, namespace):
-    messages = client.monitor().messages(WORK_QUEUE, namespace)
+    messages = client.monitor().messages(WORK_QUEUE, namespace, mtype=HPO_ITEM)
     for m in messages:
         if m.mtype == HPO_ITEM:
             return m.message
 
 
 def get_hpo_result_state(client, namespace):
-    messages = client.monitor().unread_messages(RESULT_QUEUE, namespace)
+    messages = client.monitor().unread_messages(RESULT_QUEUE, namespace, mtype=HPO_ITEM)
     for m in messages:
         if m.mtype == HPO_ITEM:
             return m.message
 
 
 def get_hpo(client, namespace):
-    hpo_state = get_hpo_work_state(client, namespace)
-    if hpo_state is None:
-        raise RuntimeError(f'Could not find an HPO state for namespace {namespace}')
-    args = hpo_state['hpo']['args']
-    kwargs = hpo_state['hpo']['kwargs']
-    remote_call = hpo_state['work']
-    hpo = HPOptimizer(*args, **hpo_state['hpo']['kwargs'])
-
     result_state = get_hpo_result_state(client, namespace)
     if result_state is None:
-        raise RuntimeError(f'HPO for namespace {namespace} is not completed')
+        raise RuntimeError(f'No HPO for namespace {namespace} or HPO is not completed')
+
+    args = result_state['hpo']['args']
+    kwargs = result_state['hpo']['kwargs']
+    remote_call = result_state['work']
+    hpo = HPOptimizer(*args, **kwargs)
+
     hpo.load_state_dict(result_state['hpo_state'])
 
     return hpo, remote_call
@@ -207,10 +205,12 @@ def load_results(namespace, save_dir):
 
 
 def run(uri, database, namespace, function, fidelity, space, count, variables, 
-        plot_filename, objective, save_dir='.', sleep_time=60):
+        plot_filename, objective, defaults, save_dir='.', sleep_time=60):
     if fidelity is None:
         fidelity = Fidelity(0, 0, name='epoch').to_dict()
         # space['epoch'] = 'uniform(0, 1)'
+
+    defaults.update(variables)
 
     config = {
         'name': 'random_search',
@@ -222,7 +222,7 @@ def run(uri, database, namespace, function, fidelity, space, count, variables,
     client = new_client(uri, database)
 
     if not is_registered(client, namespace):
-        register_hpo(client, namespace, function, config, defaults=variables)
+        register_hpo(client, namespace, function, config, defaults=defaults)
 
     while not is_hpo_completed(client, namespace):
         time.sleep(sleep_time)

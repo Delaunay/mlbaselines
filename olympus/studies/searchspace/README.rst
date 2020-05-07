@@ -120,9 +120,9 @@ The master process can be started using the ``main.py`` script:
 
    $ python olympus/studies/searchspace/main.py \
        --uri 'mongodb://{username}:{password}@{host}/{db}?authSource={db}' \
-       --database 'db' \
+       --database {db} \
        --config olympus/studies/searchspace/configs/tiny.yaml \
-       --namespace tiny \
+       --namespace tiny-search-space \
        --max-trials 200 \
        --save-dir olympus/studies/searchspace/results
 

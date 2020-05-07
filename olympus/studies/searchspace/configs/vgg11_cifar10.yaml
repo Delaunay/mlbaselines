@@ -14,6 +14,9 @@ fidelity:
     base: 4
     name: 'epoch'
 
+defaults:
+    half: True
+
 space:
     learning_rate: 'loguniform(0.001, 0.5)'
     momentum: 'uniform(0.80, 0.99)'

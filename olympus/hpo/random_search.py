@@ -19,13 +19,17 @@ class RandomSearch(HyperParameterOptimizer):
     .. image:: ../../docs/_static/hpo/rs_space.png
     """
 
-    def __init__(self, fidelity: Fidelity, count: int, space: Space, seed=new_seed(hpo_sampler=0), **kwargs):
+    def __init__(self, fidelity: Fidelity, count: int, space: Space, seed=new_seed(hpo_sampler=0),
+                 pool_size=None, **kwargs):
         super(RandomSearch, self).__init__(fidelity, space, seed, **kwargs)
         self.count = count
+        if pool_size is None:
+            pool_size = self.count
+        self.pool_size = pool_size
 
     def suggest(self, **variables):
-        if len(self.trials) == 0:
-            return self.sample(self.count, **variables)
+        if len(self.trials) < self.count:
+            return self.sample(self.pool_size, **variables)
 
         if self.is_done():
             raise OptimizationIsDone()

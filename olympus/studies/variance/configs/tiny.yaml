@@ -8,6 +8,8 @@ variables:
     random_state: 1
     bootstrap_seed: 1
 
+defaults: {}
+
 params:
     max_depth: 10
     min_samples_split: 2

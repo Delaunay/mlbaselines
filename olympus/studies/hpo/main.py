@@ -1,9 +1,13 @@
 import argparse
 from collections import defaultdict
+import datetime
 import json
 import time
 import os
 import copy
+import re
+import pprint
+
 import numpy
 
 from msgqueue.backends import new_client
@@ -14,7 +18,8 @@ import yaml
 import xarray
 
 from olympus.observers.msgtracker import METRIC_QUEUE
-from olympus.hpo.parallel import make_remote_call, RESULT_QUEUE, WORK_QUEUE, WORK_ITEM, HPO_ITEM
+from olympus.hpo.parallel import (
+    make_remote_call, RESULT_QUEUE, WORK_QUEUE, WORK_ITEM, HPO_ITEM, RESULT_ITEM)
 from olympus.hpo import HPOptimizer, Fidelity
 from olympus.utils.functional import flatten
 from olympus.studies.searchspace.main import fetch_hpo_valid_curves, is_hpo_completed, is_registered
@@ -32,7 +37,7 @@ def generate_grid_search(budget, fidelity, search_space, seeds):
     while n_points ** dim < budget:
         n_points += 1
 
-    config = {'name': 'grid_search', 'n_points': n_points, 'seed': 1}
+    config = {'name': 'grid_search', 'n_points': n_points, 'seed': 1, 'pool_size': 20}
     config['namespace'] = f'grid-search-p-{n_points}'
     config['space'] = search_space
     config['fidelity'] = fidelity
@@ -61,6 +66,7 @@ def generate_noisy_grid_search(budget, fidelity, search_space, seeds):
         for config in seed_configs:
             config['name'] = 'noisy_grid_search'
             config['seed'] = seed
+            config['count'] = budget
             config['namespace'] = f'noisy-grid-search-p-{config["n_points"]}-s-{seed}'
             config.pop('uid')
             config['uid'] = compute_identity(config, IDENTITY_SIZE)
@@ -73,7 +79,7 @@ def generate_noisy_grid_search(budget, fidelity, search_space, seeds):
 def generate_random_search(budget, fidelity, search_space, seeds):
     configs = []
     for seed in seeds:
-        config = {'name': 'random_search', 'seed': seed}
+        config = {'name': 'random_search', 'seed': seed, 'pool_size': 20}
         config['namespace'] = f'random-search-s-{seed}'
         config['count'] = budget
         config['fidelity'] = fidelity
@@ -102,14 +108,27 @@ def generate_hyperband(budget, fidelity, search_space, seeds):
 def generate_bayesopt(budget, fidelity, search_space, seeds):
     configs = []
     for seed in seeds:
-        config = {'name': 'bayesopt', 'seed': seed}
+        rng = numpy.random.RandomState(seed)
+        config = {
+            'name': 'robo', 
+            'model_type': 'gp_mcmc',
+            'maximizer': 'random',
+            'n_init': 20,
+            'count': budget,
+            'acquisition_func': 'log_ei',
+            'model_seed': rng.randint(2**30),
+            'prior_seed': rng.randint(2**30),
+            'init_seed': rng.randint(2**30),
+            'maximizer_seed': rng.randint(2**30)
+        }
+        config['fidelity'] = fidelity
         config['namespace'] = f'bayesopt-s-{seed}'
         config['space'] = search_space
         config['uid'] = compute_identity(config, IDENTITY_SIZE)
 
         configs.append(config)
 
-    return []  # configs
+    return configs
 
 
 generate_hpo_configs = dict(
@@ -126,6 +145,7 @@ def fetch_hpos_valid_curves(client, namespaces, variables, data):
     for hpo in namespaces.keys():
         for hpo_namespace in namespaces[hpo]:
             if is_hpo_completed(client, hpo_namespace):
+                print(f'Fetching results of {hpo_namespace}')
                 data[hpo].append(fetch_hpo_valid_curves(client, hpo_namespace, variables))
             else:
                 remainings[hpo].append(hpo_namespace)
@@ -201,9 +221,207 @@ def generate_hyperband_tests(budget, fidelity, search_space, seeds):
             best_objective = trial.objectives[-1]
 
 
+def fetch_hpo_stats(client, namespace):
+    length = len(namespace) + 9
+    query = {
+        'namespace': {'$regex': re.compile(f"^{namespace}", re.IGNORECASE)},
+        'mtype': HPO_ITEM}
+    stats = client.db[WORK_QUEUE].aggregate([
+        {'$match': query},
+        {'$project': {
+            'namespace': 1,
+            'sub_namespace': {'$substr': ['$namespace', 0, length]},
+            'read': 1,
+            'mtype': 1,
+            'actioned': 1,
+            'heartbeat': 1,
+            'error': 1,
+            'retry': 1,
+        }},
+        {'$group': {
+            '_id': '$namespace',
+            'sub_namespace': {
+                '$last': '$sub_namespace'
+            },
+            'read': {
+                '$last': '$read'
+            },
+            'actioned': {
+                '$last': '$actioned'
+            },
+            'error': {
+                '$sum': {'$cond': [{'$eq':["$error", True]}, 1, 0]}
+            },
+            'retry': {
+                '$sum': '$retry'
+            }
+        }},
+        {'$group': {
+            '_id': '$sub_namespace',
+            'read': {
+                '$sum': {'$cond': [{'$eq':["$read", True]}, 1, 0]}
+            },
+            'actioned': {
+                '$sum': {'$cond': [{'$eq':["$actioned", True]}, 1, 0]}
+            },
+            'error': {
+                '$sum': '$error'
+            },
+            'retry': {
+                '$sum': '$retry'
+            },
+            'count': {
+                '$sum': 1
+            }
+        }}
+    ])
+    stats = {doc['_id']: doc for doc in stats}
+
+    results_counts = client.db[RESULT_QUEUE].aggregate([
+        {'$match': query},
+        {'$project': {
+            'sub_namespace': {'$substr': ['$namespace', 0, length]},
+            'mtype': 1,
+            'count': 1,
+        }},
+        {'$group': {
+            '_id': '$sub_namespace',
+            'count': {
+                '$sum': 1
+            },
+        }}
+    ])
+
+    results_counts = {doc['_id']: doc for doc in results_counts}
+
+    # for key, value in results_counts.items():
+    #     assert results_counts[key]['count'] == stats[key]['actioned']
+
+    return stats
+
+
+def fetch_all_hpo_stats(client, namespace):
+    query = {
+        'namespace': {'$regex': re.compile(f"^{namespace}", re.IGNORECASE)},
+        'mtype': HPO_ITEM}
+    stats = client.db[WORK_QUEUE].aggregate([
+        {'$match': query},
+        {'$project': {
+            'namespace': 1,
+            'read': 1,
+            'mtype': 1,
+            'actioned': 1,
+            'heartbeat': 1,
+            'error': 1,
+            'retry': 1,
+        }},
+        {'$group': {
+            '_id': '$namespace',
+            'read': {
+                '$last': '$read'
+            },
+            'actioned': {
+                '$last': '$actioned'
+            },
+            'error': {
+                '$sum': {'$cond': [{'$eq':["$error", True]}, 1, 0]}
+            },
+            'retry': {
+                '$sum': '$retry'
+            }
+        }},
+    ])
+    stats = {doc['_id']: doc for doc in stats}
+    return stats
+
+
+def fetch_trial_stats(client, namespace):
+    length = len(namespace) + 9
+    query = {
+        'namespace': {'$regex': re.compile(f"^{namespace}", re.IGNORECASE)},
+        'mtype': WORK_ITEM}
+    stats = client.db[WORK_QUEUE].aggregate([
+        {'$match': query},
+        {'$project': {
+            'namespace': 1,
+            'sub_namespace': {'$substr': ['$namespace', 0, length]},
+            'uid': '$message.kwargs.uid',
+            'read': 1,
+            'mtype': 1,
+            'actioned': 1,
+            'heartbeat': 1,
+            'error': 1,
+        }},
+        {'$group': {
+            '_id': {
+                'uid': '$uid',
+                'namespace': '$namespace'
+            },
+            'sub_namespace': {
+                '$last': '$sub_namespace'
+            },
+            'read': {
+                '$last': '$read'
+            },
+            'actioned': {
+                '$last': '$actioned'
+            },
+            'error': {
+                '$sum': {'$cond': [{'$eq':["$error", True]}, 1, 0]}
+            },
+            'retry': {
+                '$sum': '$retry'
+            }
+        }},
+        {'$group': {
+            '_id': '$sub_namespace',
+            'read': {
+                '$sum': {'$cond': [{'$eq':["$read", True]}, 1, 0]}
+            },
+            'actioned': {
+                '$sum': {'$cond': [{'$eq':["$actioned", True]}, 1, 0]}
+            },
+            'error': {
+                '$sum': '$error'
+            },
+            'retry': {
+                '$sum': '$retry'
+            },
+            'count': {
+                '$sum': 1
+            }
+        }}
+    ])
+    stats = {doc['_id']: doc for doc in stats}
+
+    query['mtype'] = RESULT_ITEM
+    results_counts = client.db[RESULT_QUEUE].aggregate([
+        {'$match': query},
+        {'$project': {
+            'sub_namespace': {'$substr': ['$namespace', 0, length]},
+            'mtype': 1,
+            'count': 1,
+        }},
+        {'$group': {
+            '_id': '$sub_namespace',
+            'count': {
+                '$sum': 1
+            },
+        }}
+    ])
+    results_counts = {doc['_id']: doc for doc in results_counts}
+
+    # for key, value in results_counts.items():
+    #     assert results_counts[key]['count'] == stats[key]['actioned']
+
+    return stats
+
+
 def fetch_registered(client, namespace, hpo, seed):
     registered = set()
-    for message in client.monitor().messages(WORK_QUEUE, env(namespace, hpo, seed)):
+
+
+    for message in client.monitor().messages(WORK_QUEUE, env(namespace, hpo, seed), mtype=HPO_ITEM):
         registered.add(compute_identity(message.message['kwargs'], IDENTITY_SIZE))
     return registered
 
@@ -222,19 +440,20 @@ def register_test(client, namespace, remote_call):
 
 
 def env(namespace, hpo_namespace):
-    return namespace + '-' + hpo_namespace
+    return namespace + '-' + hpo_namespace.replace('_', '-')
 
 
-
-def register_hpos(client, namespace, function, configs, defaults):
+def register_hpos(client, namespace, function, configs, defaults, stats):
     namespaces = defaultdict(list)
     for hpo, hpo_configs in configs.items():
         for config in hpo_configs:
             hpo_namespace = env(namespace, config['namespace'])
             namespaces[hpo].append(hpo_namespace)
-            if is_registered(client, hpo_namespace):
+            # TODO: make is_registered more efficient
+            if hpo_namespace in stats:
                 print(f'HPO {hpo_namespace} already registered')
                 continue
+            print(f'Registering HPO {hpo_namespace}')
             register_hpo(client, hpo_namespace, function, config, defaults)
 
     return namespaces
@@ -320,16 +539,72 @@ def load_results(namespace, save_dir):
     return data
 
 
+def get_status(client, namespace):
+    messages = client.monitor().messages(WORK_QUEUE, namespace, mtype=HPO_ITEM)
+    hpo_state = None
+    for m in messages:
+        if m.mtype == HPO_ITEM:
+            hpo_state = m.message
+    assert hpo_state is not None
+    args = hpo_state['hpo']['args']
+    kwargs = hpo_state['hpo']['kwargs']
+    hpo = HPOptimizer(*args, **hpo_state['hpo']['kwargs'])
+    if hpo_state['hpo_state']:
+        hpo.load_state_dict(hpo_state['hpo_state'])
+
+    state = dict(completed=0, broken=0, pending=0)
+    if hpo.is_done():
+        state['status'] = 'completed'
+    else:
+        state['status'] = 'pending'
+
+    for uid, trial in hpo.trials.items():
+        if trial.objective:
+            state['completed'] += 1
+        else:
+            state['pending'] += 1
+
+    # TODO: We don't detect any broken trial so far.
+
+    state['missing'] = hpo.hpo.count - len(hpo.trials)
+
+    return state
+
+
+def print_status(client, namespaces):
+    print()
+    print(datetime.datetime.now())
+    print((' ' * 17) + 'HPO   completed    pending   missing     broken')
+    for hpo, hpo_namespaces in namespaces.items():
+        status = dict(
+            completed=0, broken=0, pending=0,
+            trials=dict(completed=0, broken=0, pending=0, missing=0))
+        for hpo_namespace in hpo_namespaces:
+            hpo_status = get_status(client, hpo_namespace)
+            status[hpo_status['status']] += 1
+            for key in ['completed', 'broken', 'pending', 'missing']:
+                status['trials'][key] += hpo_status[key]
+
+        print(f'{hpo:>20}: {status["completed"]:>10} {status["pending"]:>10}'
+              f'{status["broken"]:>10}')
+        status = status['trials']
+        label = 'trials'
+        print(f'{label:>20}: {status["completed"]:>10} {status["pending"]:>10}'
+              f'{status["missing"]:>10} {status["broken"]:>10}')
+        print()
+
+
 def run(uri, database, namespace, function, num_experiments, budget, fidelity, space, objective,
         variables, defaults, sleep_time=60, do_full_train=False, save_dir='.'):
 
     # TODO: Implement all algos
     # hpos = ['grid_search', 'nudged_grid_search', 'noisy_grid_search', 'random_search',
     #         'hyperband', 'bayesopt']
-    hpos = ['grid_search', 'nudged_grid_search', 'noisy_grid_search', 'random_search']
+    hpos = ['grid_search', 'nudged_grid_search', 'noisy_grid_search', 'random_search',
+            'bayesopt']
 
     if fidelity is None:
-        fidelity = Fidelity(0, 0, name='epoch').to_dict()
+        fidelity = Fidelity(1, 1, name='epoch').to_dict()
         # TODO: Do we need epoch is space? Because this will confuse grid search.
         # space['epoch'] = 'uniform(0, 1)'
         # TODO: Add back when hyperband is implemented
@@ -337,20 +612,21 @@ def run(uri, database, namespace, function, num_experiments, budget, fidelity, s
 
     if num_experiments is None:
         num_experiments = 2
-    else:
-        # Divide for all hpos except for grid search and nudged grid search because they
-        # only run once (not for all seeds)
-        num_experiments = int(num_experiments / (len(hpos) - 2))
 
     client = new_client(uri, database)
+
+    hpo_stats = fetch_all_hpo_stats(client, namespace)
 
     configs = generate_hpos(
         list(range(num_experiments)), hpos, budget,
         fidelity, space)
     namespaces = register_hpos(
         client, namespace, function, configs,
-        dict(list(variables.items()) + list(defaults.items())))
+        dict(list(variables.items()) + list(defaults.items())),
+        hpo_stats)
     remainings = namespaces
+
+    print_status(client, namespace, namespaces)
     data = defaultdict(list)
     variable_names = list(sorted(variables.keys()))
     while sum(remainings.values(), []):
@@ -360,6 +636,8 @@ def run(uri, database, namespace, function, num_experiments, budget, fidelity, s
         if do_full_train:
             configs = generate_tests(data, defaults, registered)
             new_registered_tests = register_tests(client, namespace, function, configs)
+
+        print_status(client, namespace, namespaces)
 
         time.sleep(sleep_time)
 

@@ -14,10 +14,14 @@ class GridSearch(HyperParameterOptimizer):
     """
     """
 
-    def __init__(self, fidelity: Fidelity, space: Space, n_points=5, nudge=None, seed=new_seed(hpo_sampler=0), **kwargs):
+    def __init__(self, fidelity: Fidelity, space: Space, n_points=5, nudge=None,
+                 seed=new_seed(hpo_sampler=0), pool_size=None, **kwargs):
         super(GridSearch, self).__init__(fidelity, space, seed, **kwargs)
         self.n_points = n_points
         self.count = n_points ** len(space)
+        if pool_size is None:
+            pool_size = self.count
+        self.pool_size = pool_size
         self.orion_space = self.space.instantiate('Orion')
         self.grid = OrionGridSearch(self.orion_space, n_points=n_points, nudge=nudge).grid
 
@@ -47,8 +51,8 @@ class GridSearch(HyperParameterOptimizer):
         return samples
 
     def suggest(self, **variables):
-        if len(self.trials) == 0:
-            return self.sample(self.count, **variables)
+        if len(self.trials) < self.count:
+            return self.sample(self.pool_size, **variables)
 
         if self.is_done():
             raise OptimizationIsDone()
@@ -100,10 +104,10 @@ class NoisyGridSearch(GridSearch):
     """
     """
 
-    def __init__(self, fidelity: Fidelity, space: Space, seed=new_seed(hpo_sampler=0), n_points=5, deltas=None, **kwargs):
-        super(NoisyGridSearch, self).__init__(fidelity, space, seed, **kwargs)
-        self.n_points = n_points
-        self.count = n_points ** len(space)
+    def __init__(self, fidelity: Fidelity, space: Space, seed=new_seed(hpo_sampler=0), n_points=5,
+                 deltas=None, pool_size=None, **kwargs):
+        super(NoisyGridSearch, self).__init__(
+            fidelity, space, seed=seed, n_points=n_points, pool_size=pool_size, **kwargs)
         self.orion_space = self.space.instantiate('Orion')
         self.grid = OrionNoisyGridSearch(self.orion_space, n_points=n_points, deltas=deltas, seed=seed).grid
 

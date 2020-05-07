@@ -41,6 +41,8 @@ Here's the ``tiny`` task for example:
 
    medians: ['random_state']
 
+   defaults: {}
+
    params:
        max_depth: 10
        min_samples_split: 2
@@ -66,9 +68,14 @@ For each variable in ``medians``, many different values will be tried and the se
 to the median objective will then be used in later experiments for the other variables. Order
 them from most critical ones to least critical ones if you have many.
 
+The ``defaults`` are default values to pass to all tasks that are not hyperparameters.
+
 The ``params`` are the default hyperparameter values to use for these experiments.
 Ideally, use good defaults from the literature. If unapplicable, use
 results from the *study* ``searchspace`` to select good values.
+
+Note that ``epoch`` must be defined in ``params`` if your task needs it. Otherwise
+it is set by default to 1.
 
 Execution
 ---------
@@ -81,15 +88,18 @@ The master process can be started using the ``main.py`` script:
 
    $ python olympus/studies/variance/main.py \
        --uri 'mongodb://{username}:{password}@{host}/{db}?authSource={db}' \
-       --database 'db' \
+       --database {db} \
        --config olympus/studies/variance/configs/tiny.yaml \
        --namespace tiny-var \
-       --max-trials 200 \
+       --num-experiments 200 \
        --save-dir olympus/studies/variance/results
 
-This will register a random search algorithm in the database and wait for
-the algorithm to complete before parsing the results and saving them
-in ``olympus/studies/variance/results/variance_tiny-var.json``.
+This will register all tasks to study the difference sources of variation and wait for
+all tasks to complete before parsing the results and saving them
+in ``olympus/studies/variance/results/variance_tiny-var.json``. You can run this
+from your laptop, no need to run it on the cluster. The script is resumable.
+You can restart the script to monitor the processes or fetch the final results to get
+the json file.
 
 To execute the trials you must start workers with:
 
@@ -109,7 +119,7 @@ OLYMPUS_MODEL_CACHE to the folder where they are saved.
 And finally don't forget to set OLYMPUS_DATA_PATH.
 
 For execution on the cluster (namely on Beluga) see the example script at
-``olympus/studies/variance/slurm.sh``
+``olympus/studies/searchspace/{cluster_name}.sh``. The workers will do the heavy job.
 
 Results
 -------

@@ -14,6 +14,9 @@ fidelity:
    base: 1
    name: 'epoch'
 
+defaults:
+    half: True
+
 space:
     learning_rate: 'loguniform(0.00001, 0.001)'
     attention_probs_dropout_prob: 'uniform(0.0, 0.5)'

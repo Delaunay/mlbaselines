@@ -131,7 +131,7 @@ def test_get_hpo_non_existant(client):
     with pytest.raises(RuntimeError) as exc:
         get_hpo(client, 'i-dont-exist')
 
-    exc.match('Could not find an HPO state for namespace i-dont-exist')
+    exc.match(f'No HPO for namespace i-dont-exist or HPO is not completed')
 
 
 @pytest.mark.usefixtures('clean_mongodb')
@@ -141,7 +141,7 @@ def test_get_hpo_non_completed(client):
     with pytest.raises(RuntimeError) as exc:
         get_hpo(client, NAMESPACE)
 
-    exc.match(f'HPO for namespace {NAMESPACE} is not completed')
+    exc.match(f'No HPO for namespace {NAMESPACE} or HPO is not completed')
 
 
 @pytest.mark.usefixtures('clean_mongodb')
@@ -274,7 +274,7 @@ def test_fetch_hpo_valid_results_no_epochs(client):
     config = copy.deepcopy(CONFIG)
     num_trials = 5
     config['count'] = num_trials
-    config['fidelity'] = Fidelity(0, 0, name='epoch').to_dict()
+    config['fidelity'] = Fidelity(1, 1, name='epoch').to_dict()
 
     register_hpo(client, NAMESPACE, foo, config, {'e': 2})
     worker = TrialWorker(URI, DATABASE, 0, NAMESPACE)
@@ -284,13 +284,13 @@ def test_fetch_hpo_valid_results_no_epochs(client):
     data = fetch_hpo_valid_curves(client, NAMESPACE, ['e'])
 
     assert data.attrs['namespace'] == NAMESPACE
-    assert data.epoch.values.tolist() == [0]
+    assert data.epoch.values.tolist() == [0, 1]
     assert data.order.values.tolist() == list(range(num_trials))
     assert data.seed.values.tolist() == [1]
     assert data.params.values.tolist() == list('abcd')
     assert data.noise.values.tolist() == ['e']
-    assert data.obj.shape == (1, num_trials, 1)
-    assert data.valid.shape == (1, num_trials, 1)
+    assert data.obj.shape == (2, num_trials, 1)
+    assert data.valid.shape == (2, num_trials, 1)
 
 
 @pytest.mark.usefixtures('clean_mongodb')
@@ -298,7 +298,7 @@ def test_save_load_results(client):
     config = copy.deepcopy(CONFIG)
     num_trials = 2
     config['count'] = num_trials
-    config['fidelity'] = Fidelity(0, 0, name='epoch').to_dict()
+    config['fidelity'] = Fidelity(1, 1, name='epoch').to_dict()
 
     register_hpo(client, NAMESPACE, foo, config, {'e': 2})
     worker = TrialWorker(URI, DATABASE, 0, NAMESPACE)

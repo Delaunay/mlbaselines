@@ -8,13 +8,11 @@ variables:
     transform_seed: 3
     sampler_seed: 4
 
-fidelity:
-    min: 1
-    max: 120
-    base: 4
-    name: 'epoch'
+defaults:
+    half: True
 
 space:
+    epoch: 120
     learning_rate: 'loguniform(0.001, 0.5)'
     momentum: 'uniform(0.80, 0.99)'
     weight_decay: 'loguniform(10e-6, 10e-2)'

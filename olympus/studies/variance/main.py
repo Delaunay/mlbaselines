@@ -1,4 +1,6 @@
 import argparse
+import datetime
+import re
 from collections import OrderedDict
 import copy
 import json
@@ -80,17 +82,105 @@ def register(client, function, namespace, variables):
 
 
 def wait(client, namespace, variables, sleep=60):
-    while remaining(client, namespace, variables):
+    trial_stats = fetch_vars_stats(client, namespace)
+    print_status(trial_stats)
+    while remaining(trial_stats):
         time.sleep(sleep)
+        trial_stats = fetch_vars_stats(client, namespace)
+        print_status(trial_stats)
     return
 
 
-def remaining(client, namespace, variables):
-    for variable in variables:
-        if (client.monitor().unactioned_count(WORK_QUEUE, env(namespace, variable)) +
-            client.monitor().unread_count(WORK_QUEUE, env(namespace, variable))):
-            return True
-    return False
+# def remaining(client, namespace, variables):
+#     for variable in variables:
+#         print(client.monitor().messages(WORK_QUEUE, env(namespace, variable))[-1].to_dict())
+#         if (client.monitor().unactioned_count(WORK_QUEUE, env(namespace, variable)) +
+#             client.monitor().unread_count(WORK_QUEUE, env(namespace, variable))):
+#             return True
+#     return False
+
+
+def remaining(status):
+    return any(status[key]['actioned'] < status[key]['count'] for key in status.keys())
+
+
+def fetch_vars_stats(client, namespace):
+    length = len(namespace) + 6
+    query = {
+        'namespace': {'$regex': re.compile(f"^{namespace}", re.IGNORECASE)},
+        'mtype': WORK_ITEM}
+    stats = client.db[WORK_QUEUE].aggregate([
+        {'$match': query},
+        {'$project': {
+            'namespace': 1,
+            'uid': '$message.kwargs.uid',
+            'read': 1,
+            'mtype': 1,
+            'actioned': 1,
+            'heartbeat': 1,
+            'error': 1,
+            'retry': 1,
+        }},
+        {'$group': {
+            '_id': '$uid',
+            'namespace': {
+                '$last': '$namespace'
+            },
+            'read': {
+                '$last': '$read'
+            },
+            'actioned': {
+                '$last': '$actioned'
+            },
+            'error': {
+                '$sum': {'$cond': [{'$eq':["$error", True]}, 1, 0]}
+            },
+            'retry': {
+                '$sum': '$retry'
+            }
+        }},
+        {'$group': {
+            '_id': '$namespace',
+            'read': {
+                '$sum': {'$cond': [{'$eq':["$read", True]}, 1, 0]}
+            },
+            'actioned': {
+                '$sum': {'$cond': [{'$eq':["$actioned", True]}, 1, 0]}
+            },
+            'error': {
+                '$sum': '$error'
+            },
+            'retry': {
+                '$sum': '$retry'
+            },
+            'count': {
+                '$sum': 1
+            }
+        }}
+    ])
+    stats = {doc['_id']: doc for doc in stats}
+
+    return stats
+
+
+def print_status(trial_stats):
+
+    print()
+    print(datetime.datetime.now())
+    print((' ' * 22) + 'variable   completed    pending     count     broken')
+    for namespace, status in trial_stats.items():
+        # status = dict(
+        #     completed=0, broken=0, pending=0,
+        #     trials=dict(completed=0, broken=0, pending=0, missing=0))
+        # for hpo_namespace in hpo_namespaces:
+        #     hpo_status = get_status(client, hpo_namespace)
+        #     status[hpo_status['status']] += 1
+        #     for key in ['completed', 'broken', 'pending', 'missing']:
+        #         status['trials'][key] += hpo_status[key]
+        status['pending'] = status['count'] - status['actioned']
+        print(f'{namespace:>30}: {status["actioned"]:>10} {status["pending"]:>10}'
+              f'{status["count"]:>10} {status["error"]:>10}')
+        print()
 
 
 def fetch_all_metrics(client, namespace, variables):
@@ -113,12 +203,13 @@ def fetch_results(client, namespace, configs, medians, params):
 
     metrics = fetch_all_metrics(client, namespace, variables)
 
-    params.setdefault('epoch', 0)
+    params.setdefault('epoch', 1)
 
     arrays = []
+    trial_stats = fetch_vars_stats(client, namespace)
+    if remaining(trial_stats):
+        raise RuntimeError('Not all trials are completed')
     for variable in configs.keys():
-        if remaining(client, namespace, [variable]):
-            raise RuntimeError('Not all trials are completed')
         trials = create_trials(configs[variable], params, metrics)
         arrays.append(
             create_valid_curves_xarray(
@@ -216,16 +307,14 @@ def load_results(namespace):
     return data
 
 
-def run(uri, database, namespace, function, objective, medians, variables, params, num_experiments,
-        sleep_time=60, save_dir='.'):
+def run(uri, database, namespace, function, objective, medians, defaults, variables, params,
+        num_experiments, sleep_time=60, save_dir='.'):
     if num_experiments is None:
         num_experiments = 20
-    else:
-        num_experiments = int(num_experiments / (len(variables)))
 
     client = new_client(uri, database)
 
-    defaults = dict(list(variables.items()) + list(params.items()))
+    defaults.update(dict(list(variables.items()) + list(params.items())))
 
     configs = generate(range(num_experiments), medians, defaults)
     register(client, function, namespace, configs)
@@ -241,9 +330,6 @@ def run(uri, database, namespace, function, objective, medians, variables, param
 
     configs.update(new_configs)
     data = fetch_results(client, namespace, configs, medians, params)
-
-    import pdb
-    pdb.set_trace()
 
     save_results(namespace, data, save_dir)
 

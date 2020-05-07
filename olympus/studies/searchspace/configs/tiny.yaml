@@ -8,6 +8,8 @@ variables:
 
 fidelity: null
 
+defaults: {}
+
 space:
     max_depth: 'loguniform(1, 100)'
     min_samples_split: 'uniform(0, 1)'
