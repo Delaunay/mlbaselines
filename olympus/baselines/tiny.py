@@ -165,10 +165,10 @@ def main(max_depth=None,
     task.metrics.append(Accuracy(name='test', loader=[dataset_splits['test']]))
 
     # Save the result of your experiment inside a db
-    task.metrics.append(metric_logger(
-        uri='mongo://127.0.0.1:27017',
-        database='olympus',
-        experiment=experiment_name))
+    if client is not None:
+        task.metrics.append(metric_logger(
+            client=client,
+            experiment=experiment_name))
 
     # initialize the task with you configuration
     task.init(
