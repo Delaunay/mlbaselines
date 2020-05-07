@@ -16,7 +16,7 @@ from olympus.observers.msgtracker import MSGQTracker, METRIC_QUEUE, METRIC_ITEM,
 from olympus.studies.searchspace.main import create_valid_curves_xarray
 from olympus.studies.variance.main import (
     generate, fetch_registered, env, register, remaining, fetch_results, get_medians,
-    save_results, load_results, create_trials)
+    save_results, load_results, create_trials, fetch_vars_stats)
 
 import pytest
 
@@ -38,7 +38,6 @@ CONFIG = {
     }
 }
 DEFAULTS = {}
-
 
 
 
@@ -198,32 +197,38 @@ def test_remaining(client):
     namespace = 'test'
     register(client, foo, namespace, configs)
 
-    assert remaining(client, namespace, 'abc')
+    def get_stats(variables):
+        trial_stats = fetch_vars_stats(client, namespace)
+        print(trial_stats)
+        return {v: trial_stats[f'test-{v}'] for v in variables}
 
-    assert remaining(client, namespace, 'a')
+    assert remaining(get_stats('ab'))
+
+    assert remaining(get_stats('a'))
     workitem = client.dequeue(WORK_QUEUE, env(namespace, 'a'))
-    assert remaining(client, namespace, 'a')
+    assert remaining(get_stats('a'))
     client.mark_actioned(WORK_QUEUE, workitem)
-    assert not remaining(client, namespace, 'a')
+    assert not remaining(get_stats('a'))
 
-    assert remaining(client, namespace, 'ab')
+    assert remaining(get_stats('ab'))
     workitem = client.dequeue(WORK_QUEUE, env(namespace, 'b'))
-    assert remaining(client, namespace, 'ab')
+    assert remaining(get_stats('ab'))
     client.mark_actioned(WORK_QUEUE, workitem)
-    assert not remaining(client, namespace, 'ab')
+    assert not remaining(get_stats('ab'))
 
 
 @pytest.mark.usefixtures('clean_mongodb')
 def test_fetch_results_non_completed(client):
     defaults = {'a': 0, 'b': 1}
-    params = {'c': 2, 'd': 3, 'epoch': 0}
+    params = {'c': 2, 'd': 3}
+    defaults = {'epoch': 0}
     medians = ['a']
     configs = generate(range(2), 'ab', params)
     namespace = 'test'
     register(client, foo, namespace, configs)
 
     with pytest.raises(RuntimeError) as exc:
-        fetch_results(client, namespace, configs, medians, params)
+        fetch_results(client, namespace, configs, medians, params, defaults)
 
     assert exc.match('Not all trials are completed')
 
@@ -231,7 +236,8 @@ def test_fetch_results_non_completed(client):
 @pytest.mark.usefixtures('clean_mongodb')
 def test_fetch_results_corrupt_completed(client):
     defaults = {'a': 0, 'b': 1}
-    params = {'c': 2, 'd': 3, 'epoch': 0}
+    params = {'c': 2, 'd': 3}
+    defaults = {'epoch': 0}
     medians = ['a']
     num_items = 2
     configs = generate(range(num_items), 'ab', defaults=defaults)
@@ -244,7 +250,7 @@ def test_fetch_results_corrupt_completed(client):
             client.mark_actioned(WORK_QUEUE, workitem)
 
     with pytest.raises(RuntimeError) as exc:
-        fetch_results(client, namespace, configs, medians, params)
+        fetch_results(client, namespace, configs, medians, params, defaults)
 
     assert exc.match('Nothing found in result queue for trial')
 
@@ -260,12 +266,16 @@ def test_fetch_results_all_completed(client):
     namespace = 'test'
     register(client, foo, namespace, configs)
 
+    print(configs)
+
     worker = TrialWorker(URI, DATABASE, 0, None)
     worker.max_retry = 0
     worker.timeout = 1
     worker.run()
 
-    data = fetch_results(client, namespace, configs, medians, params)
+    print(fetch_vars_stats(client, namespace))
+
+    data = fetch_results(client, namespace, configs, medians, params, defaults)
 
     assert data.medians == ['a']
     assert data.noise.values.tolist() == ['a', 'b']

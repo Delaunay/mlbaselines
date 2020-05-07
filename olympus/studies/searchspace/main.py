@@ -138,7 +138,8 @@ def create_valid_curves_xarray(trials, metrics, variables, epochs, params, seed)
                 })
 
     array_names = get_array_names(metrics)
-    array_names.remove('epoch')
+    if 'epoch' in array_names:
+        array_names.remove('epoch')
     array_names = list(sorted(array_names))
 
     arrays = {}
@@ -164,7 +165,7 @@ def create_valid_curves_xarray(trials, metrics, variables, epochs, params, seed)
 
         trial_elapsed_time = []
         if trial_uid not in metrics:
-            raise ValueError('Could not find metrics for trial {trial_uid}.')
+            raise ValueError(f'Could not find metrics for trial {trial_uid}.')
         for epoch_stats in metrics[trial_uid]:
             epoch = epoch_stats.get('epoch', 0)
 

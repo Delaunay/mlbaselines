@@ -187,23 +187,21 @@ def fetch_all_metrics(client, namespace, variables):
     metrics = {}
     for variable in variables:
         v_metrics = fetch_metrics(client, env(namespace, variable))
-        assert (len(set(v_metrics.keys()) & set(metrics.keys())) == 0,
-                'There was duplicates between variable experiments.')
+        msg = 'There was duplicates between variable experiments.'
+        assert len(set(v_metrics.keys()) & set(metrics.keys())) == 0, msg
         metrics.update(v_metrics)
 
     return metrics
 
 
-def fetch_results(client, namespace, configs, medians, params):
+def fetch_results(client, namespace, configs, medians, params, defaults):
     # TODO: Create trials for each variable
-
-    # ***** TODO FINISH FETCH_RESULTS AND ADAPT UNIT_TESTS::wq:wq
 
     variables = list(configs.keys())
 
     metrics = fetch_all_metrics(client, namespace, variables)
 
-    params.setdefault('epoch', 1)
+    epoch = defaults.get('epoch', 1)
 
     arrays = []
     trial_stats = fetch_vars_stats(client, namespace)
@@ -213,7 +211,7 @@ def fetch_results(client, namespace, configs, medians, params):
         trials = create_trials(configs[variable], params, metrics)
         arrays.append(
             create_valid_curves_xarray(
-                trials, metrics, variables, params['epoch'],
+                trials, metrics, variables, epoch,
                 list(sorted(params.keys())), variable))
 
     data = xarray.combine_by_coords(arrays)
@@ -321,7 +319,7 @@ def run(uri, database, namespace, function, objective, medians, defaults, variab
 
     wait(client, namespace, medians, sleep=sleep_time)
 
-    data = fetch_results(client, namespace, configs, medians, params)
+    data = fetch_results(client, namespace, configs, medians, params, defaults)
     defaults.update(get_medians(data, medians, objective))
     new_configs = generate(range(num_experiments), variables, defaults)
     register(client, function, namespace, new_configs)
@@ -329,7 +327,7 @@ def run(uri, database, namespace, function, objective, medians, defaults, variab
     wait(client, namespace, variables, sleep=5)
 
     configs.update(new_configs)
-    data = fetch_results(client, namespace, configs, medians, params)
+    data = fetch_results(client, namespace, configs, medians, params, defaults)
 
     save_results(namespace, data, save_dir)
 

@@ -571,26 +571,37 @@ def get_status(client, namespace):
     return state
 
 
-def print_status(client, namespaces):
+def print_status(client, namespace, namespaces):
+
+    hpo_stats = fetch_hpo_stats(client, namespace)
+    trial_stats = fetch_trial_stats(client, namespace)
+
     print()
     print(datetime.datetime.now())
-    print((' ' * 17) + 'HPO   completed    pending   missing     broken')
+    print((' ' * 17) + 'HPO   completed    pending     count     broken')
     for hpo, hpo_namespaces in namespaces.items():
-        status = dict(
-            completed=0, broken=0, pending=0,
-            trials=dict(completed=0, broken=0, pending=0, missing=0))
-        for hpo_namespace in hpo_namespaces:
-            hpo_status = get_status(client, hpo_namespace)
-            status[hpo_status['status']] += 1
-            for key in ['completed', 'broken', 'pending', 'missing']:
-                status['trials'][key] += hpo_status[key]
+        # status = dict(
+        #     completed=0, broken=0, pending=0,
+        #     trials=dict(completed=0, broken=0, pending=0, missing=0))
+        # for hpo_namespace in hpo_namespaces:
+        #     hpo_status = get_status(client, hpo_namespace)
+        #     status[hpo_status['status']] += 1
+        #     for key in ['completed', 'broken', 'pending', 'missing']:
+        #         status['trials'][key] += hpo_status[key]
 
-        print(f'{hpo:>20}: {status["completed"]:>10} {status["pending"]:>10}'
-              f'{status["broken"]:>10}')
-        status = status['trials']
+        status = hpo_stats.get(env(namespace, hpo)[:len(namespace) + 9])
+        if status is None:
+            status = dict(actioned=0, read=0, count=0, error=0)
+        status['pending'] = status['count'] - status['actioned']
+        print(f'{hpo:>20}: {status["actioned"]:>10} {status["pending"]:>10}'
+              f'{status["count"]:>10} {status["error"]:>10}')
+        status = trial_stats.get(env(namespace, hpo)[:len(namespace) + 9])
+        if status is None:
+            status = dict(actioned=0, read=0, count=0, error=0)
+        status['pending'] = status['count'] - status['actioned']
         label = 'trials'
-        print(f'{label:>20}: {status["completed"]:>10} {status["pending"]:>10}'
-              f'{status["missing"]:>10} {status["broken"]:>10}')
+        print(f'{label:>20}: {status["actioned"]:>10} {status["pending"]:>10}'
+              f'{status["count"]:>10} {status["error"]:>10}')
         print()
 
 
