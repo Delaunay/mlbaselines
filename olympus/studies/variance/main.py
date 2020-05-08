@@ -81,7 +81,7 @@ def register(client, function, namespace, variables):
     return new_registered
 
 
-def wait(client, namespace, variables, sleep=60):
+def wait(client, namespace, sleep=60):
     trial_stats = fetch_vars_stats(client, namespace)
     print_status(trial_stats)
     while remaining(trial_stats):
@@ -195,7 +195,6 @@ def fetch_all_metrics(client, namespace, variables):
 
 
 def fetch_results(client, namespace, configs, medians, params, defaults):
-    # TODO: Create trials for each variable
 
     variables = list(configs.keys())
 
@@ -237,61 +236,6 @@ def create_trials(configs, params, metrics):
 
     return trials
 
-    raise NotImplementedError('Fetch metrics like in HPO!')
-
-    data = dict()
-    variables = list(configs.keys())
-
-    ### This is probably useless now that we have the metrics
-    for variable in variables:
-        if remaining(client, namespace, [variable]):
-            raise RuntimeError('Not all trials are completed')
-        variable_objectives = []
-        for message in client.monitor().messages(RESULT_QUEUE, env(namespace, variable)):
-            uid = message.message[0]['uid']
-            point = {v: message.message[0][v] for v in variables}
-            point['objective'] = message.message[1]
-            data[uid] = point
-    ###
-
-    objectives = numpy.zeros((len(configs), len(configs[variable])))
-    uids = numpy.zeros((len(configs), len(configs[variable]))).astype(str)
-    seeds = numpy.zeros((len(configs), len(configs[variable]), len(configs))).astype(int)
-    for i, (variable, var_configs) in enumerate(configs.items()):
-        variable_objectives = []
-        for j, config in enumerate(var_configs):
-            uid = config['uid']
-            if uid not in data:
-                raise RuntimeError(
-                    'Nothing found in result queue for trial {uid}. Is it really completed?')
-            uids[i, j] = uid
-            objectives[i, j] = data[uid]['objective']
-            for k, v in enumerate(variables):
-                seeds[i, j, k] = data[uid][v]
-
-    order = range(len(configs[variable]))
-
-    coords = {
-        'vars': variables,
-        'order': order,
-        'uid': (('vars', 'order'), uids)}
-
-    for i, variable in enumerate(variables):
-        coords[variable] = (('vars', 'order'), seeds[:, :, i])
-
-    objectives = xarray.DataArray(
-        objectives,
-        dims=['vars', 'order'],
-        coords=coords)
-
-    data_vars = {'objectives': (('vars', 'order'), objectives)}
-
-    data = xarray.Dataset(
-        data_vars=data_vars,
-        coords=coords)
-
-    return data
-
 
 def save_results(namespace, data, save_dir):
     with open(f'{save_dir}/variance_{namespace}.json', 'w') as f:
@@ -317,14 +261,14 @@ def run(uri, database, namespace, function, objective, medians, defaults, variab
     configs = generate(range(num_experiments), medians, defaults)
     register(client, function, namespace, configs)
 
-    wait(client, namespace, medians, sleep=sleep_time)
+    wait(client, namespace, sleep=sleep_time)
 
     data = fetch_results(client, namespace, configs, medians, params, defaults)
     defaults.update(get_medians(data, medians, objective))
     new_configs = generate(range(num_experiments), variables, defaults)
     register(client, function, namespace, new_configs)
 
-    wait(client, namespace, variables, sleep=5)
+    wait(client, namespace, sleep=5)
 
     configs.update(new_configs)
     data = fetch_results(client, namespace, configs, medians, params, defaults)
