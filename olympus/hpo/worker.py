@@ -245,14 +245,21 @@ def main():
     parser.add_argument('--rank', type=int, default=os.getpid(),
                         help='Rank or ID of the worker, defaults to PID')
 
-    parser.add_argument('--hpo-allowed', type=bool, default=True,
+    parser.add_argument('--hpo-allowed', default=False, action='store_true',
                         help='Can HPO run on this worker')
 
-    parser.add_argument('--work-allowed', type=bool, default=True,
+    parser.add_argument('--work-allowed', default=False, action='store_true',
                         help='Can trials run on this worker')
 
     args = parser.parse_args()
-    worker = TrialWorker(args.uri, args.database, args.rank, args.experiment)
+
+    if not args.work_allowed and not args.hpo_allowed:
+        args.work_allowed = True
+        args.hpo_allowed = True
+
+    worker = TrialWorker(
+        args.uri, args.database, args.rank, args.experiment,
+        hpo_allowed=args.hpo_allowed, work_allowed=args.work_allowed)
     return worker.run()
 
 
