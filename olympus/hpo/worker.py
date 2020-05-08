@@ -82,6 +82,10 @@ class TrialWorker(BaseWorker):
         new_results, new_trials = manager.step(hpo)
         info(f'HPO read (results: {new_results}) and queued (trials: {new_trials})')
 
+        # Return the future work that has to be done
+        # before marking this task as complete
+        return manager.recorded_operations()
+
     @staticmethod
     def sync_worker(uri, database, id, experiment):
         """Start the worker in the main process"""

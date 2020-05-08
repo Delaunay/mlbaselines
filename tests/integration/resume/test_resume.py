@@ -4,7 +4,10 @@ import sys
 from typing import Callable
 from dataclasses import dataclass, field
 
-from olympus.utils import fetch_device, set_verbose_level
+import numpy
+import torch
+
+from olympus.utils import fetch_device, set_verbose_level, get_rng_states, compress_dict
 set_verbose_level(60)
 
 from olympus.observers.observer import Metric
@@ -139,13 +142,12 @@ class InterruptingMetric(Metric):
     def load_state_dict(self, state_dict):
         self.epoch = state_dict['epoch']
 
-    def on_new_batch(self, step, task, input, context):
-        print(self.epoch)
+    def on_end_batch(self, task, step, input, context):
         if self.epoch > 0 and self.interrupt_schedule_batch(step):
             print('Interrupting Batch')
             raise Interrupt()
 
-    def on_new_epoch(self, epoch, task, context):
+    def on_end_epoch(self, task, epoch, context):
         self.epoch = epoch
         if self.interrupt_schedule_epoch(epoch):
             print(f'Interrupting Epoch {self.epoch} {self.frequency_batch} {self.frequency_epoch}')
@@ -213,12 +215,15 @@ def run_with_interrupts(epoch, batch_freq, state_folder, params, device):
     trial_id = get_trial_id(task_resume)
 
     running = True
+    interrupted = False
     while running:
         try:
             task_resume.fit(epochs=epoch)
             running = False
 
         except Interrupt:
+            interrupted = True
+
             # Bad Resume, should not call load_state directly
             with pytest.raises(BadResume):
                 state = state_storage.load(trial_id)
@@ -227,11 +232,13 @@ def run_with_interrupts(epoch, batch_freq, state_folder, params, device):
 
             # Init should resume automatically
             task_resume = make_task()
-            task_resume.init(**params)
+            task_resume.init(uid=trial_id, **params)
 
             chk = task_resume.metrics.get('CheckPointer')
             assert trial_id == chk.uid
             assert task_resume.resumed
+
+    assert interrupted
 
     return task_resume.metrics.value()
 
@@ -281,15 +288,16 @@ def create_resumed_trained_trial(epochs=5):
 
     # Saves Task
     old_task = create_trained_trial(epochs)
-    uid = old_task.metrics.get('CheckPointer').uid
+    checkpointer = old_task.metrics.get('CheckPointer')
+    uid = checkpointer.uid
     state_storage = StateStorage(folder='/tmp/olympus/tests', time_buffer=0)
-    saved = state_storage.save(uid, old_task.state_dict())
-    assert saved
+    checkpointer.storage = state_storage
+    checkpointer.save(old_task)
 
     # Done
     new_task = make_base_task(device, state_storage)
     # Automatic Resume
-    new_task.init(**params)
+    new_task.init(uid=uid, **params)
     assert new_task.resumed()
     return new_task
 

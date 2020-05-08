@@ -8,9 +8,10 @@ from olympus.dashboard.queue_pages import InspectQueue, SpaceQueue, ResultQueue,
 from olympus.dashboard.queue_pages import GanttQueue, FANVOAQueue, LogsQueue, StatusQueue
 from olympus.dashboard.pages.experiment import ExperimentOverview
 from olympus.dashboard.pages.study import StudyOverview
-import olympus.dashboard.elements as html
-from olympus.dashboard.dash import Dashboard
-from olympus.dashboard.page import Page
+
+import rpcjs.elements as html
+from rpcjs.dashboard import Dashboard
+from rpcjs.page import Page
 
 
 class MainPage(Page):

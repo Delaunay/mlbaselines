@@ -1,5 +1,5 @@
 from olympus.dashboard.queue_pages.inspect import InspectQueue
-import olympus.dashboard.elements as html
+import rpcjs.elements as html
 
 
 class LogsQueue(InspectQueue):

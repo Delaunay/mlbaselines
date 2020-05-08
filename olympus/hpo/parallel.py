@@ -3,6 +3,7 @@ import time
 
 from msgqueue.worker import WORKER_JOIN, WORKER_LEFT, SHUTDOWN, WORK_ITEM, RESULT_ITEM
 from msgqueue.backends import new_client
+from msgqueue.backends.queue import RecordQueue
 
 from olympus.hpo.optimizer import OptimizationIsDone, WaitingForTrials, HyperParameterOptimizer
 from olympus.hpo.utility import FunctionWithSpace
@@ -48,6 +49,7 @@ class HPOManager:
     """Parallel HPO internals"""
     def __init__(self, client, state):
         self.client = client
+        self.future_client = RecordQueue()
         self.state = state
         self.work = state['work']
         self.worker_count = state.get('worker_count', 0)
@@ -56,7 +58,7 @@ class HPOManager:
     def shutdown(self):
         debug('sending shutdown signals')
         for _ in range(self.worker_count):
-            self.client.push(WORK_QUEUE, self.experiment, {}, mtype=SHUTDOWN)
+            self.future_client.push(WORK_QUEUE, self.experiment, {}, mtype=SHUTDOWN)
 
     def kill_idle_worker(self, hpo):
         remaining = hpo.remaining()
@@ -67,7 +69,7 @@ class HPOManager:
         info(f'killing {kill_worker} workers because (worker: {worker}) > (remaining: {remaining}) ')
 
         for i in range(kill_worker):
-            self.client.push(WORK_QUEUE, self.experiment, {}, mtype=SHUTDOWN)
+            self.future_client.push(WORK_QUEUE, self.experiment, {}, mtype=SHUTDOWN)
 
     def step(self, hpo):
         new_results = self.observe(hpo)
@@ -111,9 +113,8 @@ class HPOManager:
             else:
                 debug(f'Received: {m}')
 
-            self.client.mark_actioned(RESULT_QUEUE, m)
+            self.future_client.mark_actioned(RESULT_QUEUE, m)
             m = self.pop_result()
-
         return new_results
 
     def suggest(self, hpo):
@@ -126,9 +127,13 @@ class HPOManager:
         for trial in trials:
             new_work = copy.deepcopy(self.work)
             new_work['kwargs'] = trial
-            self.client.push(WORK_QUEUE, self.experiment, new_work, mtype=WORK_ITEM)
+            self.future_client.push(WORK_QUEUE, self.experiment, new_work, mtype=WORK_ITEM)
 
         return len(trials)
+
+    def recorded_operations(self):
+        """Return all the operations that need to be performed for this task to be completed"""
+        return self.future_client.records()
 
     @staticmethod
     def _maybe_suggest(hpo):
@@ -139,10 +144,13 @@ class HPOManager:
         except WaitingForTrials:
             return None
 
-    def queue_hpo(self, hpo, queue=WORK_QUEUE):
+    def hpo_work_item(self, hpo):
         self.state['hpo_state'] = hpo.state_dict()
         self.state['worker_count'] = self.worker_count
-        self.client.push(queue, self.experiment, self.state, mtype=HPO_ITEM)
+        return self.state
+
+    def queue_hpo(self, hpo, queue=WORK_QUEUE):
+        self.future_client.push(queue, self.experiment, self.hpo_work_item(hpo), mtype=HPO_ITEM)
 
     def run(self, hpo):
         while not hpo.is_done():

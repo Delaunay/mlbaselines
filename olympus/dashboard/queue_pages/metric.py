@@ -1,9 +1,8 @@
+import rpcjs.elements as html
+from rpcjs.binding import get_element_size, set_attribute, bind
+
 from olympus.dashboard.queue_pages.inspect import InspectQueue
 from olympus.dashboard.queue_pages.utilities import objective_array
-from olympus.dashboard.elements import altair_plot
-from olympus.dashboard.dash import bind, set_attribute, get_element_size
-import olympus.dashboard.elements as html
-
 from olympus.utils import debug
 
 import altair as alt
@@ -108,7 +107,7 @@ class MetricQueue(InspectQueue):
             height=self.height
         )
 
-        set_attribute(self.graph_id, 'srcdoc', altair_plot(chart, with_iframe=False))
+        set_attribute(self.graph_id, 'srcdoc', html.altair_plot(chart, with_iframe=False))
 
     def form(self, options, sample):
         import json

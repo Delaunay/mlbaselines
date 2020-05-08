@@ -43,13 +43,12 @@ CONFIG = {
 DEFAULTS = {}
 
 
-def foo(uid, a, b, c, d, e=1, epoch=0, experiment_name=NAMESPACE,
-        client=None):
+def foo(uid, a, b, c, d, e=1, epoch=0, experiment_name=NAMESPACE, client=None):
     result = a + 2 * b - c ** 2 + d + e
     for i in range(epoch + 1):
         data = {'obj': i + result, 'valid': i + result, 'uid': uid, 'epoch': i}
         client.push(METRIC_QUEUE, experiment_name, data, mtype=METRIC_ITEM)
-    print(i, data, NAMESPACE)
+    print(i, data, NAMESPACE, epoch + 1)
     return result + i
 
 
@@ -358,7 +357,7 @@ def test_fetch_hpos_valid_results_first_time(client):
     config = copy.deepcopy(CONFIG)
     num_trials = 5
     config['count'] = num_trials
-    config['fidelity'] = Fidelity(0, 0, name='epoch').to_dict()
+    config['fidelity'] = Fidelity(1, 1, name='epoch').to_dict()
 
     register_hpo(client, NAMESPACE + '1', foo, config, {'e': 2})
     register_hpo(client, NAMESPACE + '2', foo, config, {'e': 2})
@@ -371,7 +370,7 @@ def test_fetch_hpos_valid_results_first_time(client):
     namespaces = {'hpo' + str(i): [NAMESPACE + str(i)] for i in range(1, 3)}
 
     data = defaultdict(list)
-    remainings = fetch_hpos_valid_curves(client, namespaces, ['e'], data)
+    _ = fetch_hpos_valid_curves(client, namespaces, ['e'], data)
 
     assert len(data) == 2
     assert len(data['hpo1']) == 1

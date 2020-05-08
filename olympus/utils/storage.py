@@ -218,7 +218,7 @@ class StateStorage(BaseStorage):
         if buffer is None:
             buffer = self._file(filename)
 
-        return torch.load(buffer, map_location=device)
+        return torch.load(buffer, map_location=lambda storage, loc: storage)
 
     def safe_load(self, name, device):
         """Handles a few common exceptions for you and returns None if a file is not found"""

@@ -1,7 +1,8 @@
-from olympus.dashboard.page import Page
+from rpcjs.page import Page
+import rpcjs.elements as html
+
 from olympus.hpo.parallel import WORK_QUEUE, RESULT_QUEUE
 from olympus.observers.msgtracker import METRIC_QUEUE
-import olympus.dashboard.elements as html
 
 from olympus.dashboard.queue_pages import MetricQueue, StatusQueue, FANVOAQueue, SpaceQueue, GanttQueue, InspectQueue
 

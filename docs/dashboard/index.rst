@@ -13,12 +13,3 @@ Plots
    plots/work_status
    plots/saliency.rst
    plots/layer.rst
-
-
-DOM elements
-------------
-
-.. toctree::
-
-   elements
-   dash

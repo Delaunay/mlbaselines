@@ -1,9 +1,9 @@
+import rpcjs.elements as html
+
 from collections import defaultdict
-from functools import partial
 
 from olympus.dashboard.queue_pages.inspect import InspectQueue
 from olympus.dashboard.plots.work_status import work_status, aggregate_overview_altair, prepare_overview_altair
-import olympus.dashboard.elements as html
 
 
 def list_experiment_stats(base_path, queue, experiments, data, nolink):

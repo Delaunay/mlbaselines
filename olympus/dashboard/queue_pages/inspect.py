@@ -1,5 +1,5 @@
-from olympus.dashboard.page import Page
-import olympus.dashboard.elements as html
+import rpcjs.elements as html
+from rpcjs.page import Page
 
 
 class InspectQueue(Page):

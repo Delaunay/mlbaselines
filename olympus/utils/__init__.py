@@ -371,3 +371,26 @@ def set_seeds(seed):
     random.seed(new_seed(python_rand=seed))
     numpy.random.seed(new_seed(numpy=seed))
     torch.manual_seed(new_seed(torch_cpu=seed))
+
+
+def get_rng_states():
+    state = dict()
+    if torch.cuda.is_available():
+        state['torch_cuda'] = torch.cuda.get_rng_state_all()
+
+    state['random'] = random.getstate()
+    state['numpy'] = numpy.random.get_state()
+    state['torch_cpu'] = torch.get_rng_state()
+
+    return state
+
+
+def set_rng_states(state):
+    if torch.cuda.is_available():
+        torch.cuda.set_rng_state_all(state['torch_cuda'])
+    elif 'torch_cuda' in state:
+        raise RuntimeError('Cannot restore state without a GPU.')
+
+    random.setstate(state['random'])
+    numpy.random.set_state(state['numpy'])
+    torch.set_rng_state(state['torch_cpu'])

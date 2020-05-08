@@ -5,7 +5,7 @@ import hashlib
 
 from olympus.observers.observer import Observer
 from olympus.resuming import load_state_dict, state_dict
-from olympus.utils import info, warning
+from olympus.utils import info, warning, set_rng_states, get_rng_states
 from olympus.utils.functional import flatten
 from olympus.utils.options import option
 from olympus.utils.storage import BaseStorage
@@ -28,6 +28,10 @@ def unique_trial_id(task, o_params):
     return hash.hexdigest()
 
 
+class BadCheckpoint(Exception):
+    pass
+
+
 @dataclass
 class CheckPointer(Observer):
     storage: BaseStorage = None
@@ -46,6 +50,10 @@ class CheckPointer(Observer):
     def save(self, task):
         was_saved = False
         state = state_dict(task)
+        state['rng'] = get_rng_states()
+
+        if self.uid is None:
+            raise BadCheckpoint('No uid was given cannot save state')
 
         if state:
             was_saved = self.storage.save(self.uid, state)
@@ -65,14 +73,15 @@ class CheckPointer(Observer):
     def on_new_trial(self, task, step, parameters, uid):
         """On new trial try to resume the new trial"""
         # Make a unique id for resuming
-        uid = parameters.get('uid', uid)
+        self.uid = parameters.get('uid', uid)
 
-        if uid is None:
+        if self.uid is None:
             self.uid = unique_trial_id(task.__class__.__name__, parameters)
 
         state = self.storage.safe_load(self.uid, device=task.device)
 
         if state is not None:
+            set_rng_states(state['rng'])
             load_state_dict(task, state)
             info(f'Resuming (trial_id: {self.uid})')
         else:

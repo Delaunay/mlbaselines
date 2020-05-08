@@ -1,7 +1,8 @@
+import rpcjs.elements as html
+
 from olympus.dashboard.queue_pages.inspect import InspectQueue
 from olympus.dashboard.queue_pages.utilities import extract_configuration
 from olympus.dashboard.plots.hyperparameter_exploration import scatter_matrix_altair
-from olympus.dashboard.elements import altair_plot
 
 
 class SpaceQueue(InspectQueue):
@@ -14,4 +15,4 @@ class SpaceQueue(InspectQueue):
     def show_queue(self, queue, namespace):
         messages = self.client.messages(queue, namespace)
         configs, columns = extract_configuration(messages)
-        return altair_plot(scatter_matrix_altair(configs, columns))
+        return html.altair_plot(scatter_matrix_altair(configs, columns))

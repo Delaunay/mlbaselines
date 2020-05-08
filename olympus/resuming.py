@@ -87,6 +87,14 @@ class BadResumeGuard:
 
 
 def load_state_dict(obj, state_dict, strict=True, force_default=False):
+    """
+
+    Parameters
+    ----------
+    force_default: bool
+        Force the use of the default resumable aspect instead of the class own implementation
+
+    """
     with BadResumeGuard(obj):
         if hasattr(obj, 'load_state_dict') and not force_default:
             return obj.load_state_dict(state_dict)

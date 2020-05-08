@@ -1,9 +1,9 @@
-from olympus.dashboard.page import Page
+import rpcjs.elements as html
+from rpcjs.page import Page
+from rpcjs.binding import bind, redirect
+
 from olympus.hpo.parallel import WORK_QUEUE, RESULT_QUEUE
 from olympus.observers.msgtracker import METRIC_QUEUE
-import olympus.dashboard.elements as html
-from olympus.dashboard.dash import bind, redirect
-
 from olympus.dashboard.queue_pages import MetricQueue, StatusQueue, GanttQueue, InspectQueue
 from olympus.utils import debug
 
@@ -47,7 +47,7 @@ class StudyOverview(Page):
             html.header('Study prefix', level=5),
             'A study is a group of experiment, experiment belonging to the same study should'
             'start with the same name for example <code>mystudy_exp1</code>, <code>my_study_exp2</code>',
-            html.text_input('study_prefix', placeholder='Study prefix')
+            html.text_input(id='study_prefix', placeholder='Study prefix')
         )
 
     def main(self, study=None, section=None):

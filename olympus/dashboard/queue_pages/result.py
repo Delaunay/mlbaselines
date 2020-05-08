@@ -1,7 +1,8 @@
+import rpcjs.elements as html
+
 from olympus.dashboard.queue_pages.inspect import InspectQueue
 from olympus.dashboard.queue_pages.utilities import objective_array
 from olympus.dashboard.plots.training_curve import plot_mean_objective_altair
-from olympus.dashboard.elements import altair_plot
 
 
 class ResultQueue(InspectQueue):
@@ -15,4 +16,4 @@ class ResultQueue(InspectQueue):
         messages = self.client.messages(queue, namespace)
         data = objective_array(messages)
         chart = plot_mean_objective_altair(data)
-        return altair_plot(chart)
+        return html.altair_plot(chart)

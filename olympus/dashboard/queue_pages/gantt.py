@@ -1,7 +1,8 @@
+import rpcjs.elements as html
+
 from olympus.dashboard.queue_pages.inspect import InspectQueue
 from olympus.dashboard.queue_pages.utilities import extract_work_messages
 from olympus.dashboard.plots.work_distribution import plot_gantt_plotly, prepare_gantt_array
-import olympus.dashboard.elements as html
 
 from msgqueue.backends import new_monitor
 
