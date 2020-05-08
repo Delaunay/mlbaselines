@@ -19,7 +19,8 @@ def main(task='rte', bootstrapping_seed=1, sampler_seed=1, init_seed=1, global_s
          batch_size=32, weight_init='normal',
          warmup=0,
          init_std=0.2, epoch=3, half=False, hpo_done=False,
-         uid=None, experiment_name=None, client=None, clean_on_exit=True):
+         uid=None, experiment_name=None, client=None, clean_on_exit=True,
+         _interrupt=0):
 
     print('seeds: init {} / global {} / sampler {} / bootstrapping {}'.format(
         init_seed, global_seed, sampler_seed, bootstrapping_seed))
@@ -63,6 +64,12 @@ def main(task='rte', bootstrapping_seed=1, sampler_seed=1, init_seed=1, global_s
 
     if client is not None:
         task.metrics.append(metric_logger(client=client, experiment=experiment_name))
+
+    if _interrupt:
+        from olympus.studies.repro.main import InterruptingMetric
+        # Will raise interrupt every `_interrupt` epochs
+        task.metrics.append(InterruptingMetric(frequency_epoch=_interrupt))
+        storage.time_buffer = 0
 
     task.init(uid=uid, **hyperparameters)
 
