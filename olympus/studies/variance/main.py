@@ -242,8 +242,8 @@ def save_results(namespace, data, save_dir):
         f.write(json.dumps(data.to_dict()))
 
 
-def load_results(namespace):
-    with open(f'variance_{namespace}.json', 'r') as f:
+def load_results(namespace, save_dir):
+    with open(f'{save_dir}/variance_{namespace}.json', 'r') as f:
         data = xarray.Dataset.from_dict(json.loads(f.read()))
 
     return data
