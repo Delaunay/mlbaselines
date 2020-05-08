@@ -135,12 +135,12 @@ def run(uri, database, namespace, function, num_experiments, num_repro, objectiv
 
     defaults.update(dict(list(variables.items()) + list(params.items())))
 
-    configs = generate(num_experiments, num_repro, objective, variables, defaults, resumable)
+    configs = generate(num_experiments, num_repro, objective, list(sorted(variables)), defaults, resumable)
     register(client, function, namespace, configs)
 
     wait(client, namespace, sleep=sleep_time)
 
-    data = fetch_results(client, namespace, configs, variables, params, defaults)
+    data = fetch_results(client, namespace, configs, list(sorted(variables)), params, defaults)
 
     save_results(namespace, data, save_dir)
 
