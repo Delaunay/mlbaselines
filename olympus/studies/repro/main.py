@@ -144,12 +144,7 @@ def run(uri, database, namespace, function, num_experiments, num_repro, objectiv
 
     save_results(namespace, data, save_dir)
 
-    # TODO: Add tests
-
     test(data, num_experiments, num_repro, objective, variables, resumable)
-
-    # import pdb
-    # pdb.set_trace()
 
 
 def run_from_config_file(uri, database, namespace, config_file, **kwargs):
