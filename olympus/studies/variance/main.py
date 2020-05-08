@@ -196,7 +196,7 @@ def fetch_all_metrics(client, namespace, variables):
 
 def fetch_results(client, namespace, configs, medians, params, defaults):
 
-    variables = list(configs.keys())
+    variables = list(sorted(configs.keys()))
 
     metrics = fetch_all_metrics(client, namespace, variables)
 
