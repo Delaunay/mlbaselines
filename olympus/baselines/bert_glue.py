@@ -76,9 +76,13 @@ def main(task='rte', bootstrapping_seed=1, sampler_seed=1, init_seed=1, global_s
     task.fit(epochs=epoch)
 
     # Remove checkpoint
-    if clean_on_exit and os.path.exists(base_folder):
-        shutil.rmtree(base_folder, ignore_errors=True)
-        print('Removed checkpoints at', base_folder)
+    if clean_on_exit:
+        file_path = storage._file(uid)
+        try:
+            os.remove(file_path)
+            print('Removed checkpoint at', file_path)
+        except FileNotFoundError:
+            print('No checkpoint at ', file_path)
    
     return task.metrics.value().get('validation_error_rate', None)
 
