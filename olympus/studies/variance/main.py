@@ -271,7 +271,7 @@ def run(uri, database, namespace, function, objective, medians, defaults, variab
     wait(client, namespace, sleep=5)
 
     configs.update(new_configs)
-    data = fetch_results(client, namespace, configs, medians, params, defaults)
+    data = fetch_results(client, namespace, configs, variables, params, defaults)
 
     save_results(namespace, data, save_dir)
 
