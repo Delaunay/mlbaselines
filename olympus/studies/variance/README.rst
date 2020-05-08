@@ -87,7 +87,7 @@ The master process can be started using the ``main.py`` script:
 .. code-block:: bash
 
    $ python olympus/studies/variance/main.py \
-       --uri 'mongodb://{username}:{password}@{host}/{db}?authSource={db}' \
+       --uri 'mongo://{username}:{password}@{host}/{db}?authSource={db}' \
        --database {db} \
        --config olympus/studies/variance/configs/tiny.yaml \
        --namespace tiny-var \
@@ -106,7 +106,7 @@ To execute the trials you must start workers with:
 .. code-block:: bash
    
    $ olympus-hpo-worker \ 
-       --uri 'mongodb://{username}:{password}@{host}/{db}?authSource={db}' \
+       --uri 'mongo://{username}:{password}@{host}/{db}?authSource={db}' \
        --database {db} \
        --rank 1
 
