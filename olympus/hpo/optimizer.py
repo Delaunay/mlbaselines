@@ -3,7 +3,7 @@ from collections import OrderedDict
 from sspace import Space
 
 from olympus.hpo.fidelity import Fidelity
-from olympus.utils import new_seed, warning, compress_dict, decompress_dict
+from olympus.utils import new_seed, debug, compress_dict, decompress_dict
 
 
 class Trial:
@@ -82,7 +82,7 @@ class HyperParameterOptimizer:
         self.identity = 'uid'
 
         for k, v in kwargs.items():
-            warning(f'used parameter ({k}: {v})')
+            debug(f'used parameter ({k}: {v})')
 
         if isinstance(space, dict):
             space = Space.from_dict(space)
