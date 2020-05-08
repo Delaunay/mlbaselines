@@ -29,8 +29,6 @@ IDENTITY_SIZE = 16
 
 
 def generate_grid_search(budget, fidelity, search_space, seeds):
-    # TODO: Add limit to number of trials. If this is smaller then 3 ** dim,
-    #       grid search should suggest a shuffled grid of size [budget].
     configs = []
     dim = len(search_space)
     n_points = 2
@@ -140,13 +138,18 @@ generate_hpo_configs = dict(
     bayesopt=generate_bayesopt)
 
 
-def fetch_hpos_valid_curves(client, namespaces, variables, data):
+def fetch_hpos_valid_curves(client, namespaces, variables, data, partial=False):
     remainings = defaultdict(list)
     for hpo in namespaces.keys():
         for hpo_namespace in namespaces[hpo]:
-            if is_hpo_completed(client, hpo_namespace):
+            if is_hpo_completed(client, hpo_namespace) or partial:
                 print(f'Fetching results of {hpo_namespace}')
-                data[hpo].append(fetch_hpo_valid_curves(client, hpo_namespace, variables))
+                hpo_data = fetch_hpo_valid_curves(
+                    client, hpo_namespace, variables, partial=partial)
+                if hpo_data:
+                    data[hpo].append(hpo_data)
+                else:
+                    print(f'No metrics available for {hpo_namespace}')
             else:
                 remainings[hpo].append(hpo_namespace)
 
@@ -294,9 +297,6 @@ def fetch_hpo_stats(client, namespace):
 
     results_counts = {doc['_id']: doc for doc in results_counts}
 
-    # for key, value in results_counts.items():
-    #     assert results_counts[key]['count'] == stats[key]['actioned']
-
     return stats
 
 
@@ -410,9 +410,6 @@ def fetch_trial_stats(client, namespace):
         }}
     ])
     results_counts = {doc['_id']: doc for doc in results_counts}
-
-    # for key, value in results_counts.items():
-    #     assert results_counts[key]['count'] == stats[key]['actioned']
 
     return stats
 
@@ -580,15 +577,6 @@ def print_status(client, namespace, namespaces):
     print(datetime.datetime.now())
     print((' ' * 17) + 'HPO   completed    pending     count     broken')
     for hpo, hpo_namespaces in namespaces.items():
-        # status = dict(
-        #     completed=0, broken=0, pending=0,
-        #     trials=dict(completed=0, broken=0, pending=0, missing=0))
-        # for hpo_namespace in hpo_namespaces:
-        #     hpo_status = get_status(client, hpo_namespace)
-        #     status[hpo_status['status']] += 1
-        #     for key in ['completed', 'broken', 'pending', 'missing']:
-        #         status['trials'][key] += hpo_status[key]
-
         status = hpo_stats.get(env(namespace, hpo)[:len(namespace) + 9])
         if status is None:
             status = dict(actioned=0, read=0, count=0, error=0)
@@ -606,7 +594,7 @@ def print_status(client, namespace, namespaces):
 
 
 def run(uri, database, namespace, function, num_experiments, budget, fidelity, space, objective,
-        variables, defaults, sleep_time=60, do_full_train=False, save_dir='.'):
+        variables, defaults, sleep_time=60, do_full_train=False, save_dir='.', partial=False):
 
     # TODO: Add hyperband
     hpos = ['grid_search', 'nudged_grid_search', 'noisy_grid_search', 'random_search',
@@ -629,6 +617,24 @@ def run(uri, database, namespace, function, num_experiments, budget, fidelity, s
     configs = generate_hpos(
         list(range(num_experiments)), hpos, budget,
         fidelity, space)
+
+    variable_names = list(sorted(variables.keys()))
+
+    if partial:
+        namespaces = defaultdict(list)
+        for hpo, hpo_configs in configs.items():
+            for config in hpo_configs:
+                hpo_namespace = env(namespace, config['namespace'])
+                namespaces[hpo].append(hpo_namespace)
+
+        data = defaultdict(list)
+        fetch_hpos_valid_curves(client, namespaces, variable_names, data, partial=True)
+
+        data = consolidate_results(data)
+        save_results(namespace, data, save_dir)
+
+        return
+
     namespaces = register_hpos(
         client, namespace, function, configs,
         dict(list(variables.items()) + list(defaults.items())),
@@ -637,7 +643,6 @@ def run(uri, database, namespace, function, num_experiments, budget, fidelity, s
 
     print_status(client, namespace, namespaces)
     data = defaultdict(list)
-    variable_names = list(sorted(variables.keys()))
     while sum(remainings.values(), []):
         remainings = fetch_hpos_valid_curves(client, remainings, variable_names, data)
 
@@ -690,6 +695,9 @@ def main(args=None):
     parser.add_argument('--num-experiments', default=200, type=int)
     parser.add_argument('--budget', default=200, type=int)
     parser.add_argument('--save-dir', default='.', type=str)
+    parser.add_argument(
+        '--fetch-partial', action='store_true',
+        help='Do not run anything, just fetch partial results and save.')
     args = parser.parse_args(args)
 
     namespace = args.namespace
@@ -700,7 +708,7 @@ def main(args=None):
         args.uri, args.database, namespace, args.config,
         num_experiments=args.num_experiments, budget=args.budget,
         sleep_time=args.sleep_time, 
-        save_dir=args.save_dir)
+        save_dir=args.save_dir, partial=args.fetch_partial)
 
 
 if __name__ == '__main__':

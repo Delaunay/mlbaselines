@@ -14,6 +14,7 @@ from olympus.hpo.fidelity import Fidelity
 from olympus.observers.msgtracker import METRIC_QUEUE
 from olympus.hpo.parallel import make_remote_call, RESULT_QUEUE, WORK_QUEUE, HPO_ITEM
 from olympus.utils.functional import flatten
+from olympus.utils.log import warning
 from olympus.studies.searchspace.plot import plot
 
 
@@ -37,20 +38,25 @@ def is_hpo_completed(client, namespace):
 
 def get_hpo_work_state(client, namespace):
     messages = client.monitor().messages(WORK_QUEUE, namespace, mtype=HPO_ITEM)
-    for m in messages:
-        if m.mtype == HPO_ITEM:
-            return m.message
+    if messages:
+        return messages[-1].message
+
+    return None
 
 
 def get_hpo_result_state(client, namespace):
     messages = client.monitor().unread_messages(RESULT_QUEUE, namespace, mtype=HPO_ITEM)
-    for m in messages:
-        if m.mtype == HPO_ITEM:
-            return m.message
+    if messages:
+        return messages[-1].message
+
+    return None
 
 
-def get_hpo(client, namespace):
-    result_state = get_hpo_result_state(client, namespace)
+def get_hpo(client, namespace, partial=False):
+    if partial:
+        result_state = get_hpo_work_state(client, namespace)
+    else:
+        result_state = get_hpo_result_state(client, namespace)
     if result_state is None:
         raise RuntimeError(f'No HPO for namespace {namespace} or HPO is not completed')
 
@@ -59,7 +65,8 @@ def get_hpo(client, namespace):
     remote_call = result_state['work']
     hpo = HPOptimizer(*args, **kwargs)
 
-    hpo.load_state_dict(result_state['hpo_state'])
+    if result_state['hpo_state']:
+        hpo.load_state_dict(result_state['hpo_state'])
 
     return hpo, remote_call
 
@@ -85,8 +92,8 @@ def fetch_metrics(client, namespace):
     return {name: list(sorted(values, key=get_epoch)) for name, values in metrics.items()}
 
 
-def fetch_hpo_valid_curves(client, namespace, variables):
-    hpo, remote_call = get_hpo(client, namespace)
+def fetch_hpo_valid_curves(client, namespace, variables, partial=False):
+    hpo, remote_call = get_hpo(client, namespace, partial=partial)
 
     # NOTE: Tasks without epochs should have fidelity.max == 1
     epochs = hpo.hpo.fidelity.max
@@ -97,6 +104,9 @@ def fetch_hpo_valid_curves(client, namespace, variables):
     seed = hpo.hpo.seed
 
     metrics = fetch_metrics(client, namespace)
+
+    if not metrics:
+        return None
 
     variables_values = {name: remote_call['kwargs'][name] for name in variables}
 
@@ -165,8 +175,8 @@ def create_valid_curves_xarray(trials, metrics, variables, epochs, params, seed)
 
         trial_elapsed_time = []
         if trial_uid not in metrics:
-            raise ValueError(f'Could not find metrics for trial {trial_uid}.')
-        for epoch_stats in metrics[trial_uid]:
+            warning(f'Could not find metrics for trial {trial_uid}.')
+        for epoch_stats in metrics.get(trial_uid, []):
             epoch = epoch_stats.get('epoch', 0)
 
             key = dict(epoch=epoch, order=uid_index, seed=seed)
