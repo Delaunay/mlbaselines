@@ -128,19 +128,19 @@ def distribute(model, distributed):
     return model
 
 
-def build_vgg11(input_size, output_size, model_seed):
+def build_vgg11(input_size, output_size):
     return VGG(cfg['vgg11'], input_size=input_size, num_classes=output_size, batch_norm=True)
 
 
-def build_vgg13(input_size, output_size, model_seed):
+def build_vgg13(input_size, output_size):
     return VGG(cfg['vgg13'], input_size=input_size, num_classes=output_size, batch_norm=True)
 
 
-def build_vgg16(input_size, output_size, model_seed):
+def build_vgg16(input_size, output_size):
     return VGG(cfg['vgg16'], input_size=input_size, num_classes=output_size, batch_norm=True)
 
 
-def build_vgg19(input_size, output_size, model_seed):
+def build_vgg19(input_size, output_size):
     return VGG(cfg['vgg19'], input_size=input_size, num_classes=output_size, batch_norm=True)
 
 
