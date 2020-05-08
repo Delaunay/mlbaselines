@@ -59,6 +59,7 @@ class TrialWorker(BaseWorker):
         """Run a trial and return its result"""
         state = message.message
         uid = state['kwargs']['uid']
+        info(f'Starting (trial: {uid})')
         state['kwargs']['experiment_name'] = context['namespace']
         state['kwargs']['client'] = self.client
         result = exec_remote_call(state)

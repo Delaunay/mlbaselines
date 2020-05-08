@@ -103,6 +103,7 @@ class HPOManager:
         m = self.pop_result()
         while m is not None:
             if m.mtype == RESULT_ITEM:
+                info(f'HPO {self.experiment} observed {m.message[0]["uid"]}')
                 hpo.observe(m.message[0], m.message[1])
                 new_results += 1
 
@@ -129,6 +130,7 @@ class HPOManager:
         for trial in trials:
             new_work = copy.deepcopy(self.work)
             new_work['kwargs'] = trial
+            info(f'HPO {self.experiment} suggested {trial["uid"]}')
             self.future_client.push(WORK_QUEUE, self.experiment, new_work, mtype=WORK_ITEM)
 
         return len(trials)
