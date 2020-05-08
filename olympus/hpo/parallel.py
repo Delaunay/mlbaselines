@@ -47,13 +47,14 @@ def exec_remote_call(state):
 
 class HPOManager:
     """Parallel HPO internals"""
-    def __init__(self, client, state):
+    def __init__(self, client, state, backoff=0):
         self.client = client
         self.future_client = RecordQueue()
         self.state = state
         self.work = state['work']
         self.worker_count = state.get('worker_count', 0)
         self.experiment = state['experiment']
+        self.backoff = backoff
 
     def shutdown(self):
         debug('sending shutdown signals')
@@ -84,7 +85,8 @@ class HPOManager:
             self.kill_idle_worker(hpo)
 
         if new_trials == 0:
-            time.sleep(1)
+            info('HPO sleeping', 2 ** self.backoff, 'seconds')
+            time.sleep(2 ** self.backoff)
 
         if 'hpo_state' in self.state:
             self.queue_hpo(hpo)

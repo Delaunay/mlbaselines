@@ -48,6 +48,7 @@ class TrialWorker(BaseWorker):
 
         self.timeout = option('worker.timeout', 5 * 60, type=int)
         self.max_retry = option('worker.max_retry', 3, type=int)
+        self.backoff = dict()
 
         # Disable shutting down when receiving shut down
         if experiment is None:
@@ -70,6 +71,8 @@ class TrialWorker(BaseWorker):
     def run_hpo(self, message, _):
         """Run the HPO only when needed and then let it die until the results are ready"""
         state = message.message
+        namespace = message.namespace
+        info(f'Starting (hpo: {namespace})')
 
         # Instantiate HPO
         hpo = exec_remote_call(state['hpo'])
@@ -78,8 +81,14 @@ class TrialWorker(BaseWorker):
         if hpo_state is not None:
             hpo.load_state_dict(hpo_state)
 
-        manager = HPOManager(self.client, state)
+        manager = HPOManager(self.client, state, self.backoff.get(namespace, 0))
         new_results, new_trials = manager.step(hpo)
+        if new_trials:
+            self.backoff[namespace] = 0
+        else:
+            # Cap to 5 minutes sleep (2 ** 8)
+            self.backoff[namespace] = max(self.backoff.get(namespace, 0) + 1, 8)
+
         info(f'HPO read (results: {new_results}) and queued (trials: {new_trials})')
 
         # Return the future work that has to be done
