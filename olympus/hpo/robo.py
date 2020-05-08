@@ -338,6 +338,7 @@ class RoBO(HyperParameterOptimizer):
         state = decompress_dict(state)
 
         super(RoBO, self).load_state_dict(state)
+
         self.count = state['count']
         state['count'] = self.count
         numpy.random.set_state(decode_rng_state(state['global_oh_my_god_numpy_rng_state']))
@@ -358,6 +359,7 @@ class RoBO(HyperParameterOptimizer):
 
     def state_dict(self, compressed=True):
         state = super(RoBO, self).state_dict()
+        state = super(RoBO, self).state_dict(compressed=False)
         state['count'] = self.count
         state['global_oh_my_god_numpy_rng_state'] = encode_rng_state(numpy.random.get_state())
         state['maximizer_rng_state'] = encode_rng_state(self.robo.maximize_func.rng.get_state())
