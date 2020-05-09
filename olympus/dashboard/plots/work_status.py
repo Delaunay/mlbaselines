@@ -13,15 +13,14 @@ def work_status(status):
 
     .. code-block:: python
 
-        status = {
-            'pending': 10,
-            'in-progress': 20,
-            'finished': 40,
-            'lost': 0,
-            'failed': 0
-        }
-
-        fig = work_status(status)
+    >>> status = {
+    ...     'pending': 10,
+    ...     'in-progress': 20,
+    ...     'finished': 40,
+    ...     'lost': 0,
+    ...     'failed': 0
+    ... }
+    >>> fig = work_status(status)
 
 
     .. image:: ../../../docs/_static/plots/work_status.png
@@ -64,13 +63,12 @@ def aggregate_overview_altair(status, name='experiment'):
 
     .. code-block:: python
 
-        status = [
-            dict(experiment='classification', status='pending', count=10),
-            dict(experiment='classification', status='in-progress', count=11),
-            dict(experiment='classification', status='finished', count=12)
-        ]
-
-        chart = aggregate_overview_altair(status)
+        >>> status = [
+        ...     dict(experiment='classification', status='pending', count=10),
+        ...     dict(experiment='classification', status='in-progress', count=11),
+        ...     dict(experiment='classification', status='finished', count=12)
+        ... ]
+        >>> chart = aggregate_overview_altair(status)
 
     .. image:: ../../../docs/_static/plots/aggregate_overview.png
 

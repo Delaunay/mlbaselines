@@ -5,3 +5,5 @@ coverage
 pymongo
 psycopg2-binary
 xarray
+emcee
+git+git://github.com/automl/fanova

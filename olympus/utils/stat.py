@@ -114,18 +114,20 @@ class StatStream(object):
         return self
 
     def update(self, val, weight=1):
+
         self.struct.current_count += weight
 
-        if self.current_count < self.drop_obs:
+        if self.current_count <= self.drop_obs:
             self.struct.current_obs = val
             return
 
         if self.count == 1:
             self.struct.first_obs = val
 
-        self.struct.current_obs = val - self.first_obs
-        self.struct.sum += float(self.current_obs) * float(weight)
-        self.struct.sum_sqr += float(self.current_obs * self.current_obs) * float(weight)
+        v = val - self.first_obs
+        self.struct.current_obs = v
+        self.struct.sum += float(v) * float(weight)
+        self.struct.sum_sqr += float(v * v) * float(weight)
 
         self.struct.min = min(self.min, val)
         self.struct.max = max(self.max, val)
@@ -148,6 +150,9 @@ class StatStream(object):
 
     @property
     def var(self) -> float:
+        if self.count == 0:
+            return float('NaN')
+
         avg = self.sum / float(self.count)
         return self.sum_sqr / float(self.count) - avg * avg
 

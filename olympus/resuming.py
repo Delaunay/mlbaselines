@@ -79,7 +79,7 @@ class BadResumeGuard:
     def __enter__(self):
         if hasattr(self.task, 'bad_state') and self.task.bad_state:
             raise BadResume('Cannot resume from bad state! '
-                            'You need to create a new task than can resume the previous state')
+                            'You need to create a new task that can resume the previous state')
 
     def __exit__(self, exc_type, exc_val, exc_tb):
         if exc_type is not None and hasattr(self.task, 'bad_state'):

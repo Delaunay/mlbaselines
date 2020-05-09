@@ -12,16 +12,15 @@ def plot_mean_objective_altair(results, fidelity='epoch'):
 
     .. code-block: python
 
-        results = [
-            dict(epoch=1, objective=0.229, uid=0),
-            dict(epoch=1, objective=0.239, uid=1),
-            dict(epoch=1, objective=0.249, uid=2),
-            dict(epoch=2, objective=0.312, uid=0),
-            dict(epoch=2, objective=0.333, uid=1),
-            dict(epoch=2, objective=0.346, uid=2),
-        ]
-
-        plot_results_altair(results, fidelity=epoch)
+    >>> results = [
+    ...     dict(epoch=1, objective=0.229, uid=0),
+    ...     dict(epoch=1, objective=0.239, uid=1),
+    ...     dict(epoch=1, objective=0.249, uid=2),
+    ...     dict(epoch=2, objective=0.312, uid=0),
+    ...     dict(epoch=2, objective=0.333, uid=1),
+    ...     dict(epoch=2, objective=0.346, uid=2),
+    ... ]
+    >>> chart = plot_mean_objective_altair(results, fidelity='epoch')
 
     .. image:: ../../../docs/_static/plots/objective.png
 

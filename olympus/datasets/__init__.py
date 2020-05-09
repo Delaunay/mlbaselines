@@ -224,6 +224,12 @@ class ResumableDataLoader:
     def __len__(self):
         return len(self.loader)
 
+    def __getattr__(self, item):
+        if hasattr(self.loader, item):
+            return getattr(self.loader, item)
+
+        return super(ResumableDataLoader, self).__getattr__(item)
+
 
 class DataLoader:
     """Initialize multiple pyTorch DataLoader using a split data set.
@@ -240,21 +246,21 @@ class DataLoader:
     Examples
     --------
     >>> datasets = SplitDataset(
-    >>>     Dataset('mnist', path='/tmp/mnist'),
-    >>>     split_method='original')
+    ...     Dataset('fake_mnist', path='/tmp/mnist'),
+    ...     split_method='original')
     >>>
     >>> loader = DataLoader(datasets, sampler_seed=0, batch_size=128)
     >>>
     >>> # Use the constructor default arguments
     >>> train_loader = loader.train()
-    >>> print(train_loader.batch_size)  # 128
-    >>>
+    >>> print(train_loader.batch_size)
+    128
     >>> # Override DataLoader attribute for a specific loader
     >>> test_loader = loader.test(batch_size=256)
-    >>> print(test_loader.batch_size)   #  256
-    >>>
+    >>> print(test_loader.batch_size)
+    256
     >>> # Specify a specific transform per loader
-    >>> valid_loader = loader.valid(batch_size=256, transforms=...)
+    >>> valid_loader = loader.valid(batch_size=256)
     """
     def __init__(self, split_dataset: SplitDataset, sampler_seed, **kwargs):
         self.split_dataset = split_dataset

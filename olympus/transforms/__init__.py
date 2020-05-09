@@ -99,12 +99,14 @@ class DimSelect(_PreprocessingNode):
 
     Examples
     --------
+    >>> from torchvision.transforms import ToPILImage, ToTensor
+    >>> from olympus.transforms.stn import SpatialTransformerNetwork
     >>> shape = 3, 20, 20
     >>>
     >>> p = Preprocessor(
-    >>>    BatchedTransform(ToPILImage(), dim=0),
-    >>>    BatchedTransform(ToTensor(), dim=0),
-    >>>    DimSelect(SpatialTransformerNetwork(input_shape=shape), dim=0))
+    ...    BatchedTransform(ToPILImage(), dim=0),
+    ...    BatchedTransform(ToTensor(), dim=0),
+    ...    DimSelect(SpatialTransformerNetwork(input_shape=shape), dim=0))
     >>>
     >>> batch_size = 256
     >>> image = torch.randn((batch_size,) + shape)
@@ -130,6 +132,7 @@ class BatchedTransform(_PreprocessingNode):
 
     Examples
     --------
+    >>> from torchvision.transforms import ToPILImage, ToTensor
     >>> shape = 3, 20, 20
     >>>
     >>> p = Preprocessor(BatchedTransform(ToPILImage(), dim=0))

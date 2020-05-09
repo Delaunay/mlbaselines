@@ -123,9 +123,14 @@ class FANOVA:
         self._gen()
         return self._importance_std
 
+    @property
+    def importance_long(self):
+        self._gen()
+        return self._importance_long
+
     def _compute_importance(self):
         importance = self.fanova.quantify_importance(list(range(self.size )))
-        self.importance_long = []
+        self._importance_long = []
 
         for k, values in importance.items():
             if len(k) == 1:
@@ -139,7 +144,7 @@ class FANOVA:
 
             self._importance[i, j] = values['total importance']
             self._importance_std[i, j] = values['total std']
-            self.importance_long.append(dict(
+            self._importance_long.append(dict(
                 row=self.hp_names[i],
                 col=self.hp_names[j],
                 importance=values['total importance'],

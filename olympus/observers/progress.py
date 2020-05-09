@@ -6,7 +6,7 @@ from olympus.utils.stat import StatStream
 from olympus.utils.options import option
 
 from datetime import datetime, timedelta
-from typing import Optional
+import warnings
 
 
 def get_time_delta(start):
@@ -30,7 +30,12 @@ class Speed(Observer):
 
     def guess_batch_size(self, input):
         try:
-            return input[0].shape[0]
+            if isinstance(input, list):
+                return input[0].shape[0]
+
+            if hasattr(input, 'shape'):
+                return input.shape[0]
+
         except Exception:
             return 0
 
@@ -52,8 +57,9 @@ class Speed(Observer):
 
         if self.step_time.count > 0:
             result['step_time'] = self.step_time.avg
-            if self.batch_size > 0:
+            if self.batch_size and self.batch_size > 0:
                 result['batch_speed'] = self.batch_size / self.step_time.avg
+                result['batch_size'] = self.batch_size
 
         if self.step_time.count > 2:
             result['step_time_sd'] = self.step_time.sd
@@ -80,133 +86,205 @@ class Speed(Observer):
         self.epoch_start = datetime.utcnow()
 
 
-@dataclass
-class ProgressView(Observer):
-    speed_observer: Optional[Speed] = None
-
-    print_fun = print
-    max_epoch: int = 0
-    max_step: int = 0
-    step_length: int = 0
-    epoch: int = 0
-    step: int = 0
-    multiplier: int = 0
-
-    frequency_end_epoch: int = field(
-        default_factory=lambda: option('progress.frequency.epoch', 1, type=int))
-    frequency_end_batch: int = field(
-        default_factory=lambda: option('progress.frequency.batch', 1, type=int))
-    show_metrics: str = field(
-        default_factory=lambda: option('progress.show.metrics', 'epoch'))
-    frequency_trial: int = 0
-
-    orion_handle = None
-    worker_id: int = option('worker.id', -1, type=int)
-
-    def show_progress(self, epoch, step=None):
-        if step is None:
-            step = ' ' * self.step_length
+class GuessMaxStep:
+    def __init__(self, max_steps=None):
+        if max_steps is None:
+            self.guessed = False
+            self.current_max = float('-inf')
         else:
-            step = f'Step [{step:3d}/{self.max_step:3d}]'
-            self.step_length = len(step)
+            self.guessed = True
+            self.current_max = max_steps
 
-        hpo = ''
-        if self.orion_handle is not None:
-            hpo_completion = self.overall_progress()
-            hpo = f'HPO [{hpo_completion:6.2f}%] '
+    def update(self, new_step):
+        if new_step > self.current_max - 1:
+            self.current_max = new_step + 1
+        else:
+            self.guessed = True
 
+    def max_step(self):
+        if self.guessed:
+            return self.current_max
+
+        return 0
+
+    def state_dict(self):
+        return dict(guessed=self.guessed, current_max=self.current_max)
+
+    def load_state_dict(self, state_dict):
+        self.guessed = state_dict['guessed']
+        self.current_max = state_dict['current_max']
+
+
+def fill(msg, size=40):
+    fill_msg = ' ' * (min(0, size - len(msg)))
+    return f'{msg}{fill_msg}'
+
+
+def show_progress(speed, epoch, step, total):
+    step_time = speed.step_time
+    return f'{total:4d} Elapsed time {step_time.total / 60:.2f} min ({step_time.avg:.2f} s/step)'
+
+
+@dataclass
+class DefaultProgress:
+    speed: Speed
+
+    def show_progress(self, epoch, step, total):
+        return show_progress(self.speed, epoch, step, total)
+
+    def state_dict(self):
+        return dict()
+
+    def load_state_dict(self, state_dict):
+        pass
+
+
+@dataclass
+class EpochProgress:
+    speed: Speed
+    epochs: int
+    steps: GuessMaxStep = field(default_factory=GuessMaxStep)
+
+    def show_progress(self, epoch, step, total):
+        if not self.steps.guessed:
+            self.steps.update(step)
+            return show_progress(self.speed, epoch, step, total)
+
+        # Compute Total number of steps
+        total_steps = self.epochs * self.steps.max_step()
+        done_steps = (epoch - 1) * self.steps.max_step() + (step + 1)
+
+        remaining_steps = total_steps - done_steps
+        remaining_time = remaining_steps * self.speed.step_time.avg
+
+        if self.speed.step_time.count > 0:
+            remaining_time = timedelta(seconds=remaining_time)
+        else:
+            remaining_time = 'N/A'
+
+        completion = done_steps * 100 / total_steps
+        return f'[{completion:6.2f} %] Epoch [{epoch:3d}/{self.epochs:3d}]' \
+               f'[{step + 1:4d}/{self.steps.max_step():4d}] ' \
+               f'Remaining: {remaining_time}'
+
+    def state_dict(self):
+        return dict(steps=self.steps.state_dict())
+
+    def load_state_dict(self, state_dict):
+        self.steps.load_state_dict(state_dict['steps'])
+
+
+@dataclass
+class StepProgress:
+    speed: Speed
+    steps: int
+
+    def show_progress(self, epoch, step, total):
+        remaining_steps = self.steps - total
+
+        if self.speed.step_time.count > 0:
+            remaining_time = timedelta(seconds=remaining_steps * self.speed.step_time.avg)
+        else:
+            remaining_time = 'N/A'
+
+        return fill(f'[{total:4d}/{self.steps:4d}] Remaining: {remaining_time}')
+
+    def state_dict(self):
+        return dict()
+
+    def load_state_dict(self, state_dict):
+        pass
+
+
+class ProgressView(Observer):
+    def __init__(self, speed, max_epochs=None, max_steps=None):
+        self.progress_printer = DefaultProgress(speed)
+        self.print_fun = print
+
+        if max_epochs is not None and max_steps is None:
+            self.progress_printer = EpochProgress(speed, max_epochs)
+
+        if max_epochs is not None and max_steps is not None:
+            self.progress_printer = EpochProgress(speed, max_epochs, GuessMaxStep(max_steps))
+
+        if max_epochs is None and max_steps is not None:
+            self.progress_printer = StepProgress(speed, max_steps)
+
+        self.frequency_new_epoch: int = 1
+        self.frequency_end_epoch: int = option('progress.frequency.epoch', 1, type=int)
+        self.frequency_end_batch: int = option('progress.frequency.batch', 1, type=int)
+        self.show_metrics: str = option('progress.show.metrics', 'epoch')
+        self.frequency_trial: int = 0
+        self.worker_id: int = option('worker.id', -1, type=int)
+        self.epoch = None
+        self.step = None
+        self.total_step = 0
+        self.first_epoch = None
+
+    def show_progress(self, epoch, step, total):
         worker = ''
         if self.worker_id >= 0:
             worker = f'[W: {self.worker_id:2d}] '
 
-        eta = ''
-        if self.speed_observer:
-            eta = self.eta(self.speed_observer, epoch)
+        progress = self.progress_printer.show_progress(epoch, step, total)
+        message = f'\r{worker}{progress}'
 
-        self.print_fun(
-            f'\r{worker}{hpo}Epoch [{epoch:3d}/{self.max_epoch:3d}] {step} {eta}', end='')
-
-    def overall_progress(self):
-        """Return the overall HPO progress in % completion"""
-        return len(self.orion_handle.fetch_trials_by_status('completed')) * 100 / self.number_of_trials()
-
-    def number_of_trials(self):
-        # FIXME: Get max trials for the algo itself
-        return self.orion_handle.max_trials
-
-    def estimate_time_trial_finish(self, obs, epoch):
-        """Estimate when a trial will finish"""
-        if obs.step_time.count == 0:
-            return None
-
-        total_steps = self.max_step * self.max_epoch
-        spent_steps = self.max_step * epoch + self.step
-        remaining_steps = total_steps - spent_steps
-
-        avg = obs.step_time.avg
-        # if we spent enough epochs estimate using both duration
-        if obs.epoch_time.count > 0:
-            avg = (avg + obs.epoch_time.avg / float(self.max_step)) / 2
-
-        step_estimate = avg * remaining_steps
-        return step_estimate
-
-    def eta(self, obs, epoch):
-        step_estimate = self.estimate_time_trial_finish(obs, epoch)
-
-        if step_estimate:
-            return f'ETA: {step_estimate / 60:9.4f} min'
-
-        return ''
+        self.print_fun(fill(message), end='')
 
     def on_start_train(self, task, step=None):
-        print('Starting')
+        self.print_fun('Starting')
         if task:
             show_dict(task.metrics.value())
 
     def on_resume_train(self, task, epoch):
-        print('Resuming at epoch', epoch)
+        self.print_fun('Resuming at epoch', epoch)
         if task:
             show_dict(task.metrics.value())
 
     def on_end_train(self, task, step=None):
-        print('Completed training')
+        self.print_fun()
+        self.print_fun('Completed training')
         if task:
             show_dict(task.metrics.value())
 
+    def on_new_epoch(self, task, epoch, context):
+        if self.first_epoch is None:
+            self.first_epoch = epoch
+
+            if epoch == 0:
+                warnings.warn('First epoch should 1; epoch 0 is used for the untrained model')
+
+        self.epoch = epoch
+
     def on_end_epoch(self, task, epoch, context):
         self.epoch = epoch
-        self.max_epoch = max(self.epoch, self.max_epoch)
+        self.print_fun()
+        self.show_progress(epoch, self.step, self.total_step)
 
-        self.print_fun()
-        self.show_progress(epoch)
-        self.print_fun()
         if task is not None and self.show_metrics == 'epoch':
             show_dict(task.metrics.value())
 
     def on_end_batch(self, task, step, input=None, context=None):
-        self.step = step % self.max_step
+        self.step = step
+        self.total_step += 1
+        self.show_progress(self.epoch, step, self.total_step)
 
-        self.show_progress(self.epoch, step)
         if task is not None and self.show_metrics == 'batch':
             show_dict(task.metrics.value())
-
-    def init_speed_observer(self, task):
-        if not self.speed_observer and task:
-            self.speed_observer = task.metrics.get('Speed', None)
 
     def value(self):
         return {}
 
     def state_dict(self):
         return dict(
-            max_epoch=self.max_epoch,
-            max_step=self.max_step
-        )
+            progress_printer=self.progress_printer.state_dict(),
+            total_step=self.total_step,
+            epoch=self.epoch)
 
     def load_state_dict(self, state_dict):
-        self.max_epoch = state_dict['max_epoch']
-        self.max_step = state_dict['max_step']
+        self.progress_printer.load_state_dict(state_dict['progress_printer'])
+        self.total_step = state_dict['total_step']
+        self.epoch = state_dict['epoch']
 
 
 @dataclass

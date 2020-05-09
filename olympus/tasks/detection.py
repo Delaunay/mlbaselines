@@ -26,7 +26,7 @@ class ObjectDetection(Task):
         self.metrics.append(SampleCount().every(batch=1, epoch=1))
         speed = Speed()
         self.metrics.append(speed)
-        self.metrics.append(ProgressView(speed_observer=speed))
+        self.metrics.append(ProgressView(speed))
         self.metrics.append(OnlineLoss())
 
         if storage:

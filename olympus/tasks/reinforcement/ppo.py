@@ -70,7 +70,7 @@ class PPO(Task):
         self.metrics.append(NamedMetric(name='loss'))
         self.metrics.append(ElapsedRealTime())
         self.metrics.append(Speed())
-        self.metrics.append(ProgressView(speed_observer=self.metrics.get('Speed')))
+        self.metrics.append(ProgressView(self.metrics.get('Speed')))
 
         if storage:
             self.metrics.append(CheckPointer(storage=storage))

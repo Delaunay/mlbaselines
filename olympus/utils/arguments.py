@@ -56,14 +56,14 @@ def parse_arg_file(arg_file, parser, args, hypers_dict):
 
     Examples
     --------
-    >>> {
-    >>>     'model': 'resnet18',
-    >>>     'optimizer': {'sgd':{
-    >>>         'lr': 0.001
-    >>>     }}
-    >>>     'schedule': 'none',
-    >>>     'optimizer.momentum': 0.99
-    >>> }
+    >>> data = {
+    ...     'model': 'resnet18',
+    ...     'optimizer': {'sgd':{
+    ...         'lr': 0.001
+    ...     }},
+    ...     'schedule': 'none',
+    ...     'optimizer.momentum': 0.99
+    ... }
 
     """
     import json

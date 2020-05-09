@@ -92,7 +92,6 @@ def build_model(lower, upper, model_type="gp_mcmc", model_seed=1, prior_seed=1):
 
     elif model_type == "dngo":
         from pybnn.dngo import DNGO
-
         model = DNGO()
 
     else:

@@ -91,9 +91,18 @@ class Optimizer(TorchOptimizer):
 
     Follows standard Pytorch Optimizer
 
-    >>> optimizer = Optimizer('SGD', model.parameters(),  weight_decay, lr=0.001, momentum=0.8)
+    >>> import torch
+    >>> from olympus.models import Model
+    >>> model = Model('resnet18',
+    ...     input_size=(1, 28, 28),
+    ...     output_size=10,)
+    >>>
+    >>> x = torch.randn((1, 1, 28, 28))
+    >>>
+    >>> optimizer = Optimizer('SGD', params=model.parameters(),  weight_decay=1e-3, lr=0.001, momentum=0.8)
+    >>>
     >>> optimizer.zero_grad()
-    >>> loss = model(x)
+    >>> loss = model(x).sum()
     >>> optimizer.backward(loss)
     >>> optimizer.step()
 
@@ -102,9 +111,10 @@ class Optimizer(TorchOptimizer):
     >>> optimizer = Optimizer('SGD')
     >>> optimizer.get_space()
     {'lr': 'loguniform(1e-5, 1)', 'momentum': 'uniform(0, 1)', 'weight_decay': 'loguniform(1e-10, 1e-3)'}
-    >>> optimizer.init_optimizer(model.parameters(), weight_decay, lr=0.001, momentum=0.8)
+    >>> optimizer.init(model.parameters(), weight_decay=1e-3, lr=0.001, momentum=0.8)
+    >>>
     >>> optimizer.zero_grad()
-    >>> loss = model(x)
+    >>> loss = model(x).sum()
     >>> optimizer.backward(loss)
     >>> optimizer.step()
 
@@ -239,8 +249,6 @@ class Optimizer(TorchOptimizer):
         self._optimizer = self._wrap_optimizer(
             self.optimizer_builder(params, **self.hyper_parameters.parameters(strict=True)))
 
-        return self
-
     @property
     def optimizer(self):
         if not self._optimizer:
@@ -253,8 +261,6 @@ class Optimizer(TorchOptimizer):
             self.optimizer.backward(loss)
         else:
             loss.backward()
-
-        return self.optimizer
 
     def step(self, closure=None):
         return self.optimizer.step(closure)

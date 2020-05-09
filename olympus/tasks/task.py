@@ -37,11 +37,10 @@ class Task:
 
     def _start(self, epochs):
         progress = self.metrics.get('ProgressView')
+
         if progress:
             # in case of a resume
             progress.epoch = self._first_epoch
-            progress.max_epoch = epochs
-            progress.max_step = len(self.dataloader)
 
         if not self.resumed():
             self.metrics.start_train()

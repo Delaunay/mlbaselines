@@ -1,4 +1,18 @@
 def scatter_matrix_plotly(data, columns):
+    """
+
+    Examples
+    --------
+
+    >>> columns = ['a', 'b', 'c']
+    >>> data = [
+    ...     dict(a=1, b=2, c=3, epoch=1),
+    ...        dict(a=2, b=1, c=1, epoch=2),
+    ...        dict(a=3, b=3, c=2, epoch=3),
+    ... ]
+    >>> chart = scatter_matrix_plotly(data, columns)
+    """
+
     # Looks ugly
     import plotly.graph_objects as go
     import pandas as pd
@@ -44,16 +58,13 @@ def scatter_matrix_altair(configs, columns, color='epoch'):
     Examples
     --------
 
-    .. code-block:: python
-
-        columns = ['a', 'b', 'c']
-        data = [
-            dict(a=1, b=2, c=3, epoch=1),
-            dict(a=2, b=1, c=1, epoch=2),
-            dict(a=3, b=3, c=2, epoch=3),
-        ]
-
-        chart = scatter_matrix_altair(data, columns, color)
+    >>> columns = ['a', 'b', 'c']
+    >>> data = [
+    ...     dict(a=1, b=2, c=3, epoch=1),
+    ...        dict(a=2, b=1, c=1, epoch=2),
+    ...        dict(a=3, b=3, c=2, epoch=3),
+    ... ]
+    >>> chart = scatter_matrix_altair(data, columns, color='epoch')
 
     .. image:: ../../../docs/_static/plots/space_exploration.png
 

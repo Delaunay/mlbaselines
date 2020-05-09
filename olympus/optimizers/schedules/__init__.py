@@ -44,10 +44,14 @@ class LRSchedule:
     Examples
     --------
 
-    >>> schedule = LRSchedule('cyclic')
-    >>> schedule.get_space()
-    {'base_lr': 'loguniform(1e-5, 1e-2)', 'max_lr': 'loguniform(1e-2, 1)', ... }
-    >>> schedule.init(optimizer, base_lr=1e-2, ...)
+    .. code-block:: python
+
+        from olympus.optimizers import Optimizer
+        optimizer = Optimizer('sgd')
+        schedule = LRSchedule('exponential')
+        schedule.get_space()
+        # {'gamma': 'loguniform(0.97, 1)'}
+        schedule.init(optimizer, gamma=0.97)
 
     Raises
     ------

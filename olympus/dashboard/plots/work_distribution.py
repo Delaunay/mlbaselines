@@ -78,17 +78,13 @@ def plot_gantt_plotly(jobs, color='epoch', annotations=None, resources=None):
     Examples
     --------
 
-    .. code-block:: python
-
-        jobs = [
-            dict(Task='worker-0', Start=0, Finish=1, Resource='Trial'),
-            dict(Task='worker-1', Start=1, Finish=2, Resource='HPO'),
-            dict(Task='worker-0', Start=0, Finish=1, Resource='Trial'),
-            dict(Task='worker-1', Start=1, Finish=2, Resource='Trial'),
-        ]
-
-        fig = plot_gantt_plotly(jobs)
-
+    >>> jobs = [
+    ...     dict(Task='worker-0', Start=0, Finish=1, Resource='Trial', epoch=1),
+    ...     dict(Task='worker-1', Start=1, Finish=2, Resource='HPO', epoch=2),
+    ...     dict(Task='worker-0', Start=0, Finish=1, Resource='Trial', epoch=3),
+    ...     dict(Task='worker-1', Start=1, Finish=2, Resource='Trial', epoch=4),
+    ... ]
+    >>> fig = plot_gantt_plotly(jobs)
 
     .. image:: ../../../docs/_static/hpo/hyperband.png
 
@@ -100,7 +96,7 @@ def plot_gantt_plotly(jobs, color='epoch', annotations=None, resources=None):
     colors = plotly.colors.DEFAULT_PLOTLY_COLORS
 
     # We need more colors
-    if len(resources) > len(colors):
+    if resources is not None and len(resources) > len(colors):
         missing = len(resources) - len(colors)
         colors.extend(colors_1024[-missing - 1:-1])
 

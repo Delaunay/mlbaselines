@@ -26,6 +26,27 @@ def importance_heatmap_altair(fanova):
     Examples
     --------
 
+    >>> from olympus.dashboard.analysis.hpfanova import FANOVA
+    >>> import pandas as pd
+    >>> data = [
+    ...     dict(objective=0.12 / 0.08, uid=0, epoch=32, hp1=0.12, hp2=0.08),
+    ...     dict(objective=0.14 / 0.09, uid=0, epoch=32, hp1=0.14, hp2=0.09),
+    ...     dict(objective=0.15 / 0.10, uid=0, epoch=32, hp1=0.15, hp2=0.10),
+    ...     dict(objective=0.16 / 0.11, uid=0, epoch=32, hp1=0.16, hp2=0.11),
+    ...     dict(objective=0.17 / 0.12, uid=0, epoch=32, hp1=0.17, hp2=0.12)
+    ... ]
+    >>> space = {
+    ...     'hp1': 'uniform(0, 1)',
+    ...     'hp2': 'uniform(0, 1)'
+    ... }
+    >>> data = pd.DataFrame(data)
+    >>> fanova = FANOVA(
+    ...    data,
+    ...    hp_names=list(space.keys()),
+    ...    objective='objective',
+    ...    hp_space=space)
+    >>> chart = importance_heatmap_altair(fanova)
+
     .. image:: ../../../docs/_static/plots/importance.png
 
     """

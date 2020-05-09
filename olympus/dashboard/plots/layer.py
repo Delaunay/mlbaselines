@@ -6,8 +6,29 @@ from olympus.optimizers import Optimizer
 from olympus.utils import debug, fetch_device
 
 
+def list_layers(model):
+    layers = list([module for module in model.modules() if type(module) != nn.Sequential])
+    skip = int(isinstance(layers[0], type(model)))
+    return layers[skip:]
+
+
 class LayerViz:
-    """Find the image the maximize the activation of a given layer"""
+    """Find the image the maximize the activation of a given layer
+
+    Examples
+    --------
+
+    >>> import torchvision.models as models
+    >>> from olympus.dashboard.plots.saliency import imagenet_postprocessor
+
+    >>> model = models.vgg19(pretrained=True)
+    >>> viz = LayerViz(model, layer=list_layers(model)[5], index=14)
+
+    >>> # Generate the layer vizualisation
+    >>> filter_viz = viz(steps=32, image=torch.randn(1, 3, 224, 224))
+    >>> imagenet_postprocessor(filter_viz)[0].save('filter.jpg')
+
+    """
 
     def __init__(self, model, layer, index):
         self.model = model
@@ -60,10 +81,7 @@ class LayerViz:
             image = torch.randn(1, 3, 224, 224)
 
         image = image.to(device=self.device)
-
-        layers = list([module for module in self.model.modules() if type(module) != nn.Sequential])
-        skip = int(isinstance(layers[0], type(self.model)))
-        layers = layers[skip:]
+        layers = list_layers(self.model)
 
         image = Variable(image.to(device=self.device), requires_grad=True)
         optimizer = Optimizer(
@@ -126,9 +144,6 @@ def find_good_layer(model, image, top=16, return_rank=False):
 
         model = models.vgg19(pretrained=True)
 
-        path = '/home/setepenre/work/olympus/docs/_static/images/cat.jpg'
-        img = Image.open(path)
-
         img = find_good_layer(model, image=torch.randn(1, 3, 224, 224))
         imagenet_postprocessor(img)[0].save('filter.jpg')
 
@@ -136,13 +151,17 @@ def find_good_layer(model, image, top=16, return_rank=False):
     .. image:: ../../../docs/_static/images/cat_conv_filter_mosaic.jpg
 
     """
-    layers = list([module for module in model.modules() if type(module) != nn.Sequential])
-    conv_layers = list(filter(lambda l: isinstance(l, nn.Conv2d), layers))
+    layers = list_layers(model)
+
+    conv_layers = []
+    for i, layer in enumerate(layers):
+        if isinstance(layer, nn.Conv2d):
+            conv_layers.append((i, layer))
 
     costs = []
     current = dict(loss=10000)
 
-    for i, conv in enumerate(conv_layers):
+    for i, (idx, conv) in enumerate(conv_layers):
         channels = conv.out_channels
 
         for c in range(channels):
@@ -150,7 +169,7 @@ def find_good_layer(model, image, top=16, return_rank=False):
                 viz = LayerViz(model, layer=conv, index=c)
                 viz(steps=4, image=image)
 
-                config = dict(layer=conv, channel=c, loss=viz.loss, layer_index=i)
+                config = dict(layer=conv, channel=c, loss=viz.loss, layer_index=idx)
                 costs.append(config)
 
                 if viz.loss < current['loss']:
@@ -192,3 +211,17 @@ def make_image_mosaic(images):
         rstart += width
 
     return tensor
+
+
+if __name__ == '__main__':
+    import torchvision.models as models
+    from olympus.dashboard.plots.saliency import imagenet_postprocessor
+    from PIL import Image
+
+    model = models.vgg19(pretrained=True)
+
+    path = '/home/setepenre/work/olympus/docs/_static/images/cat.jpg'
+    img = Image.open(path)
+
+    img = find_good_layer(model, image=torch.randn(1, 3, 224, 224))
+    imagenet_postprocessor(img)[0].save('filter.jpg')

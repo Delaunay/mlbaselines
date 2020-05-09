@@ -85,24 +85,21 @@ class GuidedBackprop:
     Examples
     --------
 
-    .. code-block:: python
+    >>> import torchvision.models as models
+    >>> from torchvision import transforms
+    >>> from PIL import Image
 
-        import torchvision.models as models
-        from torchvision import transforms
+    >>> path = 'docs/_static/images/cat.jpg'
+    >>> img = Image.open(path)
 
-        from PIL import Image
+    >>> model = models.alexnet(pretrained=True)
 
-        path = '/images/cat.jpg'
-        img = Image.open(path)
+    >>> guided = GuidedBackprop(model)
+    >>> _ = guided([img], [285])
 
-        model = models.alexnet(pretrained=True)
-
-        guided = GuidedBackprop(model)
-        guided([img], [285])
-
-        for grad in guided.negative_saliency():
-            img = imagenet_postprocessor(grad)
-            img.save('negative_saliency.jpg')
+    >>> for i, grad in enumerate(guided.negative_saliency()):
+    ...     img = imagenet_postprocessor(grad)
+    ...     img.save(f'negative_saliency_{i}.jpg')
 
     .. image:: ../../../docs/_static/images/cat.jpg
         :width: 45 %
@@ -198,23 +195,3 @@ class GuidedBackprop:
 
         out.backward(gradient=gradient)
         return out
-
-
-if __name__ == '__main__':
-
-    import torchvision.models as models
-    from torchvision import transforms
-
-    from PIL import Image
-
-    path = '/home/setepenre/work/olympus/docs/_static/images/cat.jpg'
-    img = Image.open(path)
-
-    model = models.alexnet(pretrained=True)
-
-    guided = GuidedBackprop(model)
-    guided([img], [285])
-
-    for grad in guided.negative_saliency():
-        img = imagenet_postprocessor(grad)
-        img.save('negative_saliency.jpg')

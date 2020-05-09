@@ -15,7 +15,7 @@ Transition = namedtuple('Transition', [
 
 
 class ReplayVector:
-    """Holds all the state transition of the simulation for training purposes
+    r"""Holds all the state transition of the simulation for training purposes
 
     Attributes
     ----------
@@ -29,39 +29,39 @@ class ReplayVector:
         Number of different simulation state in one Transition Struct
 
     grad_batch:
-        Total number of states in this object `grad_batch = simulation_batch * len(transitions)`
-
-
-     >>> * <------------------- steps --------------------------------->
-     >>> ^ [states 0] [states 1] [states 2] [states 3]
-     >>> | [states 0] [states 1] [states 2]
-     >>> | [states 0] [states 1] [states 2] [states 3]
-     >>> v [states 0] [states 1] [states 2] [states 3] [states 4]
-     >>> * <------------------- steps --------------------------------->
-     >>>     Batch 0    Batch 1    Batch 2    Batch 3    Batch 4
+        Total number of states in this object ``grad_batch = simulation_batch * len(transitions)``
 
     Notes
     -----
-    Steps:
-        Number of Simulation Steps
+    Steps: Number of Simulation Steps
+    Simulation: Number of parallel simulation
 
-    Simulation:
-        Number of parallel simulation
-
-    Examples
-    --------
-    The output below shows the size of each fields with ``num_steps=32``
-    ``num_simulation=4`` and with a state size of ``3, 210, 160`` (images of the simulation)
-
-    >>> replay.describe()
-    >>> rewards      : torch.Size([32, 4])
-    >>> states       : torch.Size([32, 4, 3, 210, 160])
-    >>> next_states  : torch.Size([32, 4, 3, 210, 160])
-    >>> critic_values: torch.Size([32, 4])
-    >>> actions      : torch.Size([32, 4])
-    >>> log_probs    : torch.Size([32, 4])
-    >>> mask         : torch.Size([32, 4])
     """
+
+    # Examples
+    # --------
+    #
+    # .. code-block:: python
+    #
+    #     <~~~~~~~~~~~~~~~~~~~ steps ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~>
+    #     ^ [states 0] [states 1] [states 2] [states 3]
+    #     | [states 0] [states 1] [states 2]
+    #     | [states 0] [states 1] [states 2] [states 3]
+    #     v [states 0] [states 1] [states 2] [states 3] [states 4]
+    #     <~~~~~~~~~~~~~~~~~~~ steps ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~>
+    #         Batch 0    Batch 1    Batch 2    Batch 3    Batch 4
+    #
+    # .. code-block:: python
+    #
+    #     with num_steps=32, num_simulation=4, state_shape=3, 210, 160
+    #     replay.describe()
+    #     rewards      : torch.Size([32, 4])
+    #     states       : torch.Size([32, 4, 3, 210, 160])
+    #     next_states  : torch.Size([32, 4, 3, 210, 160])
+    #     critic_values: torch.Size([32, 4])
+    #     actions      : torch.Size([32, 4])
+    #     log_probs    : torch.Size([32, 4])
+    #     mask         : torch.Size([32, 4])
 
     __slots__ = (
         'transitions', 'state_size', 'simulation_batch', 'grad_batch'

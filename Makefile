@@ -46,6 +46,7 @@ travis-detection-short: clean
 
 travis-unit:
 	COVERAGE_FILE=.coverage.unit coverage run --parallel-mode -m pytest --cov=olympus tests/unit
+	COVERAGE_FILE=.coverage.doct coverage run --parallel-mode -m pytest --cov=olympus --doctest-modules olympus
 	COVERAGE_FILE=.coverage.inte coverage run --parallel-mode -m pytest --cov-append --cov=olympus tests/integration
 
 travis-custom:

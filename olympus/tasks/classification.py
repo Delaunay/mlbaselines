@@ -65,7 +65,7 @@ class Classification(Task):
             for metric in metrics:
                 self.metrics.append(metric)
 
-        self.metrics.append(ProgressView(speed_observer=self.metrics.get('Speed')))
+        self.metrics.append(ProgressView(self.metrics.get('Speed')))
 
         if storage:
             self.metrics.append(CheckPointer(storage=storage))

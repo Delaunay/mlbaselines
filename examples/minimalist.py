@@ -3,7 +3,7 @@ from olympus.datasets import Dataset, SplitDataset, DataLoader
 from olympus.optimizers import Optimizer, LRSchedule
 
 from olympus.models import Model
-from olympus.observers import ObserverList, ProgressView
+from olympus.observers import ObserverList, ProgressView, Speed
 from olympus.utils import fetch_device, option
 
 
@@ -37,8 +37,12 @@ loader = DataLoader(
 
 # event handler
 event_handler = ObserverList()
-event_handler.append(
-    ProgressView(max_epoch=epochs, max_step=len(loader.train())).every(epoch=1, batch=1))
+speed = Speed()
+event_handler.append(ProgressView(
+    speed,
+    max_epochs=epochs,
+    max_steps=len(loader.train())
+).every(epoch=1, batch=1))
 
 model = model.to(device=device)
 loss = 0

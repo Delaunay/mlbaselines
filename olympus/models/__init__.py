@@ -76,13 +76,13 @@ class Model(nn.Module):
     Supports your custom model
 
     >>> class MyModel(nn.Module):
-    >>>     def __init__(self, input_size, output_size):
-    >>>         self.main = nn.Linear(input_size[0], output_size[0])
+    ...     def __init__(self, input_size, output_size):
+    ...         self.main = nn.Linear(input_size[0], output_size[0])
+    ...
+    ...     def forward(self, x):
+    ...         return self.main(x)
     >>>
-    >>>     def forward(self, x):
-    >>>         return self.main(x)
-    >>>
-    >>> model = Model(MyModel, input_size=(1, 28, 28), output_size=(10,))
+    >>> model = Model(model=MyModel, input_size=(1, 28, 28), output_size=(10,))
 
     Raises
     ------
