@@ -103,7 +103,10 @@ def classification_baseline(model, initializer,
                             split_method='original',
                             sampler_seed=0,
                             init_seed=0,
-                            global_seed=0, storage=None, half=False, hpo_done=False,
+                            transform_seed=0,
+                            global_seed=0,
+                            transform=True,
+                            storage=None, half=False, hpo_done=False,
                             data_path='/tmp/olympus',
                             validate=True, hyper_parameters=None, uri_metric=None,
                             valid_batch_size=None,
@@ -112,7 +115,8 @@ def classification_baseline(model, initializer,
     set_seeds(global_seed)
 
     dataset = SplitDataset(
-        Dataset(dataset, path=option('data.path', data_path)),
+        Dataset(dataset, path=option('data.path', data_path), transform=transform,
+                transform_seed=transform_seed),
         split_method=split_method
     )
 

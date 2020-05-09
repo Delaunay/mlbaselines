@@ -1,8 +1,12 @@
 from filelock import FileLock
+
+import numpy
+
 import torch
 from torchvision import datasets, transforms
 from torchvision.transforms.functional import to_pil_image
 
+from olympus.datasets.transformed import Compose, RandomCrop, RandomHorizontalFlip
 from olympus.datasets.dataset import AllDataset
 from olympus.utils import option
 
@@ -42,20 +46,21 @@ class CIFAR10(AllDataset):
     .. [1] Alex Krizhevsky, "Learning Multiple Layers of Features from Tiny Images", 2009.
 
     """
-    def __init__(self, data_path):
+    def __init__(self, data_path, transform=True, transform_seed=0):
         transformations = [
             transforms.Normalize((0.4914, 0.4822, 0.4465), (0.2023, 0.1994, 0.2010))]
 
+        rng = numpy.random.RandomState(transform_seed)
         train_transform = [
             to_pil_image,
-            transforms.RandomCrop(32, padding=4),
-            transforms.RandomHorizontalFlip(),
+            RandomCrop(32, padding=4, seed=rng.randint(2**30)),
+            RandomHorizontalFlip(seed=rng.randint(2**30)),
             transforms.ToTensor()] + transformations
 
         transformations = dict(
-            train=transforms.Compose(train_transform),
-            valid=transforms.Compose(transformations),
-            test=transforms.Compose(transformations))
+            train=Compose(train_transform),
+            valid=Compose(transformations),
+            test=Compose(transformations))
 
         with FileLock('cifar10.lock', timeout=option('download.lock.timeout', 4 * 60, type=int)):
             train_dataset = datasets.CIFAR10(root=data_path, train=True, download=True, transform=transforms.ToTensor())
