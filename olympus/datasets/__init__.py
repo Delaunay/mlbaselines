@@ -199,11 +199,13 @@ class ResumableDataLoader:
         # Pytorch creates a sampler even when BatchSampler is given
         sampler = self.loader.sampler
         batch_sampler = self.loader.batch_sampler
+        transform = self.loader.dataset.transform
 
-        self.loader.dataset.transform.load_state_dict(states['transform'])
+        if transform is not None:
+            transform.load_state_dict(states['transform'])
 
         if sampler is not None and hasattr(sampler, 'load_state_dict'):
-            self.loader.sampler.load_state_dict(states['sampler'])
+            sampler.load_state_dict(states['sampler'])
 
         elif batch_sampler is not None and hasattr(batch_sampler.sampler, 'load_state_dict'):
             batch_sampler.sampler.load_state_dict(states['sampler'])
@@ -217,7 +219,10 @@ class ResumableDataLoader:
         # Batch sampler is always there
         batch_sampler = self.loader.batch_sampler
         state['sampler'] = batch_sampler.sampler.state_dict()
-        state['transform'] = self.loader.dataset.transform.state_dict()
+
+        transform = self.loader.dataset.transform
+        if transform is not None:
+            state['transform'] = transform.state_dict()
 
         return state
 
@@ -374,9 +379,6 @@ class DataLoader:
         transform = arguments.pop('transform', None)
         if transform is None:
             transform = self.split_dataset.transforms.get(subset_name, None)
-
-        if transform is None:
-            transform = lambda x: x
 
         arguments['collate_fn'] = self._fetch_collate_function(
             arguments.get('collate_fn', None),
