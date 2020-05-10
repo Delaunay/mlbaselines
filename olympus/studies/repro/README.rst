@@ -1,6 +1,6 @@
-~~~~~~~~~~~~~~~~~~~~
-Variance Experiments
-~~~~~~~~~~~~~~~~~~~~
+~~~~~~~~~~~~~~~~~~~~~
+Reproducibility tests
+~~~~~~~~~~~~~~~~~~~~~
 
 Installation
 ------------
@@ -39,7 +39,7 @@ Here's the ``tiny`` task for example:
        random_state: 1
        bootstrap_seed: 1
 
-   medians: ['random_state']
+   resumable: 0
 
    defaults: {}
 
@@ -55,18 +55,16 @@ Make sure that it supports ``uid``,
 ``experiment_name`` and ``client``,
 which are required to log the metrics in the database.
 
-The ``objective`` is the metric that will be used to select the median seeds.
+The ``objective`` is the metric that will be used to verify reproducibility.
 
 The ``variables`` are the sources of variation that will be 
-investigated. The values passed will serve as the default values while
+tested. The values passed will serve as the default values while
 we vary another variable. For each variable seperately, we will execute
 the training with n different seeds (sequential from 1 to n).
 
-The ``medians`` are the variables that must be investigated first, because we believe that
-some random states could lead to terrible results (like bad weights initialization).
-For each variable in ``medians``, many different values will be tried and the seed corresponding
-to the median objective will then be used in later experiments for the other variables. Order
-them from most critical ones to least critical ones if you have many.
+The ``resumable`` option tells the pipeline if it should run tests for resumption as well.
+The tiny example trains in a single step so there is no room for resumption. For
+any training with gradient descent you should set ``resumable: 1``.
 
 The ``defaults`` are default values to pass to all tasks that are not hyperparameters.
 
@@ -86,17 +84,17 @@ The master process can be started using the ``main.py`` script:
 
 .. code-block:: bash
 
-   $ python olympus/studies/variance/main.py \
+   $ python olympus/studies/repro/main.py \
        --uri 'mongo://{username}:{password}@{host}/{db}?authSource={db}' \
        --database {db} \
-       --config olympus/studies/variance/configs/tiny.yaml \
-       --namespace tiny-var \
+       --config olympus/studies/repro/configs/tiny.yaml \
+       --namespace tiny-repro \
        --num-experiments 200 \
-       --save-dir olympus/studies/variance/results
+       --save-dir olympus/studies/repro/results
 
-This will register all tasks to study the difference sources of variation and wait for
+This will register all tasks to test the difference sources of variation and wait for
 all tasks to complete before parsing the results and saving them
-in ``olympus/studies/variance/results/variance_tiny-var.json``. You can run this
+in ``olympus/studies/repro/results/repro_tiny-repro.json``. You can run this
 from your laptop, no need to run it on the cluster. The script is resumable.
 You can restart the script to monitor the processes or fetch the final results to get
 the json file.
