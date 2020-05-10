@@ -201,7 +201,7 @@ class ResumableDataLoader:
         batch_sampler = self.loader.batch_sampler
         transform = self.loader.dataset.transform
 
-        if transform is not None:
+        if transform is not None and hasattr(transform, 'state_dict'):
             transform.load_state_dict(states['transform'])
 
         if sampler is not None and hasattr(sampler, 'load_state_dict'):
@@ -221,7 +221,7 @@ class ResumableDataLoader:
         state['sampler'] = batch_sampler.sampler.state_dict()
 
         transform = self.loader.dataset.transform
-        if transform is not None:
+        if transform is not None and hasattr(transform, 'state_dict'):
             state['transform'] = transform.state_dict()
 
         return state
