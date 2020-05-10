@@ -28,7 +28,7 @@ def main(bootstrapping_seed=1, sampler_seed=1, transform_seed=1, init_seed=1,
     task = classification_baseline(
         'vgg11', 'glorot_uniform', 'sgd', schedule='exponential',
         dataset='cifar10', batch_size=batch_size, device=fetch_device(),
-        data_augment=True, sampling_method=sampling_method,
+        data_augment=True, split_method=sampling_method,
         sampler_seed=sampler_seed, transform_seed=transform_seed, init_seed=init_seed,
         storage=storage, half=half, hpo_done=hpo_done, verbose=False,
         validate=True)
