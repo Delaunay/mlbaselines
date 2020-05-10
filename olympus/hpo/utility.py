@@ -19,17 +19,15 @@ def hyperparameters(**kwargs):
     Examples
     --------
 
-    .. code-block:: python
+    >>> @hyperparameters(epoch='fidelity(1, 30, 4)', lr='uniform(0, 1)', b='uniform(0, 1)', c='uniform(0, 1)')
+    ... def my_trial(epoch, lr, a, b, c, **kwargs):
+    ...     return lr * a - b * c
 
-        @hyperparameters(epoch='fidelity(1, 30, 4)', lr='uniform(0, 1)', b='uniform(0, 1)', c='uniform(0, 1)')
-        def my_trial(epoch, lr, a, b, c, **kwargs):
-            return lr * a - b * c
+    >>> print(my_trial.space)
+    OrderedDict([('lr', 'uniform(0, 1)'), ('b', 'uniform(0, 1)'), ('c', 'uniform(0, 1)')])
 
-        print(my_trial.space)
-        # OrderedDict([('epoch', 'fidelity(1, 30, 4)'), ('lr', 'uniform(0, 1)'), ('b', 'uniform(0, 1)'), ('c', 'uniform(0, 1)')])
-
-        print(my_trial.fidelity)
-        # fidelity(1, 30, 4)
+    >>> print(my_trial.fidelity)
+    fidelity(1, 30, 4)
 
     """
 

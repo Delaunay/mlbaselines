@@ -138,35 +138,6 @@ def parse_uri(uri: str) -> Dict:
     return arguments
 
 
-def get_storage(uri: str, objective=None):
-    """Shorten the storage config from orion that is super long an super confusing
-        <storage_type>:<database>:<file or address>
-
-        legacy:pickleddb:my_data.pkl
-        legacy:mongodb://user@pass:192.168.0.0:8989
-    """
-    storage_type, storage_uri = uri.split(':', maxsplit=1)
-    arguments = parse_uri(storage_uri)
-    database = arguments.get('scheme', 'pickleddb')
-    database_resource = arguments.get('path', arguments.get('address'))
-
-    if storage_type == 'legacy':
-        # TODO: make it work for mongodb
-        return {
-            'type': storage_type,
-            'database': {
-                'type': database,
-                'host': database_resource,
-            }
-        }
-
-    if storage_type == 'track':
-        return {
-            'type': 'track',
-            'uri': f'{storage_uri}?objective={objective}'
-        }
-
-
 def get_value(item: Union[float, torch.Tensor]) -> float:
     if isinstance(item, torch.Tensor):
         return item.item()

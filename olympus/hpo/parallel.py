@@ -181,7 +181,7 @@ class ExperimentFinished(Exception):
 
 
 class ParallelHPO:
-    """Wraps an hyperparameter optimizer and make it work in collaboration with difference instance
+    """Wraps an hyperparameter optimizer and make it work in collaboration with different HPO instances
 
     Parameters
     ----------

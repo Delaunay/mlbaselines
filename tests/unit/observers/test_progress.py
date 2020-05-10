@@ -1,9 +1,15 @@
 import numpy as np
 import time
 import pytest
-from olympus.observers import ObserverList, Speed, ProgressView
+import os
+from olympus.observers import ObserverList, Speed, ProgressView, ElapsedRealTime
 
 x = [np.zeros((4, 3, 224, 224))]
+
+
+#
+# os.environ['OLYMPUS_PROGRESS_FREQUENCY_EPOCH'] = '0'
+# os.environ['OLYMPUS_PROGRESS_FREQUENCY_BATCH'] = '0'
 
 
 class TaskMock:
@@ -12,6 +18,7 @@ class TaskMock:
         self.callback = callback
         self.epochs = epochs
         self.steps = steps
+        self.metrics.task = self
 
     def fit(self):
         self.metrics.start_train()
@@ -110,6 +117,7 @@ def show_progress():
     )
 
     task.metrics.append(speed)
+    task.metrics.append(ElapsedRealTime())
     task.metrics.append(progress_default)
     task.metrics.append(progress_epoch_guess)
     task.metrics.append(progress_epoch)
@@ -118,4 +126,7 @@ def show_progress():
 
 
 if __name__ == '__main__':
+    # progress.show.metrics
+    os.environ['OLYMPUS_PROGRESS_SHOW_METRICS'] = 'epoch'
+
     show_progress()
