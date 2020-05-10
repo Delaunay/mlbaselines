@@ -102,11 +102,19 @@ def test(data, num_experiments, num_repro, objective, variables, resumable):
                 k = (seed_i * num_repro + repro_i) * (2 if resumable else 1)
                 a = reference.values
                 b = var_data.isel(order=k)[objective].values
-                if ((a == b) | (numpy.isnan(a) & numpy.isnan(b))).all() and False:
+                if ((a == b) | (numpy.isnan(a) & numpy.isnan(b))).all():
                     print(variable, seed_i + 1, repro_i + 1, 'ok')
                 else:
                     failures.append((variable, seed_i + 1, repro_i + 1, a, b))
                     print(variable, seed_i + 1, repro_i + 1, 'fail')
+                if resumable:
+                    b = var_data.isel(order=k + 1)[objective].values
+                    if ((a == b) | (numpy.isnan(a) & numpy.isnan(b))).all():
+                        print(variable, seed_i + 1, repro_i + 1, 'resume ok')
+                    else:
+                        failures.append((variable, seed_i + 1, repro_i + 1, a, b))
+                        print(variable, seed_i + 1, repro_i + 1, 'resume fail')
+
 
     if not failures:
         print('Success!')
