@@ -19,8 +19,8 @@ def main(bootstrapping_seed=1, sampler_seed=1, transform_seed=1, init_seed=1,
     storage = StateStorage(folder=base_folder, time_buffer=5 * 60)
 
     sampling_method = {
-        'name': 'bootstrap', 'ratio': 1,
-        'split_ratio': 0.1666, 
+        'split_method': 'bootstrap',
+        'ratio': 0.1666,
         'seed': bootstrapping_seed}
 
     batch_size=128

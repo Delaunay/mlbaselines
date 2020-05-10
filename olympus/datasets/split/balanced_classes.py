@@ -17,8 +17,7 @@ def balanced_random_indices(method, classes, n_points, seed, split_ratio=0.1, **
 
     rng = numpy.random.RandomState(int(seed))
 
-    sampled_indices = OrderedDict((
-        ('train', []), ('valid', []), ('test', [])))
+    sampled_indices = Split(train=[], valid=[], test=[])
 
     for indices in classes:
         class_sampled_indices = method(

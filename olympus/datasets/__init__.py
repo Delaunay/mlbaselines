@@ -141,9 +141,12 @@ class Dataset(TorchDataset):
 
 class SplitDataset(TorchDataset):
     """Split the main dataset into 3 subsets using the split_method"""
-    def __init__(self, dataset, split_method, data_size=None, seed=1, ratio=0.1, index=0):
+    def __init__(self, dataset, split_method):
         self.dataset = dataset
-        self.splits = generate_splits(dataset, split_method, seed, ratio, index, data_size)
+        if isinstance(split_method, dict):
+            self.splits = generate_splits(dataset, **split_method)
+        else:
+            self.splits = generate_splits(dataset, split_method)
 
     # This function is not compliant with the Dataset Interface on purpose
     # we do not want people to use this class as a normal dataset because it is not
