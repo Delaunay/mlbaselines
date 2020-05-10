@@ -357,7 +357,6 @@ class RoBO(HyperParameterOptimizer):
             model.noise = state['noise']
 
     def state_dict(self, compressed=True):
-        state = super(RoBO, self).state_dict()
         state = super(RoBO, self).state_dict(compressed=False)
         state['count'] = self.count
         state['global_oh_my_god_numpy_rng_state'] = encode_rng_state(numpy.random.get_state())
