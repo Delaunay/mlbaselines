@@ -89,8 +89,8 @@ The master process can be started using the ``main.py`` script:
        --database {db} \
        --config olympus/studies/repro/configs/tiny.yaml \
        --namespace tiny-repro \
-       --num-experiments 10 \
-       --num-repro 10 \
+       --num-experiments 5 \
+       --num-repro 5 \
        --save-dir olympus/studies/repro/results
 
 This will register all tasks to test the difference sources of variation and wait for
