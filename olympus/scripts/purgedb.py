@@ -33,6 +33,28 @@ def main(argv=None):
 
     else:
         query = {'namespace': {'$regex': re.compile(f"^{options.namespace}", re.IGNORECASE)}}
+        stats = client.db[WORK_QUEUE].aggregate([
+            {'$match': query},
+            {'$project': {
+                'namespace': 1,
+           }},
+            {'$group': {
+                '_id': '$namespace',
+            }},
+        ])
+        stats = sorted(doc['_id'] for doc in stats)
+
+        if not stats:
+            print(f'No namespace found for {options.namespace}')
+            return 0
+
+        print('\n'.join(stats))
+        output = input('Do you want to delete all matching namespaces above. (y/n):')
+
+        if output != 'y':
+            print('Cancel purge')
+            return
+
         print('Found')
         print(client.db[METRIC_QUEUE].count(query))
         print(client.db[WORK_QUEUE].count(query))
