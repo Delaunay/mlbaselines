@@ -67,18 +67,22 @@ def generate(num_experiments, num_repro, objective, variables, defaults, resumab
             for repetition in range(1, num_repro + 1):
                 kwargs = copy.copy(defaults)
                 kwargs[variable] = int(seed)
+                kwargs['variable'] = variable
                 kwargs['repetition'] = repetition
                 uid = compute_identity(kwargs, IDENTITY_SIZE)
                 kwargs.pop('repetition')
+                kwargs.pop('variable')
                 kwargs['uid'] = uid
                 configs[variable].append(kwargs)
                 if resumable:
                     kwargs = copy.copy(kwargs)
                     kwargs['_interrupt'] = True
+                    kwargs['variable'] = variable
                     kwargs['repetition'] = repetition
                     kwargs.pop('uid')
                     uid = compute_identity(kwargs, IDENTITY_SIZE)
                     kwargs.pop('repetition')
+                    kwargs.pop('variable')
                     kwargs['uid'] = uid
                     configs[variable].append(kwargs)
 
