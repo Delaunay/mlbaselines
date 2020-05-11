@@ -333,6 +333,9 @@ class ElapsedRealTime(Observer):
     start_time: datetime = field(default_factory=datetime.utcnow)
     end_time: datetime = field(default_factory=datetime.utcnow)
 
+    frequency_end_batch: int = 1
+    frequency_end_train: int = 1
+
     def state_dict(self):
         return self.value()
 
