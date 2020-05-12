@@ -44,7 +44,8 @@ class MNIST(AllDataset):
             Proceedings of the IEEE, 86(11):2278-2324, November 1998.
 
     """
-    def __init__(self, data_path, mini=False, train_size=None, valid_size=None, test_size=None, input_shape=None, target_shape=None):
+    def __init__(self, data_path, mini=False, train_size=None, valid_size=None, test_size=None,
+                 input_shape=None, target_shape=None, **kwargs):
         transformations = [
             transforms.Normalize((0.1307,), (0.3081,))
         ]
