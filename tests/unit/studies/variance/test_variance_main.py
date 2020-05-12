@@ -326,4 +326,4 @@ def test_save_load_results():
 
     save_results('test', data, '.')
 
-    assert load_results('test') == data
+    assert load_results('test', '.') == data

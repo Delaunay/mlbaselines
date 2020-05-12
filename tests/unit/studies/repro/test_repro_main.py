@@ -9,8 +9,8 @@ import pytest
 
 def test_generate():
     defaults = {'a': 0, 'b': 1, 'c': 2, 'd': 3}
-    num_experiments = 10
-    num_repro = 10
+    num_experiments = 2
+    num_repro = 2
     objective = 'obj'
     variables = list('abc')
     resumable = False
@@ -23,10 +23,12 @@ def test_generate():
 
     def test_doc(name, i, j):
         a_doc = copy.copy(defaults)
-        a_doc[name] = i
+        a_doc[name] = int(i)
+        a_doc['variable'] = name
         a_doc['repetition'] = j
         a_doc['uid'] = compute_identity(a_doc, 16)
         a_doc.pop('repetition')
+        a_doc.pop('variable')
         return a_doc
 
     for name in 'abc':
@@ -57,9 +59,12 @@ def test_generate_with_interupts():
         a_doc[name] = i
         if interupt:
             a_doc['_interrupt'] = True
+        a_doc['variable'] = name
         a_doc['repetition'] = j
+        a_doc.pop('uid', None)
         a_doc['uid'] = compute_identity(a_doc, 16)
         a_doc.pop('repetition')
+        a_doc.pop('variable')
         return a_doc
 
     for name in 'abc':
