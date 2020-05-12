@@ -659,9 +659,6 @@ def run(uri, database, namespace, function, num_experiments, budget, fidelity, s
     data = consolidate_results(data)
     save_results(namespace, data, save_dir)
 
-    import pdb
-    pdb.set_trace()
-
     if not do_full_train:
         return
 
