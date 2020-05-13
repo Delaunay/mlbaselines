@@ -72,7 +72,7 @@ def build_data(size):
     defaults = {'a': 0, 'b': 1, 'c': 2, 'd': 3}
     params = {'c': 2, 'd': 3, 'epoch': epochs}
     variables = 'abc'
-    configs = generate(range(size), variables, defaults=defaults)
+    configs = generate(range(size), variables, defaults=defaults, add_reference=False)
 
     n_vars = len(variables)
     n_seeds = size
@@ -101,7 +101,7 @@ def build_data(size):
 
 def test_generate():
     defaults = {'a': 0, 'b': 1, 'c': 2, 'd': 3}
-    configs = generate(range(10), 'abc', defaults=defaults)
+    configs = generate(range(10), 'abc', defaults=defaults, add_reference=False)
 
     assert list(configs.keys()) == list('abc')
 
@@ -111,7 +111,9 @@ def test_generate():
     def test_doc(name, i):
         a_doc = copy.copy(defaults)
         a_doc[name] = i
+        a_doc['_variable'] = name
         a_doc['uid'] = compute_identity(a_doc, 16)
+        a_doc.pop('_variable')
         return a_doc
 
     for i in range(10):
@@ -119,23 +121,54 @@ def test_generate():
             assert configs[name][i] == test_doc(name, i)
 
 
+def test_generate_with_references():
+    defaults = {'a': 0, 'b': 1, 'c': 2, 'd': 3}
+    configs = generate(range(10), 'abc', defaults=defaults, add_reference=True)
+
+    variables = list('abc') + ['reference']
+
+    assert list(configs.keys()) == variables
+
+    for name in variables:
+        assert len(configs[name]) == 10
+
+    def test_doc(name, i):
+        a_doc = copy.copy(defaults)
+        if name == 'reference':
+            a_doc['_repetition'] = i
+        else:
+            a_doc[name] = i
+        a_doc['_variable'] = name
+        a_doc['uid'] = compute_identity(a_doc, 16)
+        if name == 'reference':
+            a_doc.pop('_repetition')
+        a_doc.pop('_variable')
+        return a_doc
+
+    for i in range(10):
+        for name in 'abc':
+            assert configs[name][i] == test_doc(name, i)
+
+
+
 @pytest.mark.usefixtures('clean_mongodb')
 def test_fetch_registered(client):
     namespace = 'test'
-    namespaces = [env(namespace, v) for v in 'abc']
+    variables = list('abc') + ['reference']
+    namespaces = [env(namespace, v) for v in variables]
 
     # test fetch empty
     assert fetch_registered(client, namespaces) == set()
 
     # insert a couple of calls
-    for i, variable in enumerate('abc'):
+    for i, variable in enumerate(variables):
         for j in range(2):
             data = {'name': variable, 'uid': i * 2 + j}
             message = {'kwargs': data}
             client.push(WORK_QUEUE, env(namespace, variable), message, mtype=WORK_ITEM)
 
     # test fetch
-    assert fetch_registered(client, namespaces) == set(range(6))
+    assert fetch_registered(client, namespaces) == set(range(4 * 2))
 
     # Simulate one worker reading one message
     workitem = client.dequeue(WORK_QUEUE, env(namespace, variable))
@@ -143,7 +176,7 @@ def test_fetch_registered(client):
     client.mark_actioned(WORK_QUEUE, workitem)
 
     # Should not affect the query
-    assert fetch_registered(client, namespaces) == set(range(6))
+    assert fetch_registered(client, namespaces) == set(range(4 * 2))
 
 
 @pytest.mark.usefixtures('clean_mongodb')
@@ -151,23 +184,12 @@ def test_register_uniques(client):
     defaults = {'a': 1000, 'b': 1001, 'c': 1002, 'd': 3}
     namespace = 'test'
     configs = generate(range(3), 'abc', defaults=defaults)
-    namespaces = [env(namespace, v) for v in 'abc']
+    variables = list('abc') + ['reference']
+    namespaces = [env(namespace, v) for v in variables]
 
     assert fetch_registered(client, namespaces) == set()
     register(client, foo, namespace, configs)
-    assert len(fetch_registered(client, namespaces)) == 3 * 3
-
-
-@pytest.mark.usefixtures('clean_mongodb')
-def test_register_duplicates(client):
-    defaults = {'a': 0, 'b': 1, 'c': 2, 'd': 3}
-    namespace = 'test'
-    configs = generate(range(3), 'abc', defaults=defaults)
-    namespaces = [env(namespace, v) for v in 'abc']
-
-    assert fetch_registered(client, namespaces) == set()
-    register(client, foo, namespace, configs)
-    assert len(fetch_registered(client, namespaces)) == 3 * 3 - 2
+    assert len(fetch_registered(client, namespaces)) == 4 * 3
 
 
 @pytest.mark.usefixtures('clean_mongodb')
@@ -175,19 +197,20 @@ def test_register_resume(client):
     defaults = {'a': 0, 'b': 1, 'c': 2, 'd': 3}
     namespace = 'test'
     configs = generate(range(3), 'abc', defaults=defaults)
-    namespaces = [env(namespace, v) for v in 'abc']
+    variables = list('abc') + ['reference']
+    namespaces = [env(namespace, v) for v in variables]
 
     assert fetch_registered(client, namespaces) == set()
     new_registered = register(client, foo, namespace, configs)
-    assert len(fetch_registered(client, namespaces)) == 3 * 3 - 2
+    assert len(fetch_registered(client, namespaces)) == 4 * 3
     assert fetch_registered(client, namespaces) == new_registered
 
     # Resume with 10 seeds per configs this time.
     configs = generate(range(10), 'abc', defaults=defaults)
     new_registered = register(client, foo, namespace, configs)
-    assert len(fetch_registered(client, namespaces)) == 3 * 3 - 2 + 3 * (10 - 3)
+    assert len(fetch_registered(client, namespaces)) == 4 * 3 + 4 * 7
     assert fetch_registered(client, namespaces) != new_registered
-    assert len(new_registered) == 3 * (10 - 3)
+    assert len(new_registered) == 4 * 7
 
 
 @pytest.mark.usefixtures('clean_mongodb')
@@ -244,7 +267,7 @@ def test_fetch_results_corrupt_completed(client):
     namespace = 'test'
     register(client, foo, namespace, configs)
 
-    for variable in 'abc':
+    for variable in configs.keys():
         for i in range(num_items):
             workitem = client.dequeue(WORK_QUEUE, env(namespace, variable))
             client.mark_actioned(WORK_QUEUE, workitem)
@@ -282,16 +305,16 @@ def test_fetch_results_all_completed(client):
     assert data.params.values.tolist() == ['c', 'd']
     assert data.order.values.tolist() == [0, 1]
     assert data.epoch.values.tolist() == list(range(params['epoch'] + 1))
-    assert data.uid.shape == (2, 2)
-    assert data.seed.values.tolist() == data.noise.values.tolist()
+    assert data.uid.shape == (3, 2)
+    assert data.seed.values.tolist() == data.noise.values.tolist() + ['reference']
     assert data.a.values.tolist() == [
-        [0, 1000], [1, 1000]]
+        [0, 1000, 1000], [1, 1000, 1000]]
     assert data.b.values.tolist() == [
-        [1001, 0], [1001, 1]]
+        [1001, 0, 1001], [1001, 1, 1001]]
     assert data.c.values.tolist() == [
-        [2, 2], [2, 2]]
+        [2, 2, 2], [2, 2, 2]]
     assert data.d.values.tolist() == [
-        [3, 3], [3, 3]]
+        [3, 3, 3], [3, 3, 3]]
 
     assert (data.obj.loc[dict(order=0, seed='a')].values.tolist() ==
             list(range(2002, 2002 + params['epoch'] + 1)))
@@ -300,13 +323,13 @@ def test_fetch_results_all_completed(client):
 def test_get_medians_odd():
     data = build_data(5)
     median_seeds = get_medians(data, ['a'], 'objective')
-    assert median_seeds == {'a': 1}
+    assert median_seeds == {'a': 0}
 
     median_seeds = get_medians(data, ['a', 'b'], 'objective')
-    assert median_seeds == {'a': 1, 'b': 4}
+    assert median_seeds == {'a': 0, 'b': 0}
 
     median_seeds = get_medians(data, ['b', 'c'], 'objective')
-    assert median_seeds == {'b': 4, 'c': 3}
+    assert median_seeds == {'b': 0, 'c': 3}
 
 
 def test_get_medians_even():
@@ -315,10 +338,10 @@ def test_get_medians_even():
     assert median_seeds == {'a': 1}
 
     median_seeds = get_medians(data, ['a', 'b'], 'objective')
-    assert median_seeds == {'a': 1, 'b': 3}
+    assert median_seeds == {'a': 1, 'b': 1}
 
     median_seeds = get_medians(data, ['b', 'c'], 'objective')
-    assert median_seeds == {'b': 3, 'c': 1}
+    assert median_seeds == {'b': 1, 'c': 1}
 
 
 def test_save_load_results():

@@ -92,7 +92,11 @@ The master process can be started using the ``main.py`` script:
        --config olympus/studies/variance/configs/tiny.yaml \
        --namespace tiny-var \
        --num-experiments 200 \
+       --add-reference \
        --save-dir olympus/studies/variance/results
+
+If your application failed the reproducibility test in ``olympus/studies/repro``, you should use the
+option ``--add-reference`` so that background noise is measured.
 
 This will register all tasks to study the difference sources of variation and wait for
 all tasks to complete before parsing the results and saving them

@@ -48,18 +48,35 @@ def fetch_registered(client, namespaces):
     return registered
 
 
-def generate(seeds, variables, defaults):
+def generate(seeds, variables, defaults, add_reference=True):
     configs = dict()
     for variable in variables:
         configs[variable] = []
         for seed in seeds:
             kwargs = copy.copy(defaults)
             kwargs[variable] = int(seed)
+            # We want the duplicates across the study of the different sources of variation.
+            # So each have a uid which depends on variable name
+            kwargs['_variable'] = variable
             uid = compute_identity(kwargs, IDENTITY_SIZE)
+            kwargs.pop('_variable')
             kwargs['uid'] = uid
             configs[variable].append(kwargs)
 
-    return configs 
+    if add_reference:
+        variable = 'reference'
+        configs[variable] = []
+        for i in range(len(seeds)):
+            kwargs = copy.copy(defaults)
+            kwargs['_repetition'] = i
+            kwargs['_variable'] = variable
+            uid = compute_identity(kwargs, IDENTITY_SIZE)
+            kwargs.pop('_repetition')
+            kwargs.pop('_variable')
+            kwargs['uid'] = uid
+            configs[variable].append(kwargs)
+
+    return configs
 
 
 def register(client, function, namespace, variables):
@@ -206,11 +223,12 @@ def fetch_results(client, namespace, configs, medians, params, defaults):
     trial_stats = fetch_vars_stats(client, namespace)
     if remaining(trial_stats):
         raise RuntimeError('Not all trials are completed')
-    for variable in configs.keys():
+    for variable in variables:
         trials = create_trials(configs[variable], params, metrics)
+        variables_except_reference = [v for v in variables if v != 'reference']
         arrays.append(
             create_valid_curves_xarray(
-                trials, metrics, variables, epoch,
+                trials, metrics, variables_except_reference, epoch,
                 list(sorted(params.keys())), variable))
 
     data = xarray.combine_by_coords(arrays)
@@ -250,7 +268,7 @@ def load_results(namespace, save_dir):
 
 
 def run(uri, database, namespace, function, objective, medians, defaults, variables, params,
-        num_experiments, sleep_time=60, save_dir='.'):
+        num_experiments, add_reference, sleep_time=60, save_dir='.'):
     if num_experiments is None:
         num_experiments = 20
 
@@ -258,14 +276,14 @@ def run(uri, database, namespace, function, objective, medians, defaults, variab
 
     defaults.update(dict(list(variables.items()) + list(params.items())))
 
-    configs = generate(range(num_experiments), medians, defaults)
+    configs = generate(range(num_experiments), medians, defaults, add_reference=False)
     register(client, function, namespace, configs)
 
     wait(client, namespace, sleep=sleep_time)
 
     data = fetch_results(client, namespace, configs, medians, params, defaults)
     defaults.update(get_medians(data, medians, objective))
-    new_configs = generate(range(num_experiments), variables, defaults)
+    new_configs = generate(range(num_experiments), variables, defaults, add_reference=add_reference)
     register(client, function, namespace, new_configs)
 
     wait(client, namespace, sleep=5)
@@ -293,6 +311,7 @@ def main(args=None):
     parser.add_argument('--config', type=str)
     parser.add_argument('--sleep-time', default=60, type=int)
     parser.add_argument('--num-experiments', default=200, type=int)
+    parser.add_argument('--add-reference', action='store_true')
     parser.add_argument('--save-dir', default='.', type=str)
 
     args = parser.parse_args(args)
@@ -304,6 +323,7 @@ def main(args=None):
     run_from_config_file(
         args.uri, args.database, namespace, args.config,
         sleep_time=args.sleep_time, num_experiments=args.num_experiments,
+        add_reference=args.add_reference,
         save_dir=args.save_dir)
 
 
