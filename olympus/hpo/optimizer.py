@@ -78,7 +78,7 @@ class HyperParameterOptimizer:
     seed: int
         Seed for the pseudo random number generator
     """
-    def __init__(self, fidelity: Fidelity, space: Union[Space, Dict], seed=new_seed(hpo_sampler=0), **kwargs):
+    def __init__(self, fidelity: Fidelity, space: Union[Space, Dict], seed=0, **kwargs):
         self.identity = 'uid'
 
         for k, v in kwargs.items():

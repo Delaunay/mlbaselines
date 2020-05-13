@@ -19,7 +19,7 @@ class RandomSearch(HyperParameterOptimizer):
     .. image:: ../../docs/_static/hpo/rs_space.png
     """
 
-    def __init__(self, fidelity: Fidelity, count: int, space: Space, seed=new_seed(hpo_sampler=0),
+    def __init__(self, fidelity: Fidelity, count: int, space: Space, seed=0,
                  pool_size=None, **kwargs):
         super(RandomSearch, self).__init__(fidelity, space, seed, **kwargs)
         self.count = count

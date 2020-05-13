@@ -17,7 +17,7 @@ class GridSearch(HyperParameterOptimizer):
     """
 
     def __init__(self, fidelity: Fidelity, space: Space, n_points=5, nudge=None,
-                 seed=new_seed(hpo_sampler=0), pool_size=None, **kwargs):
+                 seed=0, pool_size=None, **kwargs):
         super(GridSearch, self).__init__(fidelity, space, seed, **kwargs)
         self.n_points = n_points
         self.count = n_points ** len(space)
@@ -106,7 +106,7 @@ class NoisyGridSearch(GridSearch):
     """
     """
 
-    def __init__(self, fidelity: Fidelity, space: Space, seed=new_seed(hpo_sampler=0), n_points=5,
+    def __init__(self, fidelity: Fidelity, space: Space, seed=0, n_points=5,
                  count=None, deltas=None, pool_size=None, **kwargs):
         super(NoisyGridSearch, self).__init__(
             fidelity, space, seed=seed, n_points=n_points, pool_size=pool_size, **kwargs)

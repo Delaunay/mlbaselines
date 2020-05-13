@@ -113,7 +113,7 @@ class Hyperband(HyperParameterOptimizer):
     .. [1] Lisha Li, Kevin Jamieson, Giulia DeSalvo, Afshin Rostamizadeh, Ameet Talwalkar,
         "Hyperband: A Novel Bandit-Based Approach to Hyperparameter Optimization"
     """
-    def __init__(self, fidelity: Fidelity, space: Space, seed: int = new_seed(hpo_sampler=0), **kwargs):
+    def __init__(self, fidelity: Fidelity, space: Space, seed: int = 0, **kwargs):
         super(Hyperband, self).__init__(fidelity, space, seed, **kwargs)
         self.brackets: List[_Bracket] = []
         self.offset = 0

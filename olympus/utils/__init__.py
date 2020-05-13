@@ -334,14 +334,15 @@ def get_seeds():
 
 def set_seeds(seed):
     """Set most commonly used global seeds"""
+    print('seed:', seed)
     if torch.cuda.is_available():
         torch.backends.cudnn.benchmark = False
-        torch.cuda.manual_seed_all(new_seed(torch_cuda=seed))
+        torch.cuda.manual_seed_all(seed)
         # torch.backends.cudnn.deterministic = True
 
-    random.seed(new_seed(python_rand=seed))
-    numpy.random.seed(new_seed(numpy=seed))
-    torch.manual_seed(new_seed(torch_cpu=seed))
+    random.seed(seed)
+    numpy.random.seed(seed)
+    torch.manual_seed(seed)
 
 
 def get_rng_states():

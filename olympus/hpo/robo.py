@@ -204,10 +204,10 @@ class RoBO(HyperParameterOptimizer):
                  maximizer="random", 
                  acquisition_func="log_ei",
                  n_init=10,
-                 model_seed=new_seed(hpo_sampler=0),
-                 prior_seed=new_seed(hpo_prior=0),
-                 init_seed=new_seed(hpo_init=0),
-                 maximizer_seed=new_seed(hpo_maximizer=0),
+                 model_seed=0,
+                 prior_seed=0,
+                 init_seed=0,
+                 maximizer_seed=0,
                  **kwargs):
         super(RoBO, self).__init__(fidelity, space, model_seed, **kwargs)
         self.count = count
