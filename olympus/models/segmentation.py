@@ -5,12 +5,6 @@ import torch.nn.functional as F
 
 from torchvision.models._utils import IntermediateLayerGetter
 
-def init_weights(m):
-    if type(m) == nn.Conv2d:
-        torch.nn.init.kaiming_normal_(m.weight)
-        if m.bias is not None:
-            m.bias.data.fill_(0.01)
-
 class Model(nn.Module):
     def __init__(self):
         super(Model, self).__init__()
@@ -37,7 +31,12 @@ class Model(nn.Module):
         output = F.interpolate(output, size=input.size()[-2:], mode='bilinear', align_corners=False)
         return output
 
-    def initialize(self):
+    def initialize(self, *args, **kargs):
+        def init_weights(m):
+            if type(m) == nn.Conv2d:
+                torch.nn.init.kaiming_normal_(m.weight)
+                if m.bias is not None:
+                    m.bias.data.fill_(0.01)
         self.layer4_classifier.apply(init_weights)
         self.layer3_classifier.apply(init_weights)
 

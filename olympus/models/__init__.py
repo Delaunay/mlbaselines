@@ -208,7 +208,7 @@ class Model(nn.Module):
         return self.model.parameters(recurse)
 
     def to(self, *args, **kwargs):
-        self._device, self._dtype, non_blocking = torch._C._nn._parse_to(*args, **kwargs)
+        self._device, self._dtype, *_ = torch._C._nn._parse_to(*args, **kwargs)
         super().to(*args, **kwargs)
         return self
 

@@ -17,8 +17,8 @@ class ToLabel:
 
 class UserTransform:
     def __init__(self, input_sampling=None, target_sampling=None,
-                 mean=(0.4538, 0.4416, 0.4076),
-                 std=(0.2371, 0.2330, 0.2384)):
+                 mean=(0.485, 0.456, 0.406),
+                 std=(0.229, 0.224, 0.225)):
         self.input_transform = transforms.Compose([
                 transforms.ToTensor(),
                 transforms.Normalize(mean, std)])
@@ -67,7 +67,7 @@ class DatasetPaddingWrapper(Dataset):
         return len(self.dataset)
 
 class PascalVOC(AllDataset):
-    """The PASCAL VOC segmentation dataset is a challenge dataset with the goal of segmenting 20 classes of objects 
+    """The PASCAL VOC segmentation dataset is a challenge dataset with the goal of segmenting 20 classes of objects
        in realistic scenes.
 
     The full specification can be found at `here <http://host.robots.ox.ac.uk/pascal/VOC/>`_.
@@ -97,7 +97,7 @@ class PascalVOC(AllDataset):
            The PASCAL Visual Object Classes (VOC) Challenge.
 
     """
-    def __init__(self, data_path, year='2012', train_size=None, valid_size=None, test_size=None):
+    def __init__(self, data_path, year='2012', **kargs):
 
         with FileLock('voc.lock', timeout=option('download.lock.timeout', 4 * 60, type=int)):
             train_dataset = torchvision.datasets.VOCSegmentation(
@@ -112,15 +112,25 @@ class PascalVOC(AllDataset):
         dataset = DatasetPaddingWrapper(
             torch.utils.data.ConcatDataset([train_dataset, test_dataset]))
 
+        if 'train_size' not in kargs:
+            kargs['train_size'] = len(train_dataset)
+        if 'valid_size' not in kargs:
+            kargs['valid_size'] = len(test_dataset)//2
+        if 'test_size' not in kargs:
+            kargs['test_size'] = len(test_dataset)//2 + len(test_dataset)%2
+
         super(PascalVOC, self).__init__(
             dataset,
-            test_size=len(test_dataset),
+            **kargs,
         )
 
     @staticmethod
     def categories():
         return set(['segmentation'])   # 'detection'
 
+    @staticmethod
+    def nclasses():
+        return 21
 
 builders = {
     'voc-segmentation': PascalVOC,

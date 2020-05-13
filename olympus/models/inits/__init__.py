@@ -1,4 +1,5 @@
 from olympus.utils.factory import fetch_factories
+
 from olympus.utils import set_seeds as init_seed, warning, HyperParameters
 
 from torch.nn import Module
