@@ -27,8 +27,6 @@ def main(task='rte', bootstrapping_seed=1, sampler_seed=1, init_seed=1, global_s
     print('seeds: init {} / global {} / sampler {} / bootstrapping {}'.format(
         init_seed, global_seed, sampler_seed, bootstrapping_seed))
 
-    set_seeds(global_seed)
-
     base_folder = options('state.storage', '/tmp/storage')
     storage = StateStorage(folder=base_folder, time_buffer=5 * 60)
 
@@ -68,6 +66,9 @@ def main(task='rte', bootstrapping_seed=1, sampler_seed=1, init_seed=1, global_s
         storage.time_buffer = 0
 
     task.init(uid=uid, **hyperparameters)
+
+    # NOTE: Seed global once all special inits are done.
+    set_seeds(global_seed)
 
     task.fit(epochs=epoch)
 
