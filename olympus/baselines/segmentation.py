@@ -113,6 +113,8 @@ def segmentation_baseline(model, initializer, optimizer,
     counts = get_label_counts(train)
     weight = get_criterion_weight(counts)
     weight = torch.tensor(weight)
+    if half:
+        weight = weight.half()
     criterion = nn.CrossEntropyLoss(weight=weight, ignore_index=255)
 
     main_task = Segmentation(
