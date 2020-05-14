@@ -36,7 +36,9 @@ def segmentation_baseline(model, initializer, optimizer,
 
     # dataset size: 2913
     dataset = SplitDataset(
-        Dataset(dataset, path=option('data.path', data_path)),
+        Dataset(dataset,
+            path=option('data.path', data_path),
+            cache=device), # cache=torch.device('cpu')),
         split_method=split_method,
     )
 
@@ -45,7 +47,7 @@ def segmentation_baseline(model, initializer, optimizer,
         sampler_seed=sampler_seed,
         batch_size=batch_size,
         valid_batch_size=valid_batch_size,
-        pin_memory=True,
+        pin_memory=False, # pin_memory=True,
         num_workers=0,
     )
 

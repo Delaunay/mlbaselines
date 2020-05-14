@@ -7,6 +7,7 @@ from torch.utils.data import Dataset
 import numpy as np
 
 from olympus.datasets.dataset import AllDataset
+from olympus.datasets.cache import DatasetCache
 from olympus.utils import option
 
 
@@ -97,7 +98,7 @@ class PascalVOC(AllDataset):
            The PASCAL Visual Object Classes (VOC) Challenge.
 
     """
-    def __init__(self, data_path, year='2012', **kargs):
+    def __init__(self, data_path, year='2012', cache=None, **kargs):
 
         with FileLock('voc.lock', timeout=option('download.lock.timeout', 4 * 60, type=int)):
             train_dataset = torchvision.datasets.VOCSegmentation(
@@ -111,6 +112,9 @@ class PascalVOC(AllDataset):
 
         dataset = DatasetPaddingWrapper(
             torch.utils.data.ConcatDataset([train_dataset, test_dataset]))
+
+        if cache:
+            dataset = DatasetCache(dataset, cache)
 
         if 'train_size' not in kargs:
             kargs['train_size'] = len(train_dataset)
