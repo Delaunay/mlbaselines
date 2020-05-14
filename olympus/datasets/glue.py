@@ -8,7 +8,6 @@ from transformers import glue_convert_examples_to_features as convert_examples_t
 from transformers import glue_output_modes as output_modes
 from transformers import glue_processors as processors
 
-from olympus.datasets.cache import DatasetCache
 from olympus.datasets.dataset import AllDataset
 from olympus.utils.options import option
 
@@ -28,7 +27,7 @@ class GLUE(AllDataset):
         GLUE: A Multi-Task Benchmark and Analysis Platform for Natural Language Understanding, 2018
 
     """
-    def __init__(self, data_path, task_name=None, cache=None, **kwargs):
+    def __init__(self, data_path, task_name=None, **kwargs):
         transformations = None
 
         if task_name is None:
@@ -59,10 +58,6 @@ class GLUE(AllDataset):
             raise ValueError('please point the environment variable OLYMPUS_DATA_PATH '
                              'to the folder containing the GLUE data. Currently, it is '
                              'set as "{}"'.format(data_path))
-
-        if cache:
-            train_dataset = DatasetCache(train_dataset, cache)
-            test_dataset = DatasetCache(test_dataset, cache)
 
         super(GLUE, self).__init__(
             torch.utils.data.ConcatDataset([train_dataset, test_dataset]),

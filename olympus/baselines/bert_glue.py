@@ -39,8 +39,7 @@ def main(task='rte', bootstrapping_seed=1, sampler_seed=1, init_seed=1, global_s
         sampling_method='original',
         sampler_seed=sampler_seed, init_seed=init_seed,
         batch_size=batch_size, device=fetch_device(),
-        storage=storage, half=half, hpo_done=hpo_done, verbose=False, validate=True,
-        cache=torch.device('cuda'))
+        storage=storage, half=half, hpo_done=hpo_done, verbose=False, validate=True)
 
     hyperparameters = dict(
         model={
