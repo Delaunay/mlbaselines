@@ -131,7 +131,12 @@ def main(bootstrapping_seed=1, sampler_seed=1, init_seed=1,
     base_folder = options('state.storage', '/tmp')
     storage = StateStorage(folder=base_folder, time_buffer=5 * 60)
 
-    split_method = 'original'
+    split_method = {
+        'split_method': 'bootstrap',
+        'ratio': 0.25,  # This means 50% training, 25% valid, 25% test
+        'seed': bootstrapping_seed,
+        'balanced': False}
+
     task = segmentation_baseline('fcn_resnet18', 'self_init', 'SGD',
             dataset='voc-segmentation', batch_size=batch_size, device=fetch_device(),
             split_method=split_method, sampler_seed=sampler_seed, init_seed=init_seed,

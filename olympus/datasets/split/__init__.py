@@ -4,7 +4,8 @@ from olympus.utils.factory import fetch_factories
 sampling_methods = fetch_factories('olympus.datasets.split', __file__, function_name='split')
 
 
-def generate_splits(datasets, split_method='original', seed=0, ratio=0.1, index=None, data_size=None):
+def generate_splits(datasets, split_method='original', seed=0, ratio=0.1, index=None,
+                    data_size=None, balanced=False):
     """Generate splits of a data set using the specified method
 
     Attributes
@@ -22,6 +23,9 @@ def generate_splits(datasets, split_method='original', seed=0, ratio=0.1, index=
     index: int
         If data size is small enough, multiple splits of the same data set can be extracted.
         index specifies which of those splits is fetched
+
+    balanced: bool
+        If true, the splits will keep the classes balanced.
     """
     if data_size is not None:
         data_size = int(data_size * len(datasets))
@@ -29,4 +33,4 @@ def generate_splits(datasets, split_method='original', seed=0, ratio=0.1, index=
     else:
         data_size = len(datasets)
 
-    return sampling_methods[split_method](datasets, data_size, seed, ratio, index)
+    return sampling_methods[split_method](datasets, data_size, seed, ratio, index, balanced)

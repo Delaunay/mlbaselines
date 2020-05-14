@@ -2,7 +2,7 @@ from olympus.utils import info
 from olympus.datasets.split.balanced_classes import Split
 
 
-def split(datasets, data_size, seed, ratio, index):
+def split(datasets, data_size, seed, ratio, index, balanced):
     n_train = datasets.train_size
     n_valid = datasets.valid_size
     n_test = datasets.test_size
