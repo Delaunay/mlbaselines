@@ -126,8 +126,10 @@ class Dataset(TorchDataset):
         """Return the mapping between samples index and their class"""
         classes = defaultdict(list)
 
-        for index, [_, y] in enumerate(self.dataset):
-            classes[y].append(index)
+        for index, batch in enumerate(self.dataset):
+            print(type(batch))
+            print(batch[-1])
+            classes[int(batch[-1])].append(index)
 
         return [classes[i] for i in sorted(classes.keys())]
 
@@ -203,7 +205,6 @@ class ResumableDataLoader:
         sampler = self.loader.sampler
         batch_sampler = self.loader.batch_sampler
         transform = self.loader.dataset.transform
-        
         if transform is not None and hasattr(transform, 'state_dict'):
             transform.load_state_dict(states['transform'])
 

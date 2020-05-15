@@ -6,6 +6,7 @@ variables:
     init_seed: 1
     sampler_seed: 2
     global_seed: 3
+    bootstrapping_seed: 4
 
 medians: ['init_seed']
 
@@ -17,6 +18,7 @@ defaults:
     warmup: 0
     epoch: 3
     task: 'rte'
+    ratio: 0.1
 
 params:
     learning_rate: 0.00002

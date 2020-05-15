@@ -19,7 +19,7 @@ def main(task='rte', bootstrapping_seed=1, sampler_seed=1, init_seed=1, global_s
          learning_rate=0.00002, beta1=0.9, beta2=0.999, weight_decay=0.0,
          attention_probs_dropout_prob=0.1, hidden_dropout_prob=0.1,
          batch_size=32, weight_init='normal',
-         warmup=0,
+         warmup=0, ratio=0.1,
          init_std=0.2, epoch=3, half=False, hpo_done=False,
          uid=None, experiment_name=None, client=None, clean_on_exit=True,
          _interrupt=0):
@@ -30,11 +30,17 @@ def main(task='rte', bootstrapping_seed=1, sampler_seed=1, init_seed=1, global_s
     base_folder = options('state.storage', '/tmp/storage')
     storage = StateStorage(folder=base_folder, time_buffer=5 * 60)
 
+    split_method = {
+        'split_method': 'bootstrap',
+        'ratio': ratio,
+        'seed': bootstrapping_seed,
+        'balanced': False}
+
     task = classification_baseline(
         "bert-{}".format(task), 'normal', 'adam',
         schedule='warmup',
         dataset="glue-{}".format(task),
-        sampling_method='original',
+        split_method=split_method,
         sampler_seed=sampler_seed, init_seed=init_seed,
         batch_size=batch_size, device=fetch_device(),
         storage=storage, half=half, hpo_done=hpo_done, verbose=False, validate=True)
