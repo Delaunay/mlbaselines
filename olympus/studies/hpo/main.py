@@ -253,7 +253,7 @@ def fetch_hpo_stats(client, namespace):
                 '$last': '$actioned'
             },
             'error': {
-                '$sum': {'$cond': [{'$eq':["$error", True]}, 1, 0]}
+                '$sum': {'$ifNull': [0, 1]}
             },
             'retry': {
                 '$sum': '$retry'
@@ -367,7 +367,7 @@ def fetch_trial_stats(client, namespace):
                 '$last': '$actioned'
             },
             'error': {
-                '$sum': {'$cond': [{'$eq':["$error", True]}, 1, 0]}
+                '$sum': {'$ifNull': [0, 1]}
             },
             'retry': {
                 '$sum': '$retry'
@@ -575,20 +575,23 @@ def print_status(client, namespace, namespaces):
 
     print()
     print(datetime.datetime.now())
-    print((' ' * 17) + 'HPO   completed    pending     count     broken')
+    print((' ' * 17) + 'HPO   completed    running    pending     count     broken')
     for hpo, hpo_namespaces in namespaces.items():
         status = hpo_stats.get(env(namespace, hpo)[:len(namespace) + 9])
         if status is None:
             status = dict(actioned=0, read=0, count=0, error=0)
-        status['pending'] = status['count'] - status['actioned']
-        print(f'{hpo:>20}: {status["actioned"]:>10} {status["pending"]:>10}'
+        status['pending'] = status['count'] - status['read']
+        status['running'] = status['read'] - status['actioned']
+        print(f'{hpo:>20}: {status["actioned"]:>10} {status["running"]:>10} {status["pending"]:>10}'
               f'{status["count"]:>10} {status["error"]:>10}')
+
         status = trial_stats.get(env(namespace, hpo)[:len(namespace) + 9])
         if status is None:
             status = dict(actioned=0, read=0, count=0, error=0)
-        status['pending'] = status['count'] - status['actioned']
+        status['pending'] = status['count'] - status['read']
+        status['running'] = status['read'] - status['actioned']
         label = 'trials'
-        print(f'{label:>20}: {status["actioned"]:>10} {status["pending"]:>10}'
+        print(f'{label:>20}: {status["actioned"]:>10} {status["running"]:>10} {status["pending"]:>10}'
               f'{status["count"]:>10} {status["error"]:>10}')
         print()
 

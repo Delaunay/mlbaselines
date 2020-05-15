@@ -150,7 +150,7 @@ def fetch_vars_stats(client, namespace):
                 '$last': '$actioned'
             },
             'error': {
-                '$sum': {'$cond': [{'$eq':["$error", True]}, 1, 0]}
+                '$sum': {'$ifNull': [0, 1]}
             },
             'retry': {
                 '$sum': '$retry'
@@ -184,7 +184,7 @@ def print_status(trial_stats):
 
     print()
     print(datetime.datetime.now())
-    print((' ' * 32) + 'variable   completed    pending     count     broken')
+    print((' ' * 32) + 'variable   completed    running    pending     count     broken')
     for namespace, status in trial_stats.items():
         # status = dict(
         #     completed=0, broken=0, pending=0,
@@ -194,8 +194,9 @@ def print_status(trial_stats):
         #     status[hpo_status['status']] += 1
         #     for key in ['completed', 'broken', 'pending', 'missing']:
         #         status['trials'][key] += hpo_status[key]
-        status['pending'] = status['count'] - status['actioned']
-        print(f'{namespace:>40}: {status["actioned"]:>10} {status["pending"]:>10}'
+        status['pending'] = status['count'] - status['read']
+        status['running'] = status['read'] - status['actioned']
+        print(f'{namespace:>40}: {status["actioned"]:>10} {status["running"]:>10} {status["pending"]:>10}'
               f'{status["count"]:>10} {status["error"]:>10}')
         print()
 
