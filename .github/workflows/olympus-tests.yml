@@ -32,7 +32,7 @@ jobs:
         pip install virtualenv
         python -m venv ~/unittest_env
         source ~/unittest_env/bin/activate
-        pip uninstall -y msgqueue orion sspace
+        pip uninstall -y msgqueue orion sspace sklearn
         make travis-install
         pip install flake8
 
