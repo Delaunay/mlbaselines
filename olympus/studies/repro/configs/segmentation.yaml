@@ -1,0 +1,17 @@
+function: 'olympus.baselines.segmentation.main'
+
+objective: 'validation_mean_jaccard_distance'
+
+variables:
+    init_seed: 1
+    bootstrap_seed: 2
+    sampler_seed: 3
+
+resumable: 1
+
+defaults: {}
+
+params:
+    learning_rate: 0.001
+    momentum: 0.9
+    weight_decay: 0.0001
