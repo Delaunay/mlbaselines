@@ -36,7 +36,6 @@ def bootstrap(x, bootstrap_seed, hpo_done):
 
     indices -= set(test_set)
 
-    #code below is redundant, just for clarity / explicitness
     if hpo_done:
         train_set = train_set + valid_set
         test_set = test_set
@@ -45,6 +44,18 @@ def bootstrap(x, bootstrap_seed, hpo_done):
         test_set = valid_set
 
     return x[train_set], x[test_set]
+
+
+def get_roc_auc(preds, targets):
+	fpr, tpr, _  = roc_curve(targets, preds)
+	auc_result = auc(fpr,tpr)
+
+	return auc_result
+
+def get_pcc(preds, targets):
+	pcc = np.corrcoef(preds, targets)[0,1]
+	return pcc
+
 
 def get_space():
     return {'some_hp': 'uniform(1, 10)',
@@ -70,7 +81,9 @@ def main(bootstrap_seed, model_seed, some_hp, some_other_hp, hpo_done=False):
 
     """
 
-    x = get_singleallele_dataset(allele='HLA-A02:01', folder='NetMHC')
+    #Create train/test spits using seed
+    #'some dataset in matrix format with last column being the target'
+    x = get_panallele_dataset(folder='NetMHC')
     train, test = bootstrap(x, bootstrap_seed, hpo_done)
 
     model = my_model(some_hp, some_other_hp)
