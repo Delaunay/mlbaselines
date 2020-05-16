@@ -314,7 +314,7 @@ def new_seed(**kwargs):
     for name, value in kwargs.items():
         # do not change the seed if it was already set
         if name in SEEDS:
-            warning(f'Resetting a global seed for {name}}')
+            warning(f'Resetting a global seed for {name}')
 
         if not automatic_seeding:
             SEEDS[name] = value
