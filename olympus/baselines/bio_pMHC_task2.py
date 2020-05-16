@@ -86,10 +86,10 @@ def main(bootstrap_seed, model_seed, some_hp, some_other_hp, hpo_done=False):
     x = get_panallele_dataset(folder='NetMHC')
     train, test = bootstrap(x, bootstrap_seed, hpo_done)
 
-    model = my_model(some_hp, some_other_hp)
+    model = MLPRegressor(hidden_layer_sizes=(2,), solver="sgd", alpha=0)
     model.fit(train[:, :-1], train[:, -1])
 
-    y_pred = lr.predict(test[:, :-1])
-    error_rate = (test[:, -1] != y_pred).mean()
+    y_pred = model.predict(test[:, :-1])
+    error_rate = get_pcc(y_pred, test[:, -1])
 
     return {"objective": error_rate}

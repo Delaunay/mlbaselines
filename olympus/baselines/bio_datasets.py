@@ -10,7 +10,6 @@ def is_protein(aminoacids, sequence):
         if not j in aminoacids:
             return False
     return True
-    
 
 
 def encode_to_sparse(sequence,aminoacids, max_length):
@@ -35,7 +34,7 @@ def load_pMHC_dataset(folder = "NetMHC"):
 	aminoacids = ["G","P","A","V","L","I","M","C","F","Y","W","H","K","R","Q","N","E","D","S","T"]
 
 	###TODO: find a way to download from Mendeley and unzip here (see below)
-	### urllib.request.urlretrieve('https://md-datasets-cache-zipfiles-prod.s3.eu-west-1.amazonaws.com/8pz43nvvxh-3.zip', 'temp.zip')
+    #urllib.request.urlretrieve('https://md-datasets-cache-zipfiles-prod.s3.eu-west-1.amazonaws.com/8pz43nvvxh-3.zip',f'{folder}/temp.zip')
 	###TODO: find a way to unzip the file from python
 
 
@@ -76,11 +75,11 @@ def get_panallele_dataset(folder = 'NetMHCpan_data')
 	print ('Encoding alleles to sparse...')
 	### encoding the hla alleles into sparse format, as described in original paper
 	for i in list(alleles['allele_seq']):
-    	allele_seq.append(encode_to_sparse(i, aminoacids,max_length_allele).reshape(len(aminoacids)*max_length_allele+1,))
+        allele_seq.append(encode_to_sparse(i, aminoacids,max_length_allele).reshape(len(aminoacids)*max_length_allele+1,))
 	alleles['allele_seq_sparse'] = allele_seq
 
 	### merging the allele sequences with the data
-	data = data.merge(alleles, left_on='allele', right_on = 'HLA_allele')	
+	data = data.merge(alleles, left_on='allele', right_on = 'HLA_allele')
 
 
 	### getting the sparse encodings for the peptides 
@@ -90,22 +89,22 @@ def get_panallele_dataset(folder = 'NetMHCpan_data')
 	where = 0
 	max_length_peptides = int(np.max(train_data['peptide'].str.len()))
 	for i in train_data['peptide']:
-    	if where%1000==0:
-        	print (where)
-    	peptide_sparse.append(encode_to_sparse(i, aminoacids).reshape(len(aminoacids)*,))
+        if where%1000==0:
+            print (where)
+        peptide_sparse.append(encode_to_sparse(i, aminoacids).reshape(len(aminoacids)*,))
     train_data['peptide_sparse'] = peptide_sparse
-    
+
 
     ### mergin these encodings into the dataset
     where= 0
     print ('Stacking train set...')
 	input_data = np.zeros((data.shape[0], (max_length_allele*len(aminoacids)+max_length_peptides*len(aminoacids))))
 	for i in range(train_data.shape[0]):
-	    if where%10000==0:
-	        print (where)
-    	temp = np.hstack((np.array(data['peptide_sparse'][i]),np.array(data['allele_seq_sparse'][i])))
-    	input_data[where,:] = temp
-    	where+=1
+        if where%10000==0:
+            print (where)
+        temp = np.hstack((np.array(data['peptide_sparse'][i]),np.array(data['allele_seq_sparse'][i])))
+        input_data[where,:] = temp
+        where+=1
 
 	print ('Done!')
 	return data, np.array(data['']), input_test, np.array(test_data['label'])
@@ -134,10 +133,10 @@ def get_singleallele_dataset(allele='HLA-A02:01', folder='NetMHC'):
 
 	where = 0
 	for i in inputs:
-	    if where%1000==0:
-	        print (where)
-	    encoded_inputs[where,:] = encode_to_sparse(i, aminoacids).reshape(220,)
-	    where+=1
+        if where%1000==0:
+            print (where)
+        encoded_inputs[where,:] = encode_to_sparse(i, aminoacids).reshape(220,)
+        where+=1
 	encoded_inputs = encoded_inputs[:-1,:]
 
 	print ('Done!')
