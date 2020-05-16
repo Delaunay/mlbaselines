@@ -24,8 +24,11 @@ from torch.nn import Module
 
 
 # https://sergioskar.github.io/Actor_critics/
-# Value Based: They try to find or approximate the optimal value function, which is a mapping between an action and a value. The higher the value, the better the action. The most famous algorithm is Q learning and all its enhancements like Deep Q Networks, Double Dueling Q Networks, etc
-# Policy-Based: Policy-Based algorithms like Policy Gradients and REINFORCE try to find the optimal policy directly without the Q -value as a middleman.
+# Value Based: They try to find or approximate the optimal value function,
+# which is a mapping between an action and a value. The higher the value, the better the action.
+# The most famous algorithm is Q learning and all its enhancements like Deep Q Networks, Double Dueling Q Networks, etc
+# Policy-Based: Policy-Based algorithms like Policy Gradients and REINFORCE
+# try to find the optimal policy directly without the Q -value as a middleman.
 
 
 class AbstractActorCritic(Module):

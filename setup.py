@@ -4,11 +4,27 @@ from setuptools import setup
 
 
 if __name__ == '__main__':
+    extra_requires = {
+        'geffnet': ['geffnet'],
+        'rl': ['gym', 'procgen', 'atari_py'],
+        'dash': ['plotly', 'plotly-express', 'altair', 'flask', 'eventlet', 'flask-socketio'],
+        'nlp': ['transformers'],
+        'parallel': ['psycopg2-binary', 'pymongo'],
+        'testing': ['pytest', 'pytest-cov', 'codecov', 'coverage'],
+        'analysis': ['xarray', 'scikit-learn', 'matplotlib', 'scikit-optimize']
+    }
+
+    all_packages = []
+    for values in extra_requires.values():
+        all_packages.extend(values)
+    extra_requires['all'] = all_packages
+
     setup(
         name='olympus',
         version='0.0.0',
         description='Compendium of ML Models',
         author='Pierre Delaunay, Xavier Bouthillier',
+        extras_require=extra_requires,
         packages=[
             'olympus',
             'olympus.accumulators',
@@ -41,6 +57,7 @@ if __name__ == '__main__':
             'olympus.studies.variance'
         ],
         setup_requires=['setuptools'],
+        install_require=['torch', 'filelock', 'torchvision'],
         tests_require=['pytest', 'flake8', 'codecov', 'pytest-cov'],
         entry_points={
             'console_scripts': [
@@ -49,14 +66,5 @@ if __name__ == '__main__':
                 'olympus-port = olympus.distributed.network:get_free_port',
                 'olympus-hpo-worker = olympus.hpo.worker:main'
             ]
-        },
-        extras_require={
-            'geffnet': ['geffnet==0.9.3'],
-            'rl': ['gym', 'procgen', 'atari_py'],
-            'dash': ['plotly', 'plotly-express', 'altair', 'flask', 'eventlet', 'flask-socketio'],
-            'nlp': ['transformers==2.8.0', 'torch==1.4.0'],
-            'parallel': ['psycopg2-binary', 'pymongo']
-            # > pip install git+git://github.com/Delaunay/track
-            # 'track': ['']
         }
     )

@@ -1,12 +1,3 @@
-pytest
-pytest-cov
-codecov
-coverage
-pymongo
-psycopg2-binary
+git+git://github.com/automl/fanova
 xarray
 emcee
-git+git://github.com/automl/fanova
-Flask-Testing
-gym
-sklearn

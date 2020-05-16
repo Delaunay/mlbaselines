@@ -6,14 +6,22 @@ from sspace import Space as SSpace
 
 from scipy.optimize import OptimizeResult
 
-from skopt import Space
-from skopt.plots import plot_objective, plot_evaluations
-from skopt.space import Real
-from skopt.utils import cook_estimator
+try:
+    from skopt import Space
+    from skopt.plots import plot_objective, plot_evaluations
+    from skopt.space import Real
+    from skopt.utils import cook_estimator
+
+    import_error = None
+except ImportError as e:
+    import_error = e
 
 
 def orion_space_to_skopt_space(orion_space):
     """Convert Oríon's definition of problem's domain to a skopt compatible."""
+    if import_error:
+        raise import_error
+
     dimensions = []
     for key, dimension in orion_space.items():
         #  low = dimension._args[0]

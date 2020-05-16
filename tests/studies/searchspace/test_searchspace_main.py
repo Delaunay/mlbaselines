@@ -11,11 +11,12 @@ import pytest
 from sspace.space import compute_identity
 
 from msgqueue.backends import new_client
-
 from olympus.studies.searchspace.main import (
     register_hpo,
     get_hpo, fetch_metrics, get_array_names, fetch_hpo_valid_curves,
     save_results, load_results, is_registered, is_hpo_completed)
+
+
 from olympus.observers.msgtracker import MSGQTracker, METRIC_QUEUE, METRIC_ITEM, metric_logger
 from olympus.hpo.parallel import (
     exec_remote_call, make_remote_call, RESULT_QUEUE, WORK_QUEUE, WORK_ITEM, HPO_ITEM)

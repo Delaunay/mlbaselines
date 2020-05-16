@@ -16,6 +16,7 @@ from olympus.observers.msgtracker import METRIC_QUEUE
 from olympus.hpo.parallel import make_remote_call, RESULT_QUEUE, WORK_QUEUE, HPO_ITEM, WORK_ITEM
 from olympus.utils.functional import flatten
 from olympus.utils.log import warning
+
 from olympus.studies.searchspace.plot import plot
 
 

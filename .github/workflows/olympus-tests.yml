@@ -69,10 +69,10 @@ jobs:
         source ~/unittest_env/bin/activate
         make travis-hpo_simple
 
-    - name: hpo-parallel
-      run: |
-        source ~/unittest_env/bin/activate
-        make travis-hpo_parallel
+    # - name: hpo-parallel
+    #  run: |
+    #    source ~/unittest_env/bin/activate
+    #    make travis-hpo_parallel
 
     - name: classification
       run: |
