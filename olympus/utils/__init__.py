@@ -338,7 +338,7 @@ def set_seeds(seed):
     if torch.cuda.is_available():
         torch.backends.cudnn.benchmark = False
         torch.cuda.manual_seed_all(seed)
-        # torch.backends.cudnn.deterministic = True
+        torch.backends.cudnn.deterministic = True
 
     random.seed(seed)
     numpy.random.seed(seed)

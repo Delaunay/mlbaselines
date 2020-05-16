@@ -9,7 +9,8 @@ variables:
 
 resumable: 1
 
-defaults: {}
+defaults:
+    epoch: 10
 
 params:
     learning_rate: 0.001
