@@ -4,7 +4,7 @@ objective: 'validation_mean_jaccard_distance'
 
 variables:
     init_seed: 1
-    bootstrap_seed: 2
+    bootstrapping_seed: 2
     sampler_seed: 3
 
 fidelity:
