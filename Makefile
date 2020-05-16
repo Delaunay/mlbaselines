@@ -5,7 +5,7 @@ export CORES=6
 travis: travis-doc travis-unit travis-custom travis-minimalist travis-hpo_simple travis-classification travis-classification-parallel travis-detection travis-classification-fp16 travis-a2c2 travis-a2c travis-end
 
 travis-install:
-	pip install -e .
+	pip install -e .[all]
 	pip install -r requirements.txt
 	pip install -r docs/requirements.txt
 	pip install -r tests/requirements.txt

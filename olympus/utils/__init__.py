@@ -314,9 +314,9 @@ def new_seed(**kwargs):
     for name, value in kwargs.items():
         # do not change the seed if it was already set
         if name in SEEDS:
-            return SEEDS[name]
+            warning(f'Resetting a global seed for {name}}')
 
-        elif not automatic_seeding:
+        if not automatic_seeding:
             SEEDS[name] = value
 
         else:
@@ -334,7 +334,7 @@ def get_seeds():
 
 def set_seeds(seed):
     """Set most commonly used global seeds"""
-    print('seed:', seed)
+
     if torch.cuda.is_available():
         torch.backends.cudnn.benchmark = False
         torch.cuda.manual_seed_all(seed)

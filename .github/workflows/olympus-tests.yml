@@ -22,27 +22,23 @@ jobs:
     - name: cache-pip
       uses: actions/cache@v1
       with:
-        path: venv
-        key: ${{ runner.OS }}-build-${{ hashFiles('setup.py') }}
-        restore-keys: |
-          ${{ runner.OS }}-build-${{ env.cache-name }}-
-          ${{ runner.OS }}-build-
-          ${{ runner.OS }}-
+        path: ~/unittest_env
+        key: ${{ runner.OS }}-build-${{ hashFiles('setup.py') }}-${{ hashFiles('**/requirements.txt') }}
 
     - name: Install dependencies
       run: |
         sudo apt-get install mongodb-server libeigen3-dev swig
         python -m pip install --upgrade pip
         pip install virtualenv
-        python -m venv venv
-        . venv/bin/activate
+        python -m venv ~/unittest_env
+        source ~/unittest_env/bin/activate
         pip uninstall -y msgqueue orion sspace
         make travis-install
         pip install flake8
 
     - name: Lint with flake8
       run: |
-        . venv/bin/activate
+        source ~/unittest_env/bin/activate
         # stop the build if there are Python syntax errors or undefined names
         # flake8 olympus --count --select=E9,F63,F7,F82 --show-source --statistics
         # exit-zero treats all errors as warnings. The GitHub editor is 127 chars wide
@@ -50,42 +46,42 @@ jobs:
 
     - name: unit
       run: |
-        . venv/bin/activate
+        source ~/unittest_env/bin/activate
         make travis-unit
 
     - name: api-test
       run: |
-        . venv/bin/activate
+        source ~/unittest_env/bin/activate
         make travis-custom
 
     - name: minimalist
       run: |
-        . venv/bin/activate
+        source ~/unittest_env/bin/activate
         make travis-minimalist
 
     - name: no-hpo
       run: |
-        . venv/bin/activate
+        source ~/unittest_env/bin/activate
         make travis-classification-config
 
     - name: hpo-simple
       run: |
-        . venv/bin/activate
+        source ~/unittest_env/bin/activate
         make travis-hpo_simple
 
     - name: hpo-parallel
       run: |
-        . venv/bin/activate
+        source ~/unittest_env/bin/activate
         make travis-hpo_parallel
 
     - name: classification
       run: |
-        . venv/bin/activate
+        source ~/unittest_env/bin/activate
         make travis-classification
 
     - name: upload-coverage
       env:
         CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
       run: |
-        . venv/bin/activate
+        source ~/unittest_env/bin/activate
         make travis-end

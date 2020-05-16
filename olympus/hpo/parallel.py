@@ -85,7 +85,7 @@ class HPOManager:
             self.kill_idle_worker(hpo)
 
         if new_trials == 0:
-            info('HPO sleeping', 2 ** self.backoff, 'seconds')
+            info(f'HPO sleeping {2 ** self.backoff} seconds')
             time.sleep(2 ** self.backoff)
 
         if 'hpo_state' in self.state:

@@ -229,6 +229,7 @@ def build(block, cfg, input_size, output_size):
 
     if input_size == (1, 28, 28):
         info('Using PreActResNet architecture for MNIST')
+
         conv = {'kernel_size': 3, 'stride': 1, 'padding': 1}
         avgpool = {'kernel_size': 4}
         maxpool = {}

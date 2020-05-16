@@ -19,13 +19,14 @@ class AllDataset(TorchDataset):
     collate_fn: Optional[Callable] !! static method !!
         merges a list of samples to form a mini-batch of Tensor(s).  Used when using batched loading from a
         map-style dataset.
+
     """
     # Underlying Pytorch dataset
     dataset: TorchDataset = None
 
     # Callable object that apply a transformation on each sample of the data set
     # if you are looking to add data augmentation step you should be looking at
-    # ref...
+    # preprocessor
     transforms: Callable = lambda sample: sample
     collate_fn: Callable = None
 

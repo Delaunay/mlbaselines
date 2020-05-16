@@ -8,3 +8,5 @@ xarray
 emcee
 git+git://github.com/automl/fanova
 Flask-Testing
+gym
+sklearn
