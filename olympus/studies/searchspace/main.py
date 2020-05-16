@@ -1,5 +1,6 @@
 from collections import defaultdict
 import argparse
+import datetime
 import json
 import os
 import time
@@ -12,7 +13,7 @@ import xarray
 from olympus.hpo import HPOptimizer
 from olympus.hpo.fidelity import Fidelity
 from olympus.observers.msgtracker import METRIC_QUEUE
-from olympus.hpo.parallel import make_remote_call, RESULT_QUEUE, WORK_QUEUE, HPO_ITEM
+from olympus.hpo.parallel import make_remote_call, RESULT_QUEUE, WORK_QUEUE, HPO_ITEM, WORK_ITEM
 from olympus.utils.functional import flatten
 from olympus.utils.log import warning
 from olympus.studies.searchspace.plot import plot
@@ -42,6 +43,63 @@ def get_hpo_work_state(client, namespace):
         return messages[-1].message
 
     return None
+
+
+def fetch_trial_stats(client, namespace):
+    query = {
+        'namespace': namespace,
+        'mtype': WORK_ITEM}
+    stats = client.db[WORK_QUEUE].aggregate([
+        {'$match': query},
+        {'$project': {
+            'namespace': 1,
+            'uid': '$message.kwargs.uid',
+            'read': 1,
+            'mtype': 1,
+            'actioned': 1,
+            'heartbeat': 1,
+            'error': 1,
+        }},
+        {'$group': {
+            '_id': '$uid',
+            'namespace': {
+                '$last': '$namespace'
+            },
+            'read': {
+                '$last': '$read'
+            },
+            'actioned': {
+                '$last': '$actioned'
+            },
+            'error': {
+                '$sum': {'$ifNull': [0, 1]}
+            },
+            'retry': {
+                '$sum': '$retry'
+            }
+        }},
+        {'$group': {
+            '_id': '$namespace',
+            'read': {
+                '$sum': {'$cond': [{'$eq':["$read", True]}, 1, 0]}
+            },
+            'actioned': {
+                '$sum': {'$cond': [{'$eq':["$actioned", True]}, 1, 0]}
+            },
+            'error': {
+                '$sum': '$error'
+            },
+            'retry': {
+                '$sum': '$retry'
+            },
+            'count': {
+                '$sum': 1
+            }
+        }}
+    ])
+    stats = {doc['_id']: doc for doc in stats}
+
+    return stats
 
 
 def get_hpo_result_state(client, namespace):
@@ -215,8 +273,27 @@ def load_results(namespace, save_dir):
     return data
 
 
+def print_status(client, namespace):
+
+    trial_stats = fetch_trial_stats(client, namespace)
+
+    print()
+    print(datetime.datetime.now())
+    print((' ' * 17) + '      completed    running    pending     count     broken')
+    status = trial_stats.get(namespace)
+    if status is None:
+        status = dict(actioned=0, read=0, count=0, error=0)
+    status['pending'] = status['count'] - status['read']
+    status['running'] = status['read'] - status['actioned']
+    label = 'trials'
+    print(f'{label:>20}: {status["actioned"]:>10} {status["running"]:>10} {status["pending"]:>10}'
+          f'{status["count"]:>10} {status["error"]:>10}')
+    print()
+
+
 def run(uri, database, namespace, function, fidelity, space, count, variables, 
-        plot_filename, objective, defaults, save_dir='.', sleep_time=60):
+        plot_filename, objective, defaults, save_dir='.', sleep_time=60, 
+        register=True):
     if fidelity is None:
         fidelity = Fidelity(1, 1, name='epoch').to_dict()
 
@@ -231,10 +308,11 @@ def run(uri, database, namespace, function, fidelity, space, count, variables,
 
     client = new_client(uri, database)
 
-    if not is_registered(client, namespace):
+    if not is_registered(client, namespace) and register:
         register_hpo(client, namespace, function, config, defaults=defaults)
 
     while not is_hpo_completed(client, namespace):
+        print_status(client, namespace)
         time.sleep(sleep_time)
 
     # get the result of the HPO
@@ -263,6 +341,7 @@ def main(args=None):
     parser.add_argument('--sleep-time', default=60, type=int)
     parser.add_argument('--max-trials', default=200, type=int)
     parser.add_argument('--save-dir', default='.', type=str)
+    parser.add_argument('--monitor-only', action='store_true')
     parser.add_argument('--plot-filename', default=None, type=str)
 
     args = parser.parse_args(args)
@@ -277,7 +356,8 @@ def main(args=None):
     run_from_config_file(
         args.uri, args.database, namespace, args.config,
         sleep_time=args.sleep_time, count=args.max_trials,
-        save_dir=args.save_dir, plot_filename=args.plot_filename)
+        save_dir=args.save_dir, plot_filename=args.plot_filename,
+        register=not args.monitor_only)
 
 
 if __name__ == '__main__':
