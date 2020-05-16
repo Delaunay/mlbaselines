@@ -7,8 +7,8 @@ from sklearn.ensemble import RandomForestRegressor, RandomForestClassifier
 from sklearn.neighbors import KNeighborsRegressor, KNeighborsClassifier
 from sklearn.linear_model import LinearRegression, LogisticRegression
 from sklearn.neural_network import MLPRegressor,MLPClassifier
-import datasets
-import metrics
+import bio_datasets
+import bio_metrics
 
 
 
