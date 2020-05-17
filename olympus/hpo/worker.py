@@ -88,7 +88,7 @@ class TrialWorker(BaseWorker):
             self.backoff[namespace] = 0
         else:
             # Cap to 5 minutes sleep (2 ** 8)
-            self.backoff[namespace] = max(self.backoff.get(namespace, 0) + 1, 8)
+            self.backoff[namespace] = min(self.backoff.get(namespace, 0) + 1, 8)
 
         info(f'HPO read (results: {new_results}) and queued (trials: {new_trials})')
 
