@@ -1,6 +1,7 @@
 import argparse
 from pprint import pprint
 import re
+from collections import defaultdict
 
 from msgqueue.backends import new_client
 
@@ -91,7 +92,26 @@ def repair_hpo_duplicates(client, namespace, test_only=False):
 
 
 def repair_trials_duplicates(client, namespace, test_only=False):
-    pass
+    cursor = client.db[WORK_QUEUE].find(
+        {'namespace': namespace, 'mtype': WORK_ITEM, 'actioned': False},
+        {'message.kwargs.uid': 1})
+
+    trials = defaultdict(list)
+
+    for trial in cursor:
+        trial_uid = trial['message']['kwargs']['uid']
+        trials[trial_uid].append(trial['_id'])
+
+    error = False
+    for trial_uid, message_uids in trials.items():
+        if len(message_uids) > 1:
+            print(f'ERROR: {len(message_uids)} duplicates for trial {trial_uid}')
+            error = True
+            if not test_only:
+                for message_id in message_uids[1:]:
+                    client.db[WORK_QUEUE].delete_one({'_id': message_id})
+    if not error:
+        print('OK: No trial duplicate')
 
 
 def failover_broken(client, namespace, test_only=False):
