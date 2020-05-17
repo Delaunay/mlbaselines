@@ -351,6 +351,7 @@ def fetch_trial_stats(client, namespace):
             'actioned': 1,
             'heartbeat': 1,
             'error': 1,
+            'retry': 1
         }},
         {'$group': {
             '_id': {
@@ -385,7 +386,7 @@ def fetch_trial_stats(client, namespace):
                 '$sum': '$error'
             },
             'retry': {
-                '$sum': '$retry'
+                '$max': '$retry'
             },
             'count': {
                 '$sum': 1
@@ -440,18 +441,19 @@ def env(namespace, hpo_namespace):
     return namespace + '-' + hpo_namespace.replace('_', '-')
 
 
-def register_hpos(client, namespace, function, configs, defaults, stats):
+def register_hpos(client, namespace, function, configs, defaults, stats, register):
     namespaces = defaultdict(list)
     for hpo, hpo_configs in configs.items():
         for config in hpo_configs:
             hpo_namespace = env(namespace, config['namespace'])
             namespaces[hpo].append(hpo_namespace)
             # TODO: make is_registered more efficient
-            if hpo_namespace in stats:
+            if hpo_namespace in stats and register:
                 print(f'HPO {hpo_namespace} already registered')
                 continue
-            print(f'Registering HPO {hpo_namespace}')
-            register_hpo(client, hpo_namespace, function, config, defaults)
+            if register:
+                print(f'Registering HPO {hpo_namespace}')
+                register_hpo(client, hpo_namespace, function, config, defaults)
 
     return namespaces
 
@@ -575,7 +577,7 @@ def print_status(client, namespace, namespaces):
 
     print()
     print(datetime.datetime.now())
-    print((' ' * 17) + 'HPO   completed    running    pending     count     broken')
+    print((' ' * 17) + 'HPO   completed    running    pending     count     broken       retry')
     for hpo, hpo_namespaces in namespaces.items():
         status = hpo_stats.get(env(namespace, hpo)[:len(namespace) + 9])
         if status is None:
@@ -587,17 +589,18 @@ def print_status(client, namespace, namespaces):
 
         status = trial_stats.get(env(namespace, hpo)[:len(namespace) + 9])
         if status is None:
-            status = dict(actioned=0, read=0, count=0, error=0)
+            status = dict(actioned=0, read=0, count=0, error=0, retry=0)
         status['pending'] = status['count'] - status['read']
         status['running'] = status['read'] - status['actioned']
         label = 'trials'
         print(f'{label:>20}: {status["actioned"]:>10} {status["running"]:>10} {status["pending"]:>10}'
-              f'{status["count"]:>10} {status["error"]:>10}')
+              f'{status["count"]:>10} {status["error"]:>10} {status["retry"]:>10}')
         print()
 
 
 def run(uri, database, namespace, function, num_experiments, budget, fidelity, space, objective,
-        variables, defaults, sleep_time=60, do_full_train=False, save_dir='.', partial=False):
+        variables, defaults, sleep_time=60, do_full_train=False, save_dir='.', partial=False,
+        register=True):
 
     # TODO: Add hyperband
     hpos = ['grid_search', 'nudged_grid_search', 'noisy_grid_search', 'random_search',
@@ -641,7 +644,7 @@ def run(uri, database, namespace, function, num_experiments, budget, fidelity, s
     namespaces = register_hpos(
         client, namespace, function, configs,
         dict(list(variables.items()) + list(defaults.items())),
-        hpo_stats)
+        hpo_stats, register)
     remainings = namespaces
 
     print_status(client, namespace, namespaces)
@@ -695,6 +698,7 @@ def main(args=None):
     parser.add_argument('--num-experiments', default=200, type=int)
     parser.add_argument('--budget', default=200, type=int)
     parser.add_argument('--save-dir', default='.', type=str)
+    parser.add_argument('--monitor-only', action='store_true')
     parser.add_argument(
         '--fetch-partial', action='store_true',
         help='Do not run anything, just fetch partial results and save.')
@@ -708,7 +712,8 @@ def main(args=None):
         args.uri, args.database, namespace, args.config,
         num_experiments=args.num_experiments, budget=args.budget,
         sleep_time=args.sleep_time, 
-        save_dir=args.save_dir, partial=args.fetch_partial)
+        save_dir=args.save_dir, partial=args.fetch_partial,
+        register=not args.monitor_only)
 
 
 if __name__ == '__main__':

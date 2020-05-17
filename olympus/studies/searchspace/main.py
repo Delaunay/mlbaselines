@@ -39,7 +39,7 @@ def is_hpo_completed(client, namespace):
 
 
 def get_hpo_work_state(client, namespace):
-    messages = client.monitor().messages(WORK_QUEUE, namespace, mtype=HPO_ITEM)
+    messages = client.monitor().unread_messages(WORK_QUEUE, namespace, mtype=HPO_ITEM)
     if messages:
         return messages[-1].message
 
