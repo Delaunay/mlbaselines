@@ -3,7 +3,7 @@ from msgqueue.backends import new_server, new_client
 
 from olympus.hpo.parallel import WORK_QUEUE, RESULT_QUEUE, HPO_ITEM
 from olympus.hpo.parallel import exec_remote_call, make_remote_call, HPOManager
-from olympus.utils import info, option
+from olympus.utils import info, option, error
 
 # One of the issue with the explicit worker is that it requires:
 # the hpo and the function to be import-able
@@ -223,11 +223,43 @@ class HPOWorkGroup:
         self.client.monitor().archive(self.experiment, name, namespace_out=namespace_out, format=format)
 
 
+def system_check():
+    import traceback
+
+    try:
+        import torch
+        from olympus.models import Model
+        from olympus.optimizers import Optimizer
+
+        batch = torch.randn((32, 3, 64, 64)).cuda()
+        model = Model('resnet18', input_size=(3, 64, 64), output_size=(10,)).cuda()
+
+        model.init()
+
+        optimizer = Optimizer(
+            'sgd',
+            params=model.parameters())
+
+        optimizer.init(**optimizer.defaults)
+
+        optimizer.zero_grad()
+        loss = model(batch).sum()
+
+        optimizer.backward(loss)
+        optimizer.step()
+
+        return True
+    except:
+        error(traceback.format_exc())
+        return False
+
+
 def main():
     """HPO worker entry point"""
     import argparse
     import os
     import logging
+    import time
 
     from olympus.utils.log import set_log_level
     set_log_level(logging.DEBUG)
@@ -251,15 +283,30 @@ def main():
     parser.add_argument('--work-allowed', default=False, action='store_true',
                         help='Can trials run on this worker')
 
+    parser.add_argument('--system-check', default=False, action='store_true',
+                        help='Run a dummy trial to check that the system is working as expected')
+
     args = parser.parse_args()
+
+    retried = 0
+    if args.system_check:
+        # wait for the system to fix itself
+        while not system_check():
+            error('System check failed!')
+            time.sleep(10)
+            retried += 1
 
     if not args.work_allowed and not args.hpo_allowed:
         args.work_allowed = True
         args.hpo_allowed = True
 
+    if retried > 0:
+        print(f'Worker fix itself after {retried} tries')
+
     worker = TrialWorker(
         args.uri, args.database, args.rank, args.experiment,
         hpo_allowed=args.hpo_allowed, work_allowed=args.work_allowed)
+
     return worker.run()
 
 
