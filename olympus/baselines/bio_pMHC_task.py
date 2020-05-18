@@ -3,10 +3,8 @@ import numpy
 import os
 
 import sklearn.neural_network
-import bio_datasets
-import bio_metrics
 
-from olympus.datasets.mhc import get_singleallele_dataset
+from olympus.datasets.mhc import get_train_dataset
 from olympus.metrics.accuracy import AUC
 from olympus.tasks.sklearn_like import SklearnTask
 from olympus.observers.msgtracker import metric_logger
