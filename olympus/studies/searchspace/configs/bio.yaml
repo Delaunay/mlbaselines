@@ -1,4 +1,4 @@
-function: 'olympus.baselines.bio.main'
+function: 'olympus.baselines.bio_pMHC_task.main'
 
 objective: 'validation_aac'
 
