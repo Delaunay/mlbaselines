@@ -12,4 +12,4 @@ defaults: {}
 
 space:
     hidden_layer_sizes: 'uniform(50, 70)'
-    alpha: 'loguniform(0, 1)'
+    alpha: 'uniform(0, 1)'
