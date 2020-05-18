@@ -90,10 +90,11 @@ def main(bootstrap_seed, model_seed, hidden_layer_sizes, solver, alpha,
     # TODO(Assya): Make sure to pass bootstrapping seed and model init seed
 
     # Load Dataset
-    train_data = get_singleallele_dataset(allele='HLA-A02:01', folder='NetMHC')
+    train_data = get_train_dataset(folder='pMHC_data',allele='HLA-A02:01')
     train_data = bootstrap(train_data, bootstrap_seed)
 
-    # TODO(Assya): Add valid and test
+    valid_data = get_valid_dataset(folder='pMHC_data')
+    test_data = get_test_dataset(folder='pMHC_data')
 
     # Compute validation and test accuracy
     additional_metrics = [
