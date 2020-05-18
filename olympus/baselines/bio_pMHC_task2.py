@@ -14,8 +14,8 @@ import bio_metrics
 
 
 
-def bootstrap(x, bootstrap_seed, hpo_done):
-    ### TODO: add the external test set
+def bootstrap(x, xv, xt, bootstrap_seed, hpo_done):
+    ### TODO: add the two external test sets
     num_points = x.shape[0]
     n_train = int(num_points * 0.8)
     n_valid = int(num_points * 0.20)
@@ -88,7 +88,9 @@ def main(bootstrap_seed, model_seed, hidden_layer_sizes, solver, alpha, ensembli
     #Create train/test spits using seed
     #dataset in matrix format with last column being the target'
     x = get_panallele_dataset(folder='NetMHC')
-    train, test = bootstrap(x, bootstrap_seed, hpo_done)
+    xv = get_valid_dataset(folder='NetMHC')
+    xt = get_test_dataset(folder='NetMHC')
+    train, test = bootstrap(x, xv, xt, bootstrap_seed, hpo_done)
 
     model = MLPRegressor(hidden_layer_sizes=hidden_layer_sizes, solver=solver, alpha=alpha, random_state = model_seed)
     model.fit(train[:, :-1], train[:, -1])

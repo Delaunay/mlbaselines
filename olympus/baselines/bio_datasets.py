@@ -23,10 +23,45 @@ def encode_to_sparse(sequence,aminoacids, max_length):
         seq = np.hstack((seq,aa))
     return seq[1:]
 
-def get_alleles_pMHC(folder = "NetMHC"):
+def get_valid_dataset(folder = "NetMHC"):
+	print ('Loading files...')
+	data = pd.read_csv(f'{folder}/Pearson_dataset.tsv',sep='\t')
+
+	### loading the allele data from specified folder
+	alleles = pd.read_csv(f'{folder}/MHC_pseudo.dat',header=None,sep=' ')
+	alleles = alleles[['HLA' in i for i in alleles[0]]]
+	alleles.columns = ['HLA_allele', 'allele_seq']
+
+	### The overlap is only the alleles for which we have a sequence!
+	overlapping_alleles = set(data['Allele'])&set(alleles['HLA_allele'])
+	data = data[[i in overlapping_alleles for i in data['Allele']]]
+	
+	return data
 
 
-	return alleles
+def get_test_dataset(folder = "NetMHC"):
+	print ('Loading files...')
+	data = pd.read_csv(f'{folder}/hpv_predictions.csv')
+
+	### We will only keep the human alleles
+	data = data[['HLA' in i for i in data['allele']]]
+	### Transforming the allele annotation so it matches the reference:
+	data['allele'] = [''.join(i.split('*')) for i in data['allele']]
+
+	### loading the allele data from specified folder
+	alleles = pd.read_csv(f'{folder}/MHC_pseudo.dat',header=None,sep=' ')
+	alleles = alleles[['HLA' in i for i in alleles[0]]]
+	alleles.columns = ['HLA_allele', 'allele_seq']
+
+	### The overlap is only the alleles for which we have a sequence!
+	overlapping_alleles = set(data['allele'])&set(alleles['HLA_allele'])
+	data = data[[i in overlapping_alleles for i in data['allele']]]
+
+	### as explained in the MHCflurry paper, we rescale the binding affinity:
+	### peptides above 100 μM were defined as non-binders
+	### 
+
+	return data
 
 def load_pMHC_dataset(folder = "NetMHC", alleles_only = False):
 	"""
@@ -97,11 +132,11 @@ def get_panallele_dataset(folder = 'NetMHCpan_data')
 	peptide_sparse = []
 	where = 0
 	max_length_peptides = int(np.max(train_data['peptide'].str.len()))
-	for i in train_data['peptide']:
+	for i in data['peptide']:
         if where%1000==0:
             print (where)
         peptide_sparse.append(encode_to_sparse(i, aminoacids).reshape(len(aminoacids)*,))
-    train_data['peptide_sparse'] = peptide_sparse
+    data['peptide_sparse'] = peptide_sparse
 
 
     ### mergin these encodings into the dataset
@@ -116,7 +151,14 @@ def get_panallele_dataset(folder = 'NetMHCpan_data')
         where+=1
 
 	print ('Done!')
-	return data, np.array(data['']), input_test, np.array(test_data['label'])
+
+	targets = data['measurement_value']
+	
+	### transforming according to MHCflurry formula to range 0-1
+	targets = 1-(np.log(targets)/np.log(50000))
+
+
+	return 
 
 
 
