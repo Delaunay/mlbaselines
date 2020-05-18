@@ -176,3 +176,70 @@ class OnlineTrainAccuracy(Metric):
             'online_train_accuracy': self.accuracies[-1],
             'online_train_loss': self.losses[-1]
         }
+
+
+@dataclass
+class AUC(Metric):
+    loader: DataLoader = None
+    aucs: list = field(default_factory=list)
+    pccs: list = field(default_factory=list)
+    name: str = 'validation'
+    eval_time: StatStream = field(default_factory=lambda: StatStream(drop_first_obs=0))
+    total_time: int = 0
+    metric_stream: Stream = field(default_factory=Stream)
+
+    frequency_new_epoch: int = 1
+    frequency_new_batch: int = 0
+
+    def state_dict(self):
+        return dict(aucs=self.aucs, pccs=self.pccs)
+
+    def load_state_dict(self, state_dict):
+        self.aucs = state_dict['aucs']
+        self.pccs = state_dict['pccs']
+
+    def compute_auc(self, task):
+        start = datetime.utcnow()
+
+        data = self.loader[0]
+        auc, pcc = task.auc(data[0][0], data[1])
+
+        end = datetime.utcnow()
+
+        eval_time = (end - start).total_seconds()
+
+        return eval_time, auc, pcc
+
+    def get_auc(self, task, epoch, context):
+        # I would like to make this completely async
+        # but I do not think I can do it easily
+        # Good enough for now
+        eval_time, auc, pcc = self.compute_auc(task)
+
+        self.eval_time += eval_time
+        self.aucs.append(auc)
+        self.pccs.append(pcc)
+
+    def on_end_epoch(self, task, epoch, context):
+        self.get_auc(task, epoch, context)
+
+    def on_end_train(self, task, step=None):
+        self.get_auc(task, step, None)
+
+    def on_start_train(self, task, step=None):
+        try:
+            self.get_auc(task, step, None)
+        except NotFittedError:
+            # error('')
+            pass
+
+    def value(self):
+        if not self.aucs:
+            return {}
+
+        return {
+            f'{self.name}_auc': self.aucs[-1],
+            f'{self.name}_aac': 1 - self.aucs[-1],  # Area above the curve... ¯\_(ツ)_/¯
+            f'{self.name}_pcc': self.pccs[-1],
+            f'{self.name}_time': self.eval_time.avg
+        }

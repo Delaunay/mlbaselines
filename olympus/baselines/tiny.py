@@ -4,12 +4,8 @@ from sklearn import tree
 import sklearn.datasets
 
 from olympus.metrics import Accuracy, NotFittedError
-from olympus.observers import ElapsedRealTime, SampleCount
 from olympus.observers.msgtracker import metric_logger
-from olympus.tasks.task import Task
-from olympus.utils import HyperParameters, drop_empty_key
-
-from sspace.space import compute_identity
+from olympus.tasks.sklearn_like import SklearnTask
 
 
 def bootstrap(data, target, seed):
@@ -78,63 +74,6 @@ class DecisionTree:
     def fit(self, x, y):
         self.model = self.model.fit(x, y)
         return self.model
-
-
-class SklearnTask(Task):
-    def __init__(self, model):
-        super(SklearnTask, self).__init__()
-        self.model = model
-
-        # Measure the time spent training
-        self.metrics.append(ElapsedRealTime().every(batch=1))
-        self.metrics.append(SampleCount().every(batch=1))
-
-    def get_space(self):
-        """Return hyper parameter space of the task"""
-        # in that simple case only the model has HP
-        # but in DL you would have the optimizer, lr-scheduler, etc...
-        return drop_empty_key({
-            'model': self.model.get_space(),
-        })
-
-    def init(self, model, uid=None):
-        self.model.init(**model)
-
-        # Get a unique identifier for this configuration
-        if uid is None:
-            uid = compute_identity(model, size=16)
-
-        # broadcast a signal that the model is ready
-        # so we can setup logging, data, etc...
-        self.metrics.new_trial(model, uid)
-
-    def fit(self, x, y, epoch=None, context=None):
-        # broadcast to observers/metrics that we are starting the training
-        self.metrics.start_train()
-        self.metrics.new_epoch(0)
-        self.metrics.new_batch(0, input=x)
-
-        self.model.fit(x, y)
-
-        self.metrics.end_batch(1, input=x)
-        self.metrics.end_epoch(1)
-        # broadcast to observers/metrics that we are ending the training
-        self.metrics.end_train()
-
-    def accuracy(self, x, y):
-        # How to measure accuracy given our model
-        pred = self.model.predict(x)
-        accuracy = (pred == y).mean()
-
-        # We expect accuracy and loss
-        return accuracy, 0
-
-    # If you support resuming implement those methods
-    def load_state_dict(self, state, strict=True):
-        pass
-
-    def state_dict(self, destination=None, prefix='', keep_vars=False):
-        pass
 
 
 def main(max_depth=None,
