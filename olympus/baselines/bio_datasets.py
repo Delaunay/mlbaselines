@@ -23,7 +23,12 @@ def encode_to_sparse(sequence,aminoacids, max_length):
         seq = np.hstack((seq,aa))
     return seq[1:]
 
-def load_pMHC_dataset(folder = "NetMHC"):
+def get_alleles_pMHC(folder = "NetMHC"):
+
+
+	return alleles
+
+def load_pMHC_dataset(folder = "NetMHC", alleles_only = False):
 	"""
 	This function prepares the dataset for the second task: predicting pan-allele peptide
 	binding specificities.
@@ -36,6 +41,7 @@ def load_pMHC_dataset(folder = "NetMHC"):
 	###TODO: find a way to download from Mendeley and unzip here (see below)
     #urllib.request.urlretrieve('https://md-datasets-cache-zipfiles-prod.s3.eu-west-1.amazonaws.com/8pz43nvvxh-3.zip',f'{folder}/temp.zip')
 	###TODO: find a way to unzip the file from python
+	###TODO: perform the check for the dataset and download only if needed
 
 
 	### loading the dataset from the specified file and renaming the columns
@@ -56,7 +62,10 @@ def load_pMHC_dataset(folder = "NetMHC"):
 	overlapping_alleles = set(data['allele'])&set(alleles['HLA_allele'])
 	data = data[[i in overlapping_alleles for i in data['allele']]]
 
-	return data, alleles, overlapping_alleles
+	if alleles_only:
+		return alleles
+	else:
+		return data, alleles, overlapping_alleles
 
 
 def get_panallele_dataset(folder = 'NetMHCpan_data')
@@ -120,6 +129,7 @@ def get_singleallele_dataset(allele='HLA-A02:01', folder='NetMHC'):
 	"""
 
 	### getting the dataset
+
 	data, alleles, overlapping_alleles = load_pMHC_dataset(folder)
 
 	### we use the following list for amino acid letter codes

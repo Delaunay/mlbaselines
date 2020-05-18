@@ -51,32 +51,35 @@ def get_space():
 	        'some_other_hp': 'loguniform(1, 10)'}
 
 
-def main(bootstrap_seed, model_seed, some_hp, some_other_hp, hpo_done=False):
+def main(bootstrap_seed, model_seed, hidden_layer_sizes, solver, alpha, hpo_done=False):
     """
 
     Parameters
     ----------
     bootstrap_seed: int
         seed for controling which data-points are selected for training/testing splits
-    algo_seed: int
-        seed for the algorithm
-    some_hp: mystery
-        some hyperparameter to set...
-    some_other_hp: mystery
-        some other hyperparameter to set...
+    model_seed: int
+        seed for the generation of weights
+    hidden_layer_sizes: tuple
+        the size of layers ex: (50,) is one layer of 50 neurons
+    solver: one of {‘lbfgs’, ‘sgd’, ‘adam’}
+        solver to use for optimisation
+    alpha: float
+        L2 penalty (regularization term) parameter.
     hpo_done: bool
         If hpo_done is True, we train on train+valid and report on test. If hpo_done is False, we
         train on train, report on valid and ignore test.
 
     """
 
+
     x = get_singleallele_dataset(allele='HLA-A02:01', folder='NetMHC')
     train, test = bootstrap(x, bootstrap_seed, hpo_done)
 
-    model = my_model(some_hp, some_other_hp)
+    model = MLPRegressor(hidden_layer_sizes=hidden_layer_sizes, solver=solver, alpha=alpha)
     model.fit(train[:, :-1], train[:, -1])
 
-    y_pred = lr.predict(test[:, :-1])
-    error_rate = (test[:, -1] != y_pred).mean()
+    y_pred = model.predict(test[:, :-1])
+    roc_auc = get_roc_auc(y_pred, test[:, -1])
 
-    return {"objective": error_rate}
+    return {"objective": roc_auc}

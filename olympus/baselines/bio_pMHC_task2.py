@@ -15,10 +15,10 @@ import bio_metrics
 
 
 def bootstrap(x, bootstrap_seed, hpo_done):
-
+    ### TODO: add the external test set
     num_points = x.shape[0]
     n_train = int(num_points * 0.8)
-    n_valid = int(num_points * 0.10)
+    n_valid = int(num_points * 0.20)
     n_test = int(num_points * 0.10)
     indices = set(range(num_points))
 
@@ -46,15 +46,15 @@ def bootstrap(x, bootstrap_seed, hpo_done):
     return x[train_set], x[test_set]
 
 
+def get_pcc(preds, targets):
+    return np.corrcoef(preds, targets)[0,1]
+
+
 def get_roc_auc(preds, targets):
 	fpr, tpr, _  = roc_curve(targets, preds)
 	auc_result = auc(fpr,tpr)
 
 	return auc_result
-
-def get_pcc(preds, targets):
-	pcc = np.corrcoef(preds, targets)[0,1]
-	return pcc
 
 
 def get_space():
@@ -62,19 +62,23 @@ def get_space():
 	        'some_other_hp': 'loguniform(1, 10)'}
 
 
-def main(bootstrap_seed, model_seed, some_hp, some_other_hp, hpo_done=False):
+def main(bootstrap_seed, model_seed, hidden_layer_sizes, solver, alpha, ensembling = False, hpo_done=False):
     """
 
     Parameters
     ----------
     bootstrap_seed: int
         seed for controling which data-points are selected for training/testing splits
-    algo_seed: int
-        seed for the algorithm
-    some_hp: mystery
-        some hyperparameter to set...
-    some_other_hp: mystery
-        some other hyperparameter to set...
+    model_seed: int
+        seed for the generation of weights
+    hidden_layer_sizes: tuple
+        the size of layers ex: (50,) is one layer of 50 neurons
+    solver: one of {‘lbfgs’, ‘sgd’, ‘adam’}
+        solver to use for optimisation
+    alpha: float
+        L2 penalty (regularization term) parameter.
+    ensembling: bool
+        decides if yes or no we will use ensembling for the test set
     hpo_done: bool
         If hpo_done is True, we train on train+valid and report on test. If hpo_done is False, we
         train on train, report on valid and ignore test.
@@ -82,14 +86,14 @@ def main(bootstrap_seed, model_seed, some_hp, some_other_hp, hpo_done=False):
     """
 
     #Create train/test spits using seed
-    #'some dataset in matrix format with last column being the target'
+    #dataset in matrix format with last column being the target'
     x = get_panallele_dataset(folder='NetMHC')
     train, test = bootstrap(x, bootstrap_seed, hpo_done)
 
-    model = MLPRegressor(hidden_layer_sizes=(2,), solver="sgd", alpha=0)
+    model = MLPRegressor(hidden_layer_sizes=hidden_layer_sizes, solver=solver, alpha=alpha, random_state = model_seed)
     model.fit(train[:, :-1], train[:, -1])
 
     y_pred = model.predict(test[:, :-1])
-    error_rate = get_pcc(y_pred, test[:, -1])
+    roc_auc = get_roc_auc(y_pred, test[:, -1])
 
-    return {"objective": error_rate}
+    return {"objective": roc_auc}
