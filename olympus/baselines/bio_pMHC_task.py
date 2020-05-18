@@ -148,4 +148,7 @@ def main(bootstrap_seed, model_seed, hidden_layer_sizes, alpha,
 
 
 if __name__ == '__main__':
-    main(allele='HLA-A02:01')
+    for i in range(100):
+        main(random_state=numpy.random.randint(2**30),
+                 bootstrap_seed=numpy.random.randint(2**30),
+                 allele='HLA-A02:01')
