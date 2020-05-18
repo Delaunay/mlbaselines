@@ -2,13 +2,16 @@ import argparse
 from pprint import pprint
 import re
 from collections import defaultdict
+import threading
 
 from msgqueue.backends import new_client
 
+from olympus.hpo.optimizer import HyperParameterOptimizer
 from olympus.observers.msgtracker import METRIC_QUEUE
 from olympus.hpo.parallel import RESULT_QUEUE, WORK_QUEUE, HPO_ITEM, WORK_ITEM, RESULT_ITEM
 from olympus.hpo.worker import TrialWorker
 from olympus.utils.log import set_verbose_level
+from olympus.utils import timeout
 from olympus.studies.searchspace.main import get_hpo
 
 
@@ -82,15 +85,20 @@ def repair_hpo_duplicates(client, namespace, test_only=False):
 
         uids = set()
         sizes = dict()
-        for hpo in hpos:
+        for hpo_message in hpos:
             # deserialize state to get trials
             hpo = HyperParameterOptimizer(None, None, seed=0)
-            hpo.load_state_dict(hpo['message']['hpo_state'])
+            hpo.load_state_dict(hpo_message['message']['hpo_state'])
             hpo_uids = set(hpo.trials.keys())
             # HPO has new uids, but some of past uids are missing, thus it diverged.
             if (hpo_uids - uids) and (uids - hpo_uids):
                 print('ERROR: hpo duplicate {hpo["_id"]} diverged')
-            sizes[hpo["_id"]] = len(hpo_uids)
+            sizes[hpo_message["_id"]] = len(hpo_uids)
+            uids = uids | hpo_uids
+
+        hpo_to_keep = next(iter(sorted(sizes.items(), key=lambda i: i[1], reverse=True)))
+
+        print(f'     would keep {hpo_to_keep[0]}')
 
         if test_only:
             return
@@ -98,8 +106,6 @@ def repair_hpo_duplicates(client, namespace, test_only=False):
         client.db[WORK_QUEUE].update_many(
             {'namespace': namespace, 'mtype': HPO_ITEM},
             {'$set': {'read': True, 'actioned': True}})
-
-        hpo_to_keep = next(iter(sorted(sizes.items(), key=lambda i: i[1], reversed=True)))
 
         client.db[WORK_QUEUE].find_one_and_update(
             {'_id': hpo_to_keep[0]},
@@ -151,6 +157,12 @@ def repair_hpo_lost_results(client, uri, database, namespace, test_only=False):
 
     stats = get_hpo_status(client, namespace, WORK_QUEUE, HPO_ITEM)
 
+    if namespace == 'sst2_hpo-bayesopt-s-10':
+        client.db[RESULT_QUEUE].update_many(
+            {'namespace': namespace, 'mtype': RESULT_ITEM},
+            {'$set': {'read': False, 'actioned': False}})
+
+
     trials = client.db[RESULT_QUEUE].find(
         {'namespace': namespace, 'mtype': RESULT_ITEM, 'actioned': True},
         {'message.uid': 1})
@@ -187,6 +199,12 @@ def repair_hpo_lost_results(client, uri, database, namespace, test_only=False):
                 uri, database, 1, namespace,
                 hpo_allowed=True, work_allowed=False)
             worker.timeout = 1
+
+            # Make sur it only runs the HPO once
+            def stop():
+                worker.running = False
+            threading.Timer(2, stop).start()
+
             worker.run()
         else:
             print('OK: No HPO observation lost')
