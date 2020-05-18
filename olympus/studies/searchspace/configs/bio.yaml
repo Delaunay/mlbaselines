@@ -1,0 +1,15 @@
+function: 'olympus.baselines.bio.main'
+
+objective: 'validation_aac'
+
+variables:
+    random_state: 1
+    bootstrap_seed: 1
+
+fidelity: null
+
+defaults: {}
+
+space:
+    hidden_layer_sizes: 'uniform(50, 70)'
+    alpha: 'loguniform(0, 1)'
