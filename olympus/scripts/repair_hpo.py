@@ -75,16 +75,36 @@ def repair_hpo_duplicates(client, namespace, test_only=False):
     # Reset HPOs
     if stats['count'] - stats['completed'] > 1:
         print('ERROR: {} duplicates found'.format(stats['count'] - stats['completed'] - 1))
+
+
+        hpos = client.db[WORK_QUEUE].find(
+            {'namespace': namespace, 'mtype': HPO_ITEM, 'actioned': False})
+
+        uids = set()
+        sizes = dict()
+        for hpo in hpos:
+            # deserialize state to get trials
+            hpo = HyperParameterOptimizer(None, None, seed=0)
+            hpo.load_state_dict(hpo['message']['hpo_state'])
+            hpo_uids = set(hpo.trials.keys())
+            # HPO has new uids, but some of past uids are missing, thus it diverged.
+            if (hpo_uids - uids) and (uids - hpo_uids):
+                print('ERROR: hpo duplicate {hpo["_id"]} diverged')
+            sizes[hpo["_id"]] = len(hpo_uids)
+
         if test_only:
             return
+
         client.db[WORK_QUEUE].update_many(
             {'namespace': namespace, 'mtype': HPO_ITEM},
             {'$set': {'read': True, 'actioned': True}})
 
+        hpo_to_keep = next(iter(sorted(sizes.items(), key=lambda i: i[1], reversed=True)))
+
         client.db[WORK_QUEUE].find_one_and_update(
-            {'namespace': namespace, 'mtype': HPO_ITEM},
-            {'$set': {'read': False, 'actioned': False}},
-            sort=[( '$natural', -1 )])
+            {'_id': hpo_to_keep[0]},
+            {'$set': {'read': False, 'actioned': False}})
+
     elif stats['count'] - stats['completed'] == 1:
         print('OK: Only 1 actionable hpo found')
     else:
