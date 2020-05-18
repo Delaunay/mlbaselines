@@ -102,10 +102,15 @@ class HPOManager:
 
         m = self.pop_result()
         while m is not None:
+            actioned = True
             if m.mtype == RESULT_ITEM:
                 info(f'HPO {self.experiment} observed {m.message[0]["uid"]}')
-                hpo.observe(m.message[0], m.message[1])
-                new_results += 1
+                try:
+                    hpo.observe(m.message[0], m.message[1])
+                    new_results += 1
+                except KeyError as e:
+                    warning(f'Trial could not be observed: {e}')
+                    actioned = False
 
             elif m.mtype == WORKER_JOIN:
                 self.worker_count += 1
@@ -116,7 +121,8 @@ class HPOManager:
             else:
                 debug(f'Received: {m}')
 
-            self.future_client.mark_actioned(RESULT_QUEUE, m)
+            if actioned:
+                self.future_client.mark_actioned(RESULT_QUEUE, m)
             m = self.pop_result()
         return new_results
 
