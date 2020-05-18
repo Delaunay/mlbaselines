@@ -13,15 +13,28 @@ from olympus.observers.msgtracker import metric_logger
 from olympus.metrics import NotFittedError
 
 
-def bootstrap(x, bootstrap_seed):
 
-    num_points = x.shape[0]
-    indices = set(range(num_points))
+def bootstrap(data, bootstrap_seed):
+    rng = numpy.random.RandomState(seed)
+    n_train = int(data.shape[0]*0.7)
+    n_valid = int(data.shape[0]*0.15)
+    n_test = data.shape[0] - n_train - n_valid
 
-    rng = numpy.random.RandomState(bootstrap_seed)
+    indices = set(range(data.shape[0]))
 
-    indices = rng.choice(list(indices), size=num_points, replace=True)
-    return x[indices]
+    train_set = sorted(rng.choice(list(indices), size=n_train, replace=True))
+
+    indices -= set(train_set)
+
+    valid_set = sorted(rng.choice(list(indices), size=n_valid, replace=True))
+
+    indices -= set(valid_set)
+
+    test_set = sorted(rng.choice(list(indices), size=n_test, replace=True))
+
+    return dict(train=(data[train_set], data[train_set,-1]),
+                valid=(data[valid_set], data[valid_set,-1]),
+                test=(data[test_set], data[test_set,-1]))
 
 
 class MLPRegressor:
@@ -36,10 +49,11 @@ class MLPRegressor:
     @staticmethod
     def hyperparameter_space():
         return {
-            # TODO(Assya): Replace space here with proper HPs
-            'max_depth': 'uniform(0, 100)',
+            'hidden_layer_sizes': 'uniform(50, 70, discrete=True)',
+            'solver': 'uniform(0, 3, discrete=True)',
+            'alpha': 'uniform(0, 0.1)'
         }
-
+    
     # List of hyper-parameters that needs to be set to finish initialization
     def get_space(self):
         return self.hp.missing_parameters()
@@ -65,11 +79,12 @@ class MLPRegressor:
         return self.model
 
 
-def main(bootstrap_seed, model_seed, hidden_layer_sizes, solver, alpha,
-         epoch=0,
-         uid=None,
-         experiment_name=None,
-         client=None):
+def main(bootstrap_seed, model_seed, hidden_layer_sizes, alpha,
+        allele='HLA-A02:01',
+        epoch=0,
+        uid=None,
+        experiment_name=None,
+        client=None):
     """
 
     Parameters
@@ -80,8 +95,6 @@ def main(bootstrap_seed, model_seed, hidden_layer_sizes, solver, alpha,
         seed for the generation of weights
     hidden_layer_sizes: tuple
         the size of layers ex: (50,) is one layer of 50 neurons
-    solver: one of {‘lbfgs’, ‘sgd’, ‘adam’}
-        solver to use for optimisation
     alpha: float
         L2 penalty (regularization term) parameter.
 
@@ -90,16 +103,13 @@ def main(bootstrap_seed, model_seed, hidden_layer_sizes, solver, alpha,
     # TODO(Assya): Make sure to pass bootstrapping seed and model init seed
 
     # Load Dataset
-    train_data = get_train_dataset(folder='pMHC_data',allele='HLA-A02:01')
-    train_data = bootstrap(train_data, bootstrap_seed)
-
-    valid_data = get_valid_dataset(folder='pMHC_data')
-    test_data = get_test_dataset(folder='pMHC_data')
+    train_data = get_train_dataset(folder='pMHC_data',allele=allele)
+    dataset_splits = bootstrap(train_data, bootstrap_seed)
 
     # Compute validation and test accuracy
     additional_metrics = [
-        AUC(name='validation', loader=[([valid_data[:, :-1]], valid_data[:, -1])]),
-        AUC(name='test', loader=[([test_data[:, :-1]], test_data[:, -1])])]
+        AUC(name='validation', loader=[dataset_splits['valid']]),
+        AUC(name='test', loader=[dataset_splits['test']])]
 
     # Setup the task
     task = SklearnTask(
@@ -114,7 +124,9 @@ def main(bootstrap_seed, model_seed, hidden_layer_sizes, solver, alpha,
 
     hyper_parameters = dict(
         model=dict(
-            # TODO(Assya) Pass HPs here
+            hidden_layer_sizes=hidden_layer_sizes,
+            random_state=model_seed,
+            alpha=alpha
         )
     )
 
@@ -127,13 +139,15 @@ def main(bootstrap_seed, model_seed, hidden_layer_sizes, solver, alpha,
     )
 
     # Train
-    task.fit(train_data[:, :-1], train_data[:, -1])
+    x, y = dataset_splits['train']
+    task.fit(x, y)
+
 
     show_dict(task.metrics.value())
 
-    # TODO(Assya): Replace with an equivalent to minimize (ex: 1-AUC)
+    
     return float(stats['validation_aac'])
 
 
 if __name__ == '__main__':
-    main()
+    main(allele='HLA-A02:01')

@@ -1,68 +1,76 @@
 import time
-import numpy as np
-import pandas as pd
+import numpy
 import os
-from sklearn.metrics import roc_curve, auc
-import pdb
-from sklearn.ensemble import RandomForestRegressor, RandomForestClassifier
-from sklearn.neighbors import KNeighborsRegressor, KNeighborsClassifier
-from sklearn.linear_model import LinearRegression, LogisticRegression
-from sklearn.neural_network import MLPRegressor,MLPClassifier
+
+import sklearn.neural_network
 import bio_datasets
 import bio_metrics
 
+from olympus.datasets.mhc import get_singleallele_dataset
+from olympus.metrics.accuracy import AUC
+from olympus.tasks.sklearn_like import SklearnTask
+from olympus.observers.msgtracker import metric_logger
+from olympus.metrics import NotFittedError
 
 
+def bootstrap(x, bootstrap_seed):
 
-def bootstrap(x, xv, xt, bootstrap_seed, hpo_done):
-    ### TODO: add the two external test sets
     num_points = x.shape[0]
-    n_train = int(num_points * 0.8)
-    n_valid = int(num_points * 0.20)
-    n_test = int(num_points * 0.10)
     indices = set(range(num_points))
 
-    rng = np.random.RandomState(bootstrap_seed)
+    rng = numpy.random.RandomState(bootstrap_seed)
 
-    train_set = sorted(rng.choice(list(indices), size=n_train, replace=True))
-
-    indices -= set(train_set)
-
-    valid_set = sorted(rng.choice(list(indices), size=n_valid, replace=True))
-
-    indices -= set(valid_set)
-
-    test_set = sorted(rng.random.choice(list(indices), size=n_test, replace=True))
-
-    indices -= set(test_set)
-
-    if hpo_done:
-        train_set = train_set + valid_set
-        test_set = test_set
-    else:
-        train_set = train_set
-        test_set = valid_set
-
-    return x[train_set], x[test_set]
+    indices = rng.choice(list(indices), size=num_points, replace=True)
+    return x[indices]
 
 
-def get_pcc(preds, targets):
-    return np.corrcoef(preds, targets)[0,1]
+class MLPRegressor:
+    # We can set/fix hyper
+    def __init__(self, random_state, **hyper_parameters):
+        self.model_ctor = sklearn.neural_network.MLPRegressor
+        self.random_state = random_state
+        self.hp = HyperParameters(self.hyperparameter_space(), **hyper_parameters)
+        self.model = None
+
+    # List of all the hyper-parameters
+    @staticmethod
+    def hyperparameter_space():
+        return {
+            'hidden_layer_sizes': 'uniform(50, 70, discrete=True)',
+            'solver': 'uniform(0, 3, discrete=True)',
+            'alpha': 'uniform(0, 0.1)'
+        }
+    
+    # List of hyper-parameters that needs to be set to finish initialization
+    def get_space(self):
+        return self.hp.missing_parameters()
+
+    # Initialize the model when all the hyper-parameters are there
+    def init(self, **hyper_parameters):
+        self.hp.add_parameters(**hyper_parameters)
+        self.model = self.model_ctor(
+            # TODO(Assya): Replace random_state if necessary with what sklearn MLPRegressor
+            #              use to set the initial weights.
+            random_state=self.random_state,
+            **self.hp.parameters(strict=True)
+        )
+
+    def predict(self, x):
+        try:
+            return self.model.predict(x)
+        except sklearn.exceptions.NotFittedError as e:
+            raise NotFittedError from e
+
+    def fit(self, x, y):
+        self.model = self.model.fit(x, y)
+        return self.model
 
 
-def get_roc_auc(preds, targets):
-	fpr, tpr, _  = roc_curve(targets, preds)
-	auc_result = auc(fpr,tpr)
-
-	return auc_result
-
-
-def get_space():
-    return {'some_hp': 'uniform(1, 10)',
-	        'some_other_hp': 'loguniform(1, 10)'}
-
-
-def main(bootstrap_seed, model_seed, hidden_layer_sizes, solver, alpha, ensembling = False, hpo_done=False):
+def main(bootstrap_seed, model_seed, hidden_layer_sizes, solver, alpha,
+         epoch=0,
+         uid=None,
+         experiment_name=None,
+         client=None):
     """
 
     Parameters
@@ -79,23 +87,56 @@ def main(bootstrap_seed, model_seed, hidden_layer_sizes, solver, alpha, ensembli
         L2 penalty (regularization term) parameter.
     ensembling: bool
         decides if yes or no we will use ensembling for the test set
-    hpo_done: bool
-        If hpo_done is True, we train on train+valid and report on test. If hpo_done is False, we
-        train on train, report on valid and ignore test.
 
     """
 
-    #Create train/test spits using seed
-    #dataset in matrix format with last column being the target'
-    x = get_panallele_dataset(folder='NetMHC')
-    xv = get_valid_dataset(folder='NetMHC')
-    xt = get_test_dataset(folder='NetMHC')
-    train, test = bootstrap(x, xv, xt, bootstrap_seed, hpo_done)
+    # TODO(Assya): Make sure to pass bootstrapping seed and model init seed
 
-    model = MLPRegressor(hidden_layer_sizes=hidden_layer_sizes, solver=solver, alpha=alpha, random_state = model_seed)
-    model.fit(train[:, :-1], train[:, -1])
+    # Load Dataset
+    train_data = get_train_dataset(folder='pMHC_data',allele='HLA-A02:01')
+    train_data = bootstrap(train_data, bootstrap_seed)
 
-    y_pred = model.predict(test[:, :-1])
-    roc_auc = get_roc_auc(y_pred, test[:, -1])
+    valid_data = get_valid_dataset(folder='pMHC_data')
+    test_data = get_test_dataset(folder='pMHC_data')
 
-    return {"objective": roc_auc}
+    # Compute validation and test accuracy
+    additional_metrics = [
+        AUC(name='validation', loader=[([valid_data[:, :-1]], valid_data[:, -1])]),
+        AUC(name='test', loader=[([test_data[:, :-1]], test_data[:, -1])])]
+
+    # Setup the task
+    task = SklearnTask(
+        MLPRegressor(hidden_layer_sizes=hidden_layer_sizes, solver=solver, alpha=alpha),
+        metrics=additional_metrics)
+
+    # Save the result of your experiment inside a db
+    if client is not None:
+        task.metrics.append(metric_logger(
+            client=client,
+            experiment=experiment_name))
+
+    hyper_parameters = dict(
+        model=dict(
+            # TODO(Assya) Pass HPs here
+        )
+    )
+
+    show_dict(hyperparameters)
+
+    # initialize the task with you configuration
+    task.init(
+        uid=uid,
+        **hyper_parameters
+    )
+
+    # Train
+    task.fit(train_data[:, :-1], train_data[:, -1])
+
+    show_dict(task.metrics.value())
+
+    
+    return float(stats['validation_aac'])
+
+
+if __name__ == '__main__':
+    main()
