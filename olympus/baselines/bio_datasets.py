@@ -36,6 +36,8 @@ def get_valid_dataset(folder = "NetMHC"):
 	overlapping_alleles = set(data['Allele'])&set(alleles['HLA_allele'])
 	data = data[[i in overlapping_alleles for i in data['Allele']]]
 	
+	###TODO: finish this!
+	
 	return data
 
 
@@ -60,6 +62,10 @@ def get_test_dataset(folder = "NetMHC"):
 	### as explained in the MHCflurry paper, we rescale the binding affinity:
 	### peptides above 100 μM were defined as non-binders
 	### 
+	### values are capped at 50k according to MHCflurry 
+	
+	###TODO: finish this!
+	
 
 	return data
 
@@ -153,12 +159,16 @@ def get_panallele_dataset(folder = 'NetMHCpan_data')
 	print ('Done!')
 
 	targets = data['measurement_value']
+
 	
+	### values are capped at 50k according to MHCflurry 
+	targets = np.array([min(50000,i) for i in data['measurement_value'] ])
 	### transforming according to MHCflurry formula to range 0-1
 	targets = 1-(np.log(targets)/np.log(50000))
 
-
-	return 
+	input_data = np.vstack((input_data, targets))
+	
+	return input_data
 
 
 
@@ -192,6 +202,17 @@ def get_singleallele_dataset(allele='HLA-A02:01', folder='NetMHC'):
 	encoded_inputs = encoded_inputs[:-1,:]
 
 	print ('Done!')
-	return np.vstack((encoded_inputs, labels))
+
+
+	targets = data['measurement_value']
+
+	
+	### values are capped at 50k according to MHCflurry 
+	targets = np.array([min(50000,i) for i in data['measurement_value'] ])
+	### transforming according to MHCflurry formula to range 0-1
+	targets = 1-(np.log(targets)/np.log(50000))
+
+
+	return np.vstack((encoded_inputs, targets))
 
 
