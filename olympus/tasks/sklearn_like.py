@@ -55,12 +55,12 @@ class SklearnTask(Task):
     def auc(self, x, y):
         # How to measure accuracy given our model
         preds = self.model.predict(x)
-	fpr, tpr, _  = roc_curve(y, preds)
-	auc_result = auc(fpr,tpr)
+    fpr, tpr, _  = roc_curve(y, preds)
+    auc_result = auc(fpr,tpr)
 
         pcc = np.corrcoef(preds, targets)[0, 1]
 
-	return auc_result, pcc
+    return auc_result, pcc
 
     # If you support resuming implement those methods
     def load_state_dict(self, state, strict=True):
