@@ -11,8 +11,9 @@ medians: ['init_seed']
 
 defaults:
     half: False
+    epoch: 240
 
 params:
-    learning_rate: 0.001
+    learning_rate: 0.002
     momentum: 0.9
-    weight_decay: 0.0001
+    weight_decay: 0.000001
