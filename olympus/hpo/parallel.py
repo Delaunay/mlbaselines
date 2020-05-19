@@ -5,10 +5,11 @@ from msgqueue.worker import WORKER_JOIN, WORKER_LEFT, SHUTDOWN, WORK_ITEM, RESUL
 from msgqueue.backends import new_client
 from msgqueue.backends.queue import RecordQueue
 
-from olympus.hpo.optimizer import OptimizationIsDone, WaitingForTrials, HyperParameterOptimizer
+from olympus.hpo.optimizer import (
+    OptimizationIsDone, WaitingForTrials, HyperParameterOptimizer, TrialDoesNotExist)
 from olympus.hpo.utility import FunctionWithSpace
 from olympus.utils.importutil import get_import_path
-from olympus.utils import debug, info, option
+from olympus.utils import debug, info, option, warning
 
 
 WORK_QUEUE = 'OLYWORK'
@@ -108,8 +109,8 @@ class HPOManager:
                 try:
                     hpo.observe(m.message[0], m.message[1])
                     new_results += 1
-                except KeyError as e:
-                    warning(f'Trial could not be observed: {e}')
+                except TrialDoesNotExist as e:
+                    warning(f'Could not observe trial: {e}')
                     actioned = False
 
             elif m.mtype == WORKER_JOIN:
@@ -123,6 +124,7 @@ class HPOManager:
 
             if actioned:
                 self.future_client.mark_actioned(RESULT_QUEUE, m)
+
             m = self.pop_result()
         return new_results
 
