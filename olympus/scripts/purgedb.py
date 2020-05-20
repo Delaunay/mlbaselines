@@ -23,6 +23,27 @@ def main(argv=None):
         print(client.db[WORK_QUEUE].count())
         print(client.db[RESULT_QUEUE].count())
 
+        stats = client.db[WORK_QUEUE].aggregate([
+            {'$project': {
+                'namespace': 1,
+            }},
+            {'$group': {
+                '_id': '$namespace',
+            }},
+        ])
+        stats = sorted(doc['_id'] for doc in stats)
+
+        if not stats:
+            print(f'No namespace found for {options.namespace}')
+            return 0
+
+        print('\n'.join(stats))
+        output = input('Do you want to delete all matching namespaces above. (y/n):')
+
+        if output != 'y':
+            print('Cancel purge')
+            return
+
         client.db[METRIC_QUEUE].drop()
         client.db[WORK_QUEUE].drop()
         client.db[RESULT_QUEUE].drop()
