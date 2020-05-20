@@ -140,8 +140,8 @@ def main(bootstrap_seed, model_seed, hidden_layer_sizes=(50,), alpha=0.001,
     # Train
     x, y = dataset_splits['train']
     task.fit(x, y)
-
     show_dict(task.metrics.value())
+    stats = task.metrics.value()
 
     return float(stats['validation_aac'])
 

@@ -3,6 +3,9 @@ from sspace.space import compute_identity
 from olympus.tasks.task import Task
 from olympus.observers import ElapsedRealTime, SampleCount
 from olympus.utils import HyperParameters, drop_empty_key
+### added by AT to correct import problem
+from sklearn.metrics import roc_curve, auc
+import numpy as np
 
 
 class SklearnTask(Task):
@@ -59,10 +62,12 @@ class SklearnTask(Task):
     def auc(self, x, y):
         # How to measure accuracy given our model
         preds = self.model.predict(x)
-        fpr, tpr, _  = roc_curve(y, preds)
+        ### added this transformation for ROCAUC, since it requires classes
+        y_thresholded = (y>0.5)*1
+        fpr, tpr, _  = roc_curve(y_thresholded, preds)
         auc_result = auc(fpr,tpr)
 
-        pcc = np.corrcoef(preds, targets)[0, 1]
+        pcc = np.corrcoef(preds, y)[0, 1]
 
         return auc_result, pcc
 

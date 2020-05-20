@@ -202,7 +202,8 @@ class AUC(Metric):
         start = datetime.utcnow()
 
         data = self.loader[0]
-        auc, pcc = task.auc(data[0][0], data[1])
+        #auc, pcc = task.auc(data[0][0], data[1])
+        auc, pcc = task.auc(data[0], data[1])
 
         end = datetime.utcnow()
 
