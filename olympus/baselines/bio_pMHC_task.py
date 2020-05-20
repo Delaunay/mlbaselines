@@ -13,7 +13,7 @@ from olympus.metrics import NotFittedError
 
 
 def bootstrap(data, bootstrap_seed):
-    rng = numpy.random.RandomState(seed)
+    rng = numpy.random.RandomState(bootstrap_seed)
     n_train = int(data.shape[0]*0.7)
     n_valid = int(data.shape[0]*0.15)
     n_test = data.shape[0] - n_train - n_valid
@@ -48,10 +48,8 @@ class MLPRegressor:
     def hyperparameter_space():
         return {
             'hidden_layer_sizes': 'uniform(50, 70, discrete=True)',
-            'solver': 'uniform(0, 3, discrete=True)',
             'alpha': 'uniform(0, 0.1)'
         }
-    
     # List of hyper-parameters that needs to be set to finish initialization
     def get_space(self):
         return self.hp.missing_parameters()
@@ -77,7 +75,7 @@ class MLPRegressor:
         return self.model
 
 
-def main(bootstrap_seed, model_seed, hidden_layer_sizes, alpha,
+def main(bootstrap_seed, model_seed, hidden_layer_sizes=(50,), alpha=0.001,
         allele='HLA-A02:01',
         epoch=0,
         uid=None,
@@ -101,7 +99,7 @@ def main(bootstrap_seed, model_seed, hidden_layer_sizes, alpha,
     # TODO(Assya): Make sure to pass bootstrapping seed and model init seed
 
     # Load Dataset
-    train_data = get_train_dataset(folder='pMHC_data',allele=allele)
+    train_data = get_train_dataset(folder='/u/trofimov/simul_hpo/data/pMHC_data',allele=allele)
     dataset_splits = bootstrap(train_data, bootstrap_seed)
 
     # Compute validation and test accuracy
@@ -111,7 +109,8 @@ def main(bootstrap_seed, model_seed, hidden_layer_sizes, alpha,
 
     # Setup the task
     task = SklearnTask(
-        MLPRegressor(hidden_layer_sizes=hidden_layer_sizes, solver=solver, alpha=alpha),
+        MLPRegressor(hidden_layer_sizes=hidden_layer_sizes, solver='lbfgs',
+                     alpha=alpha, random_state=model_seed),
         metrics=additional_metrics)
 
     # Save the result of your experiment inside a db
@@ -143,12 +142,11 @@ def main(bootstrap_seed, model_seed, hidden_layer_sizes, alpha,
 
     show_dict(task.metrics.value())
 
-    
     return float(stats['validation_aac'])
 
 
 if __name__ == '__main__':
     for i in range(100):
-        main(random_state=numpy.random.randint(2**30),
+        main(model_seed=numpy.random.randint(2**30),
                  bootstrap_seed=numpy.random.randint(2**30),
                  allele='HLA-A02:01')
