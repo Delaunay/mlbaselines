@@ -7,6 +7,8 @@ from olympus.metrics import Accuracy, NotFittedError
 from olympus.observers.msgtracker import metric_logger
 from olympus.tasks.sklearn_like import SklearnTask
 
+from olympus.utils import HyperParameters
+
 
 def bootstrap(data, target, seed):
     rng = numpy.random.RandomState(seed)

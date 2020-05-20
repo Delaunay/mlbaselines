@@ -9,6 +9,8 @@ from olympus.metrics.accuracy import AUC
 from olympus.tasks.sklearn_like import SklearnTask
 from olympus.observers.msgtracker import metric_logger
 from olympus.metrics import NotFittedError
+from olympus.utils.options import option
+from olympus.utils import HyperParameters, show_dict
 
 
 
@@ -37,9 +39,10 @@ def bootstrap(data, bootstrap_seed):
 
 class MLPRegressor:
     # We can set/fix hyper
-    def __init__(self, random_state, **hyper_parameters):
+    def __init__(self, random_state, solver='lbfgs', **hyper_parameters):
         self.model_ctor = sklearn.neural_network.MLPRegressor
         self.random_state = random_state
+        self.solver = solver
         self.hp = HyperParameters(self.hyperparameter_space(), **hyper_parameters)
         self.model = None
 
@@ -77,6 +80,7 @@ class MLPRegressor:
 
 def main(bootstrap_seed, model_seed, hidden_layer_sizes=(50,), alpha=0.001,
         allele='HLA-A02:01',
+        data_path='.',
         epoch=0,
         uid=None,
         experiment_name=None,
@@ -99,7 +103,7 @@ def main(bootstrap_seed, model_seed, hidden_layer_sizes=(50,), alpha=0.001,
     # TODO(Assya): Make sure to pass bootstrapping seed and model init seed
 
     # Load Dataset
-    train_data = get_train_dataset(folder='/u/trofimov/simul_hpo/data/pMHC_data',allele=allele)
+    train_data = get_train_dataset(folder=option('data.path', data_path), allele=allele)
     dataset_splits = bootstrap(train_data, bootstrap_seed)
 
     # Compute validation and test accuracy
@@ -109,8 +113,7 @@ def main(bootstrap_seed, model_seed, hidden_layer_sizes=(50,), alpha=0.001,
 
     # Setup the task
     task = SklearnTask(
-        MLPRegressor(hidden_layer_sizes=hidden_layer_sizes, solver='lbfgs',
-                     alpha=alpha, random_state=model_seed),
+        MLPRegressor(solver='lbfgs', random_state=model_seed),
         metrics=additional_metrics)
 
     # Save the result of your experiment inside a db
@@ -122,12 +125,11 @@ def main(bootstrap_seed, model_seed, hidden_layer_sizes=(50,), alpha=0.001,
     hyper_parameters = dict(
         model=dict(
             hidden_layer_sizes=hidden_layer_sizes,
-            random_state=model_seed,
             alpha=alpha
         )
     )
 
-    show_dict(hyperparameters)
+    show_dict(hyper_parameters)
 
     # initialize the task with you configuration
     task.init(
@@ -138,7 +140,6 @@ def main(bootstrap_seed, model_seed, hidden_layer_sizes=(50,), alpha=0.001,
     # Train
     x, y = dataset_splits['train']
     task.fit(x, y)
-
 
     show_dict(task.metrics.value())
 

@@ -1,16 +1,20 @@
+from sspace.space import compute_identity
+
 from olympus.tasks.task import Task
 from olympus.observers import ElapsedRealTime, SampleCount
 from olympus.utils import HyperParameters, drop_empty_key
 
 
 class SklearnTask(Task):
-    def __init__(self, model):
+    def __init__(self, model, metrics):
         super(SklearnTask, self).__init__()
         self.model = model
 
         # Measure the time spent training
         self.metrics.append(ElapsedRealTime().every(batch=1))
         self.metrics.append(SampleCount().every(batch=1))
+        for metric in metrics:
+            self.metrics.append(metric)
 
     def get_space(self):
         """Return hyper parameter space of the task"""

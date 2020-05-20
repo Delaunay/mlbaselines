@@ -58,7 +58,7 @@ def merge_dataset(data, peptide_columns, allele_columns, aminoacids, max_length_
 	return input_data
 
 
-def load_pMHC_dataset(folder = "NetMHC", alleles_only = False):
+def load_pMHC_dataset(data_path, folder="NetMHCpan_data", alleles_only = False):
 	"""
 	This function prepares the dataset for the second task: predicting pan-allele peptide
 	binding specificities.
@@ -71,10 +71,9 @@ def load_pMHC_dataset(folder = "NetMHC", alleles_only = False):
 	###TODO: find a way to unzip the file from python
 	###TODO: perform the check for the dataset and download only if needed
 
-
 	### loading the dataset from the specified file and renaming the columns
 	print ('Loading files...')
-	data = pd.read_csv(f'{folder}/curated_training_data.no_mass_spec.csv')
+	data = pd.read_csv(f'{data_path}/{folder}/curated_training_data.no_mass_spec.csv')
 
 	### We will only keep the human alleles
 	data = data[['HLA' in i for i in data['allele']]]
@@ -84,7 +83,7 @@ def load_pMHC_dataset(folder = "NetMHC", alleles_only = False):
 	data['allele'] = [''.join(i.split('*')) for i in data['allele']]
 
 	### loading the allele data from specified folder
-	alleles = pd.read_csv(f'{folder}/MHC_pseudo.dat',header=None,sep=' ')
+	alleles = pd.read_csv(f'{data_path}/{folder}/MHC_pseudo.dat',header=None,sep=' ')
 	alleles = alleles[['HLA' in i for i in alleles[0]]]
 	alleles.columns = ['HLA_allele', 'allele_seq']
 
