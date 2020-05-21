@@ -6,7 +6,7 @@ import sklearn.neural_network
 
 from olympus.datasets.mhc import get_train_dataset
 from olympus.metrics.accuracy import AUC
-from olympus.tasks.sklearn_like import SklearnTask
+from olympus.tasks.sklearn_like import SklearnEnsembleTask
 from olympus.observers.msgtracker import metric_logger
 from olympus.metrics import NotFittedError
 from olympus.utils.options import option
@@ -16,6 +16,18 @@ from olympus.utils import HyperParameters, show_dict
 
 def bootstrap(data, bootstrap_seed):
     rng = numpy.random.RandomState(bootstrap_seed)
+    splits = dict(train=dict(), valid=dict(), test=dict())
+
+    for name, datasubset in data.items():
+        subsplits = data_bootstrap(datasubset, rng)
+        for split_name in splits.keys():
+            splits[split_name][name] = subsplits[split_name]
+
+    return splits
+
+
+def data_bootstrap(data, rng):
+
     n_train = int(data.shape[0]*0.7)
     n_valid = int(data.shape[0]*0.15)
     n_test = data.shape[0] - n_train - n_valid
@@ -32,9 +44,9 @@ def bootstrap(data, bootstrap_seed):
 
     test_set = sorted(rng.choice(list(indices), size=n_test, replace=True))
 
-    return dict(train=(data[train_set], data[train_set,-1]),
-                valid=(data[valid_set], data[valid_set,-1]),
-                test=(data[test_set], data[test_set,-1]))
+    return dict(train=(data[train_set, :-1], data[train_set,-1]),
+                valid=(data[valid_set, :-1], data[valid_set,-1]),
+                test=(data[test_set, :-1], data[test_set,-1]))
 
 
 class MLPRegressor:
@@ -100,21 +112,33 @@ def main(bootstrap_seed, model_seed, hidden_layer_sizes=(50,), alpha=0.001,
 
     """
 
-    # TODO(Assya): Make sure to pass bootstrapping seed and model init seed
 
     # Load Dataset
-    train_data = get_train_dataset(folder=option('data.path', data_path), allele=allele)
+
+    # TODO(Assya): Make this return in format {allele: train_data}
+    train_data = get_train_dataset(folder=option('data.path', data_path))
+
+    ## for testing 
+    # train_data = numpy.random.normal(size=(1000, 100))
+    train_data = {
+        allele: train_data, 
+        'random_allele_name': train_data}
+    ## end
     dataset_splits = bootstrap(train_data, bootstrap_seed)
 
-    # Compute validation and test accuracy
-    additional_metrics = [
-        AUC(name='validation', loader=[dataset_splits['valid']]),
-        AUC(name='test', loader=[dataset_splits['test']])]
+    rng = numpy.random.RandomState(model_seed)
+    models = {name: MLPRegressor(solver='lbfgs', random_state=int(rng.randint(2**30)))
+              for name in sorted(dataset_splits['train'].keys())}
+
+    def create_subtask_metrics(name):
+        return [
+            AUC(name='validation', loader=[dataset_splits['valid'][name]]),
+            AUC(name='test', loader=[dataset_splits['test'][name]])]
 
     # Setup the task
-    task = SklearnTask(
-        MLPRegressor(solver='lbfgs', random_state=model_seed),
-        metrics=additional_metrics)
+    task = SklearnEnsembleTask(
+        models,
+        create_subtask_metrics=create_subtask_metrics)
 
     # Save the result of your experiment inside a db
     if client is not None:
@@ -138,12 +162,11 @@ def main(bootstrap_seed, model_seed, hidden_layer_sizes=(50,), alpha=0.001,
     )
 
     # Train
-    x, y = dataset_splits['train']
-    task.fit(x, y)
-    show_dict(task.metrics.value())
-    stats = task.metrics.value()
+    task.fit(dataset_splits['train'])
+    stats = task.get_metrics_value()
+    show_dict(stats)
 
-    return float(stats['validation_aac'])
+    return float(stats['mean_validation_aac'])
 
 
 if __name__ == '__main__':
