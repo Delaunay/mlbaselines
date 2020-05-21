@@ -3,7 +3,6 @@ import numpy
 import os
 
 import sklearn.neural_network
-
 from olympus.datasets.mhc import get_train_dataset
 from olympus.metrics.accuracy import AUC
 from olympus.tasks.sklearn_like import SklearnEnsembleTask
@@ -91,7 +90,6 @@ class MLPRegressor:
 
 
 def main(bootstrap_seed, model_seed, hidden_layer_sizes=(50,), alpha=0.001,
-        allele='HLA-A02:01',
         data_path='.',
         epoch=0,
         uid=None,
@@ -116,7 +114,8 @@ def main(bootstrap_seed, model_seed, hidden_layer_sizes=(50,), alpha=0.001,
     # Load Dataset
 
     # TODO(Assya): Make this return in format {allele: train_data}
-    train_data = get_train_dataset(folder=option('data.path', data_path))
+    train_data = get_train_dataset(folder=option('data.path', data_path),
+                                   task='single_allele')
 
     ## for testing 
     # train_data = numpy.random.normal(size=(1000, 100))
@@ -172,5 +171,4 @@ def main(bootstrap_seed, model_seed, hidden_layer_sizes=(50,), alpha=0.001,
 if __name__ == '__main__':
     for i in range(100):
         main(model_seed=numpy.random.randint(2**30),
-                 bootstrap_seed=numpy.random.randint(2**30),
-                 allele='HLA-A02:01')
+                 bootstrap_seed=numpy.random.randint(2**30))
