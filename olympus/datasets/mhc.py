@@ -248,6 +248,7 @@ def get_train_dataset(folder = 'NetMHCpan_data', task='single_allele', min_nb_ex
 
 		example_per_allele = data.groupby('allele').count()['peptide']
 		keep_alleles = list(example_per_allele[example_per_allele>=min_nb_examples].index)
+		example_per_allele = example_per_allele[example_per_allele>=min_nb_examples]
 
 		data_dict = {}
 		for allele in keep_alleles:
