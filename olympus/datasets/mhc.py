@@ -1,3 +1,4 @@
+import functools
 import numpy as np
 import pandas as pd
 import urllib.request
@@ -202,7 +203,7 @@ def get_test_dataset(folder = "NetMHC"):
     return input_data
 
 
-
+@functools.lru_cache()
 def get_train_dataset(folder = 'NetMHCpan_data', task='single_allele', min_nb_examples=1000):
     """
     This function prepares the dataset for the second task: predicting pan-allele peptide
