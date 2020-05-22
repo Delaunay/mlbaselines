@@ -19,7 +19,8 @@ end_train   = 'end_train'       # Train has finished
 
 class ObserverList:
     """MetricList relays the Event to the Metrics/Observers"""
-    def __init__(self, *args, task=None):
+    def __init__(self, *args, task=None, name=None):
+        self.name = name
         self._metrics_mapping = dict()
         self.metrics = list()
 
@@ -157,7 +158,10 @@ class ObserverList:
         """Returns a dictionary of all computed metrics"""
         metrics = {}
         for metric in self.metrics:
-            metrics.update(metric.value())
+            for key, value in metric.value().items():
+                if self.name:
+                    key = f'{self.name}_{key}'
+                metrics[key] = value
 
         return metrics
 
