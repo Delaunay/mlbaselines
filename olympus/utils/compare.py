@@ -1,6 +1,6 @@
 import torch
 from collections import defaultdict
-from itertools import zip_longest
+from itertools import zip_longest, chain
 import numpy as np
 
 
@@ -10,9 +10,47 @@ def dict_key(k1, k2):
     return f'{k1}.{k2}'
 
 
+def compare_optimizers(d1, d2, depth, key):
+    groups = d1['param_groups']
+    saved_groups = d2['param_groups']
+
+    if len(groups) != len(saved_groups):
+        return f'Optimizer groups {len(groups)} != {len(saved_groups)}', False
+
+    param_lens = (len(g['params']) for g in groups)
+    saved_lens = (len(g['params']) for g in saved_groups)
+
+    if any(p_len != s_len for p_len, s_len in zip(param_lens, saved_lens)):
+        return f'Params size mismatch', False
+
+    id_map = {old_id: p for old_id, p in
+              zip(chain(*(g['params'] for g in saved_groups)),
+                  chain(*(g['params'] for g in groups)))}
+
+    d2_state = defaultdict(dict)
+    for k, v in d2['state'].items():
+        if k in id_map:
+            param = id_map[k]
+            d2_state[param] = v
+        else:
+            d2_state[k] = v
+
+    def update_group(group, new_group):
+        new_group['params'] = group['params']
+        return new_group
+
+    d2_group = [update_group(g, ng) for g, ng in zip(groups, saved_groups)]
+
+    matching_state = {'state': dict(d2_state.items()), 'param_groups': d2_group}
+    return compare_states(d1, matching_state, depth, dict_key(key, 'T'))
+
+
 def compare_states(d1, d2, depth=0, key=None):
     if type(d1) != type(d2):
         return f'{key} Type mismatch ({type(d1)} != {type(d2)})', False
+
+    if key is not None and key == 'optimizer':
+        return compare_optimizers(d1, d2, depth, key)
 
     elif isinstance(d1, (dict, defaultdict, )):
         keys = set(d1.keys())
@@ -26,7 +64,7 @@ def compare_states(d1, d2, depth=0, key=None):
             v1 = d1.get(k)
             v2 = d2.get(k)
 
-            d, m = compare(v1, v2, depth + 1, dict_key(key, k))
+            d, m = compare_states(v1, v2, depth + 1, dict_key(key, k))
 
             all_match &= m
             if not m:
@@ -39,7 +77,7 @@ def compare_states(d1, d2, depth=0, key=None):
         all_match = True
 
         for i, (v1, v2) in enumerate(zip_longest(d1, d2)):
-            d, m = compare(v1, v2, depth + 1, dict_key(key, i))
+            d, m = compare_states(v1, v2, depth + 1, dict_key(key, i))
             all_match &= m
 
             if not m:
@@ -76,7 +114,7 @@ def main():
     d1 = torch.load(f1)
     d2 = torch.load(f2)
 
-    diffs, m = compare(d1, d2)
+    diffs, m = compare_states(d1, d2)
 
     print(diffs)
 
@@ -88,7 +126,7 @@ if __name__ == '__main__':
     d1 = torch.load(p1)
     d2 = torch.load(p2)
 
-    diffs, m = compare(d1, d2)
+    diffs, m = compare_states(d1, d2)
 
     print(diffs)
 
