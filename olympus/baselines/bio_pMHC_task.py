@@ -123,8 +123,8 @@ def main(bootstrap_seed, model_seed, hidden_layer_sizes=(50,), alpha=0.001,
     #    allele: train_data, 
     #    'random_allele_name': train_data}
     ## end
-	allele = 'HLA-A02:01'
-	train_data = train_data[allele]
+    allele = 'HLA-A02:01'
+    train_data = train_data[allele]
     dataset_splits = bootstrap(train_data, bootstrap_seed)
 
     rng = numpy.random.RandomState(model_seed)
