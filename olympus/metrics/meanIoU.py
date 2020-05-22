@@ -56,7 +56,7 @@ class MeanIoU(Metric):
         start = datetime.utcnow()
         with stream(self.metric_stream):
             losses = []
-            confusion_matrix = np.zeros((task.nclasses,task.nclasses))
+            confusion_matrix = np.zeros((task.nclasses, task.nclasses))
             with torch.no_grad():
                 for data, target in self.loader:
                     conf_mtx, loss = task.confusion_matrix(data, target)

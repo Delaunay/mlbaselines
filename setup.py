@@ -64,7 +64,8 @@ if __name__ == '__main__':
                 'olympus = olympus.baselines.launch:main',
                 'olympus-dash = olympus.dashboard.main:main',
                 'olympus-port = olympus.distributed.network:get_free_port',
-                'olympus-hpo-worker = olympus.hpo.worker:main'
+                'olympus-hpo-worker = olympus.hpo.worker:main',
+                'olympus-state-compare = olympus.utils.compare:main',
             ]
         }
     )

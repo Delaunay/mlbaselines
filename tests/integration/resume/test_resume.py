@@ -4,10 +4,8 @@ import sys
 from typing import Callable
 from dataclasses import dataclass, field
 
-import numpy
-import torch
-
-from olympus.utils import fetch_device, set_verbose_level, get_rng_states, compress_dict
+from olympus.utils import fetch_device, set_verbose_level
+from olympus.utils.compare import compare_states as compare
 set_verbose_level(60)
 
 from olympus.observers.observer import Metric
@@ -16,7 +14,6 @@ from olympus.utils.storage import StateStorage, NoStorage
 from olympus.resuming import BadResume
 
 import pytest
-from itertools import zip_longest
 
 
 class Interrupt(Exception):
@@ -81,46 +78,6 @@ def remove(filename):
         os.remove(filename)
     except:
         pass
-
-
-def compare(d1, d2, depth=0):
-    import torch
-    from collections import defaultdict
-
-    if type(d1) != type(d2):
-        print(f'({d1} {d2})', end=' ')
-        return False
-
-    elif isinstance(d1, (dict, defaultdict)):
-        keys = set(d1.keys())
-        keys.update(set(d2.keys()))
-        keys = list(keys)
-
-        for k in keys:
-            v1 = d1.get(k)
-            v2 = d2.get(k)
-
-            end = ''
-            if isinstance(v1, dict):
-                end = '\n'
-
-            print(f'{" " * depth} {k:<30}: ', end=end)
-            compare(v1, v2, depth + 1)
-            print()
-
-    elif isinstance(d1, list):
-        for v1, v2 in zip_longest(d1, d2):
-            compare(v1, v2, depth + 1)
-
-    elif isinstance(d1, (float, int)):
-        print(f'{float(d1):15f} | {float(d2):15f} | {float(d1 - d2):15f}', end=' ')
-
-    elif isinstance(d1, torch.Tensor):
-        print((d1 - d2).std().item(), end='  ')
-    else:
-        print(type(d1), d1, d2)
-
-    return True
 
 
 @dataclass

@@ -246,6 +246,7 @@ def build(block, cfg, input_size, output_size):
         avgpool = {'kernel_size': 2}
         maxpool = {'kernel_size': 3, 'stride': 2, 'padding': 1}
 
+    # Add Resnet for ImageNet (3, 224, 224)!
     model = ResNet(
         block,
         cfg,

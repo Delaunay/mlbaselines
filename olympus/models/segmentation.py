@@ -5,11 +5,12 @@ import torch.nn.functional as F
 
 from torchvision.models._utils import IntermediateLayerGetter
 
+
 class Model(nn.Module):
     def __init__(self):
         super(Model, self).__init__()
         self.backbone = torchvision.models.resnet18(pretrained=True)
-        self.backbone = IntermediateLayerGetter(self.backbone, return_layers={'layer4': 'layer4', 'layer3':'layer3'})
+        self.backbone = IntermediateLayerGetter(self.backbone, return_layers={'layer4': 'layer4', 'layer3': 'layer3'})
         self.layer4_classifier = nn.Sequential(
             nn.Conv2d(512, 128, 3, padding=1, bias=False),
             nn.BatchNorm2d(128),
@@ -40,8 +41,10 @@ class Model(nn.Module):
         self.layer4_classifier.apply(init_weights)
         self.layer3_classifier.apply(init_weights)
 
+
 def fcn_resnet18(input_size=None, output_size=None):
     return Model()
+
 
 builders = {
     'fcn_resnet18': fcn_resnet18,

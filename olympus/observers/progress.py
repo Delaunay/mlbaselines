@@ -1,7 +1,7 @@
 from dataclasses import dataclass, field
 
 from olympus.observers.observer import Observer
-from olympus.utils import show_dict
+from olympus.utils import show_dict, TimeThrottler
 from olympus.utils.stat import StatStream
 from olympus.utils.options import option
 
@@ -217,18 +217,43 @@ class StepProgress:
 
 
 class ProgressView(Observer):
-    def __init__(self, speed, max_epochs=None, max_steps=None):
-        self.progress_printer = DefaultProgress(speed)
+    """Print progress regularly
+
+    Parameters
+    ----------
+    speed: Speed
+        speed observer used to gather information about timings
+        It is used to compute an estimated end time
+
+    max_epochs: Optional[int]
+        The total number of epochs
+
+    max_steps: Optional[int]
+        The total number of steps in a single epochs
+
+    Notes
+    -----
+
+    If no max epochs nor max steps are specified it outputs
+    ``12 Elapsed time 0.12 min (1.00 s/step)``
+
+    if both max epochs and max steps are specified, it outputs
+    ``[ 25.00 %] Epoch [  1/  4][  12/  12] Remaining: 0:00:36.042655``
+
+    if only max epochs is specified we will try to guess the max steps during the first epoch.
+
+    """
+    def __init__(self, speed: Speed, max_epochs=None, max_steps=None):
+        self.print_throttle = option('progress.print.throttle', 30, type=int)
         self.print_fun = print
+        self.throttled_print = TimeThrottler(self.print_fun, every=self.print_throttle)
 
-        if max_epochs is not None and max_steps is None:
-            self.progress_printer = EpochProgress(speed, max_epochs)
+        self.max_epochs = max_epochs
+        self.max_steps = max_steps
+        self.speed = speed
 
-        if max_epochs is not None and max_steps is not None:
-            self.progress_printer = EpochProgress(speed, max_epochs, GuessMaxStep(max_steps))
-
-        if max_epochs is None and max_steps is not None:
-            self.progress_printer = StepProgress(speed, max_steps)
+        self.progress_printer = DefaultProgress(self.speed)
+        self.progress_printer = self.select_progress_printer(max_epochs, max_steps)
 
         self.frequency_new_epoch: int = 1
         self.frequency_end_epoch: int = option('progress.frequency.epoch', 1, type=int)
@@ -238,6 +263,35 @@ class ProgressView(Observer):
         self.worker_id: int = option('worker.id', -1, type=int)
         self.first_epoch = None
 
+    def set_max_epochs(self, epochs):
+        self.max_epochs = epochs
+        self.select_progress_printer()
+
+    def set_max_steps(self, steps):
+        self.max_steps = steps
+        self.select_progress_printer()
+
+    def select_progress_printer(self, max_epochs=None, max_steps=None):
+        if max_epochs is None:
+            max_epochs = self.max_epochs
+
+        if max_steps is None:
+            max_steps = self.max_steps
+
+        if max_epochs is not None and max_steps is None:
+            self.progress_printer = EpochProgress(self.speed, max_epochs)
+
+        if max_epochs is not None and max_steps is not None:
+            self.progress_printer = EpochProgress(self.speed, max_epochs, GuessMaxStep(max_steps))
+
+        if max_epochs is None and max_steps is not None:
+            self.progress_printer = StepProgress(self.speed, max_steps)
+
+        return self.progress_printer
+
+    def reset_throttle(self):
+        self.throttled_print = TimeThrottler(self.print_fun, every=self.print_throttle)
+
     def show_progress(self, start='\r', end='\n'):
         worker = ''
         if self.worker_id >= 0:
@@ -246,20 +300,23 @@ class ProgressView(Observer):
         progress = self.progress_printer.show_progress()
         message = f'{start}{worker}{progress}{end}'
 
-        self.print_fun(fill(message), end='')
+        self.throttled_print(fill(message), end='')
 
     def on_start_train(self, task, step=None):
         self.print_fun('Starting')
+
         if task:
-            show_dict(task.metrics.value())
+            show_dict(task.metrics.value(), print_fun=self.print_fun)
 
     def on_resume_train(self, task, epoch):
         self.print_fun('Resuming at epoch', epoch)
+
         if task:
-            show_dict(task.metrics.value())
+            show_dict(task.metrics.value(), print_fun=self.print_fun)
 
     def on_end_train(self, task, step=None):
         self.print_fun('Completed training')
+
         if task:
             show_dict(task.metrics.value())
 
@@ -271,26 +328,32 @@ class ProgressView(Observer):
                 warnings.warn('First epoch should 1; epoch 0 is used for the untrained model')
 
     def on_end_epoch(self, task, epoch, context):
+        self.reset_throttle()
         self.show_progress('', '\n')
 
         if task is not None and self.show_metrics == 'epoch':
-            show_dict(task.metrics.value())
+            show_dict(task.metrics.value(), print_fun=self.print_fun)
 
     def on_end_batch(self, task, step, input=None, context=None):
         self.show_progress()
 
         if task is not None and self.show_metrics == 'batch':
-            show_dict(task.metrics.value())
+            show_dict(task.metrics.value(), print_fun=self.print_fun)
 
     def value(self):
         return {}
 
     def state_dict(self):
         return dict(
-            progress_printer=self.progress_printer.state_dict())
+            progress_printer=self.progress_printer.state_dict(),
+            max_steps=self.max_steps,
+            max_epochs=self.max_epochs)
 
     def load_state_dict(self, state_dict):
         self.progress_printer.load_state_dict(state_dict['progress_printer'])
+        self.max_steps = state_dict['max_steps']
+        self.max_epochs = state_dict['max_epochs']
+        self.select_progress_printer()
 
 
 @dataclass

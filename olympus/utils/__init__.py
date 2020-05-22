@@ -34,11 +34,11 @@ def fetch_device():
     return torch.device(option('device.type', default))
 
 
-def show_dict(dictionary: Dict, indent: int = 0) -> NoReturn:
-    print(' ' * indent + '-' * 80)
+def show_dict(dictionary: Dict, indent: int = 0, print_fun=print) -> NoReturn:
+    print_fun(' ' * indent + '-' * 80)
     for k, v in dictionary.items():
-        print(f'{k:>30}: {v}')
-    print(' ' * indent + '-' * 80)
+        print_fun(f'{k:>30}: {v}')
+    print_fun(' ' * indent + '-' * 80)
 
 
 def compress_dict(state: Dict) -> Dict:
@@ -338,6 +338,9 @@ def set_seeds(seed):
     if torch.cuda.is_available():
         torch.backends.cudnn.benchmark = False
         torch.cuda.manual_seed_all(seed)
+        # https://pytorch.org/docs/stable/notes/randomness.html
+        # We actually tried to not set it to True but it does make
+        # significant differences after a few epochs
         torch.backends.cudnn.deterministic = True
 
     random.seed(seed)
