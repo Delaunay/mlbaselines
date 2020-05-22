@@ -114,6 +114,7 @@ class EnsembleMetric(Metric):
         for name, subtask in self.task.tasks.items():
             values = subtask.metrics.value()
             for key in keys:
+                ###TODO there is a bug here
                 metrics[key].append(values[f'{name}_{key}'])
 
         stats = dict()
