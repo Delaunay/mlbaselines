@@ -89,7 +89,7 @@ class MLPRegressor:
         return self.model
 
 
-def main(bootstrap_seed=1, model_seed=1, hidden_layer_sizes=(50,), alpha=0.001,
+def main(bootstrap_seed=1, model_seed=1, hidden_layer_size=50, alpha=0.001,
         data_path='.',
         epoch=0,
         uid=None,
@@ -103,13 +103,14 @@ def main(bootstrap_seed=1, model_seed=1, hidden_layer_sizes=(50,), alpha=0.001,
         seed for controling which data-points are selected for training/testing splits
     model_seed: int
         seed for the generation of weights
-    hidden_layer_sizes: tuple
-        the size of layers ex: (50,) is one layer of 50 neurons
+    hidden_layer_size: int
+        the size of hidden layer ex: one layer of 50 neurons
     alpha: float
         L2 penalty (regularization term) parameter.
 
     """
 
+    hidden_layer_size = int(hidden_layer_size)
 
     # Load Dataset
 
@@ -149,7 +150,7 @@ def main(bootstrap_seed=1, model_seed=1, hidden_layer_sizes=(50,), alpha=0.001,
 
     hyper_parameters = dict(
         model=dict(
-            hidden_layer_sizes=hidden_layer_sizes,
+            hidden_layer_sizes=(hidden_layer_size, ),
             alpha=alpha
         )
     )

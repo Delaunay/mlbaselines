@@ -11,5 +11,5 @@ fidelity: null
 defaults: {}
 
 space:
-    hidden_layer_sizes: 'uniform(5, 70)'
+    hidden_layer_size: 'loguniform(1, 100)'
     alpha: 'uniform(0, 1)'
