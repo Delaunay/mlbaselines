@@ -3,14 +3,16 @@ import numpy
 import os
 
 import sklearn.neural_network
-import bio_datasets
-import bio_metrics
-
-from olympus.datasets.mhc import get_singleallele_dataset
+from olympus.datasets.mhc import get_train_dataset, get_valid_dataset, get_test_dataset
 from olympus.metrics.accuracy import AUC
 from olympus.tasks.sklearn_like import SklearnTask
+from olympus.tasks.sklearn_like import SklearnEnsembleTask
 from olympus.observers.msgtracker import metric_logger
 from olympus.metrics import NotFittedError
+from olympus.utils.options import option
+from olympus.utils import HyperParameters, show_dict
+
+
 
 
 def bootstrap(x, rng):
@@ -39,7 +41,6 @@ class MLPRegressor:
             'solver': 'uniform(0, 3, discrete=True)',
             'alpha': 'uniform(0, 0.1)'
         }
-    
     # List of hyper-parameters that needs to be set to finish initialization
     def get_space(self):
         return self.hp.missing_parameters()
@@ -64,13 +65,12 @@ class MLPRegressor:
         self.model = self.model.fit(x, y)
         return self.model
 
-
-def main(bootstrap_seed, model_seed, hidden_layer_sizes, solver, alpha,
-         epoch=0,
-         uid=None,
-         experiment_name=None,
-         client=None):
-    """
+def main(bootstrap_seed, model_seed, hidden_layer_sizes=(50,), alpha=0.001,
+        data_path='.',
+        epoch=0,
+        uid=None,
+        experiment_name=None,client=None):
+   """
 
     Parameters
     ----------
@@ -88,15 +88,8 @@ def main(bootstrap_seed, model_seed, hidden_layer_sizes, solver, alpha,
         decides if yes or no we will use ensembling for the test set
 
     """
-
-    # TODO(Assya): Make sure to pass bootstrapping seed and model init seed
-
     # Load Dataset
-    
-
-    train_data = get_train_dataset(folder=option('data.path', data_path), task='single_allele', min_nb_examples=1000):
-    
-
+    train_data = get_train_dataset(folder=option('data.path', data_path),task='pan_allele', min_nb_examples=1000)
     valid_data = get_valid_dataset(folder=option('data.path', data_path))
     test_data = get_test_dataset(folder=option('data.path', data_path))
 
@@ -141,9 +134,9 @@ def main(bootstrap_seed, model_seed, hidden_layer_sizes, solver, alpha,
 
     show_dict(task.metrics.value())
 
-    
     return float(stats['validation_aac'])
 
-
 if __name__ == '__main__':
-    main()
+    main(model_seed=numpy.random.randint(2**30),
+             bootstrap_seed=numpy.random.randint(2**30))
+
