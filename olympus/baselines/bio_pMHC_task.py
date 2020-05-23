@@ -115,7 +115,7 @@ def main(bootstrap_seed, model_seed, hidden_layer_sizes=(50,), alpha=0.001,
 
     # TODO(Assya): Make this return in format {allele: train_data}
     train_data = get_train_dataset(folder=option('data.path', data_path),
-                                   task='single_allele')
+                                   task='single_allele', min_nb_examples=1000)
 
     ## for testing 
     # train_data = numpy.random.normal(size=(1000, 100))

@@ -13,13 +13,12 @@ from olympus.observers.msgtracker import metric_logger
 from olympus.metrics import NotFittedError
 
 
-def bootstrap(x, bootstrap_seed):
+def bootstrap(x, rng):
 
     num_points = x.shape[0]
     indices = set(range(num_points))
-
-    rng = numpy.random.RandomState(bootstrap_seed)
-
+    ### moved the rng outside, so that it's the same generator for all 3 datasets
+    #rng = numpy.random.RandomState(bootstrap_seed)
     indices = rng.choice(list(indices), size=num_points, replace=True)
     return x[indices]
 
@@ -93,12 +92,20 @@ def main(bootstrap_seed, model_seed, hidden_layer_sizes, solver, alpha,
     # TODO(Assya): Make sure to pass bootstrapping seed and model init seed
 
     # Load Dataset
-    train_data = get_train_dataset(folder='pMHC_data',allele='HLA-A02:01')
-    train_data = bootstrap(train_data, bootstrap_seed)
+    
 
-    valid_data = get_valid_dataset(folder='pMHC_data')
-    test_data = get_test_dataset(folder='pMHC_data')
+    train_data = get_train_dataset(folder=option('data.path', data_path), task='single_allele', min_nb_examples=1000):
+    
 
+    valid_data = get_valid_dataset(folder=option('data.path', data_path))
+    test_data = get_test_dataset(folder=option('data.path', data_path))
+
+    # one bootstrap seed for all 3 datasets
+    rng = numpy.random.RandomState(bootstrap_seed)
+    train_data = bootstrap(train_data, rng)
+    valid_data = bootstrap(valid_data, rng)
+    test_data = bootstrap(test_data, rng)
+    
     # Compute validation and test accuracy
     additional_metrics = [
         AUC(name='validation', loader=[([valid_data[:, :-1]], valid_data[:, -1])]),

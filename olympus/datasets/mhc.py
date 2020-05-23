@@ -98,116 +98,137 @@ def load_pMHC_dataset(data_path, folder="NetMHCpan_data", alleles_only = False):
     else:
         return data, alleles, overlapping_alleles
 
-
+@functools.lru_cache()
 def get_valid_dataset(folder = "NetMHC"):
-    aminoacids = ["G","P","A","V","L","I","M","C","F","Y","W","H","K","R","Q","N","E","D","S","T"]
-    print ('Loading files...')
-    data = pd.read_csv(f'{folder}/Pearson_dataset.tsv',sep='\t')
-    data = data[[len(i)<12 and len(i)>7 for i in data['Peptide Sequence']]]
+    if not os.path.exists(f'{folder}/cached_valid_dataset_{task}.p'):
+        aminoacids = ["G","P","A","V","L","I","M","C","F","Y","W","H","K","R","Q","N","E","D","S","T"]
+        print ('Loading files...')
+        data = pd.read_csv(f'{folder}/Pearson_dataset.tsv',sep='\t')
+        data = data[[len(i)<12 and len(i)>7 for i in data['Peptide Sequence']]]
 
-    ### loading the allele data from specified folder
-    alleles = pd.read_csv(f'{folder}/MHC_pseudo.dat',header=None,sep=' ')
-    alleles = alleles[['HLA' in i for i in alleles[0]]]
-    alleles.columns = ['HLA_allele', 'allele_seq']
+        ### loading the allele data from specified folder
+        alleles = pd.read_csv(f'{folder}/MHC_pseudo.dat',header=None,sep=' ')
+        alleles = alleles[['HLA' in i for i in alleles[0]]]
+        alleles.columns = ['HLA_allele', 'allele_seq']
 
 
-    ### The overlap is only the alleles for which we have a sequence!
-    overlapping_alleles = set(data['Allele'])&set(alleles['HLA_allele'])
-    data = data[[i in overlapping_alleles for i in data['Allele']]]
+        ### The overlap is only the alleles for which we have a sequence!
+        overlapping_alleles = set(data['Allele'])&set(alleles['HLA_allele'])
+        data = data[[i in overlapping_alleles for i in data['Allele']]]
 
-    max_length_allele = int(np.max(alleles['allele_seq'].str.len()))
+        max_length_allele = int(np.max(alleles['allele_seq'].str.len()))
 
-    print ('Encoding alleles to sparse...')
-    allele_seq = get_sparse_alleles(alleles, aminoacids, max_length_allele)
-    alleles['allele_seq_sparse'] = allele_seq
+        print ('Encoding alleles to sparse...')
+        allele_seq = get_sparse_alleles(alleles, aminoacids, max_length_allele)
+        alleles['allele_seq_sparse'] = allele_seq
 
-    ### merging the allele sequences with the data
-    data = data.merge(alleles, left_on='Allele', right_on = 'HLA_allele')
+        ### merging the allele sequences with the data
+        data = data.merge(alleles, left_on='Allele', right_on = 'HLA_allele')
 
-    max_length_peptides = int(np.max(data['Peptide Sequence'].str.len()))
-    ### getting the sparse encodings for the peptides 
-    print ('Encoding peptides to sparse...')
-    peptide_sparse = get_sparse_peptides(data['Peptide Sequence'], aminoacids, max_length_peptides)
-    data['peptide_sparse'] = peptide_sparse
+        max_length_peptides = int(np.max(data['Peptide Sequence'].str.len()))
+        ### getting the sparse encodings for the peptides 
+        print ('Encoding peptides to sparse...')
+        peptide_sparse = get_sparse_peptides(data['Peptide Sequence'], aminoacids, max_length_peptides)
+        data['peptide_sparse'] = peptide_sparse
 
-    ### merging these encodings into the dataset
-    
-    input_data = merge_dataset(data, 'peptide_sparse', 'allele_seq_sparse', aminoacids, max_length_allele, max_length_peptides)
+        ### merging these encodings into the dataset
+        
+        input_data = merge_dataset(data, 'peptide_sparse', 'allele_seq_sparse', aminoacids, max_length_allele, max_length_peptides)
 
-    ### processing the targets
-    targets = data['Binding Affinity']
+        ### processing the targets
+        targets = data['Binding Affinity']
 
-    ### values are capped at 50k according to MHCflurry 
-    targets = np.array([min(50000,i) for i in targets ])
-    targets = np.array([max(1,i) for i in targets ])
-    ### transforming according to MHCflurry formula to range 0-1
-    targets = 1-(np.log(targets)/np.log(50000))
+        ### values are capped at 50k according to MHCflurry 
+        targets = np.array([min(50000,i) for i in targets ])
+        targets = np.array([max(1,i) for i in targets ])
+        ### transforming according to MHCflurry formula to range 0-1
+        targets = 1-(np.log(targets)/np.log(50000))
 
-    input_data = np.hstack((input_data, targets.reshape(targets.shape[0],1)))
+        input_data = np.hstack((input_data, targets.reshape(targets.shape[0],1)))
 
+        pickle.dump(input_data, open(f'{folder}/cached_valid_dataset_{task}.p','wb'))
+
+    else:
+        print ('Pre-processed data exists')
+        print ('Loading cached data...')
+        input_data = pickle.load(open(f'{folder}/cached_valid_dataset_{task}.p','rb'))
+   
     return input_data
 
-
+@functools.lru_cache()
 def get_test_dataset(folder = "NetMHC"):
-    aminoacids = ["G","P","A","V","L","I","M","C","F","Y","W","H","K","R","Q","N","E","D","S","T"]
-    print ('Loading files...')
-    data = pd.read_csv(f'{folder}/hpv_predictions.csv')
-    print ('Loading files...')
-    data = data[[len(i)<12 and len(i)>7 for i in data['peptide']]]
-    data['allele'] = [''.join(i.split('*')) for i in data['allele']]
+    if not os.path.exists(f'{folder}/cached_train_dataset_{task}.p'):
 
-    ### loading the allele data from specified folder
-    alleles = pd.read_csv(f'{folder}/MHC_pseudo.dat',header=None,sep=' ')
-    alleles = alleles[['HLA' in i for i in alleles[0]]]
-    alleles.columns = ['HLA_allele', 'allele_seq']
+        aminoacids = ["G","P","A","V","L","I","M","C","F","Y","W","H","K","R","Q","N","E","D","S","T"]
+        print ('Loading files...')
+        data = pd.read_csv(f'{folder}/hpv_predictions.csv')
+        print ('Loading files...')
+        data = data[[len(i)<12 and len(i)>7 for i in data['peptide']]]
+        data['allele'] = [''.join(i.split('*')) for i in data['allele']]
 
-
-    ### The overlap is only the alleles for which we have a sequence!
-    overlapping_alleles = set(data['allele'])&set(alleles['HLA_allele'])
-    data = data[[i in overlapping_alleles for i in data['allele']]]
-
-    max_length_allele = int(np.max(alleles['allele_seq'].str.len()))
-
-    print ('Encoding alleles to sparse...')
-    allele_seq = get_sparse_alleles(alleles, aminoacids, max_length_allele)
-    alleles['allele_seq_sparse'] = allele_seq
-
-    ### merging the allele sequences with the data
-    data = data.merge(alleles, left_on='allele', right_on = 'HLA_allele')
-
-    max_length_peptides = int(np.max(data['peptide'].str.len()))
-    ### getting the sparse encodings for the peptides 
-    print ('Encoding peptides to sparse...')
-    peptide_sparse = get_sparse_peptides(data['peptide'], aminoacids, max_length_peptides)
-    data['peptide_sparse'] = peptide_sparse
+        ### loading the allele data from specified folder
+        alleles = pd.read_csv(f'{folder}/MHC_pseudo.dat',header=None,sep=' ')
+        alleles = alleles[['HLA' in i for i in alleles[0]]]
+        alleles.columns = ['HLA_allele', 'allele_seq']
 
 
-    ### merging these encodings into the dataset
-    
-    input_data = merge_dataset(data, 'peptide_sparse', 'allele_seq_sparse', aminoacids, max_length_allele, max_length_peptides)
+        ### The overlap is only the alleles for which we have a sequence!
+        overlapping_alleles = set(data['allele'])&set(alleles['HLA_allele'])
+        data = data[[i in overlapping_alleles for i in data['allele']]]
 
-    ### processing the targets
-    targets = data['Affinity (uM)']
-    ### bringing this to the same scale as the others 
-    ###TODO: find a better way?
-    targets*=5
-    targets = np.array([max(1,i) for i in targets ])
-    ### values are capped at 50k according to MHCflurry 
-    targets = np.array([min(50000,i) for i in targets])
+        max_length_allele = int(np.max(alleles['allele_seq'].str.len()))
 
-    ### transforming according to MHCflurry formula to range 0-1
-    targets = 1-(np.log(targets)/np.log(50000))
+        print ('Encoding alleles to sparse...')
+        allele_seq = get_sparse_alleles(alleles, aminoacids, max_length_allele)
+        alleles['allele_seq_sparse'] = allele_seq
 
-    input_data = np.hstack((input_data, targets.reshape(targets.shape[0],1)))
+        ### merging the allele sequences with the data
+        data = data.merge(alleles, left_on='allele', right_on = 'HLA_allele')
 
+        max_length_peptides = int(np.max(data['peptide'].str.len()))
+        ### getting the sparse encodings for the peptides 
+        print ('Encoding peptides to sparse...')
+        peptide_sparse = get_sparse_peptides(data['peptide'], aminoacids, max_length_peptides)
+        data['peptide_sparse'] = peptide_sparse
+
+
+        ### merging these encodings into the dataset
+        
+        input_data = merge_dataset(data, 'peptide_sparse', 'allele_seq_sparse', aminoacids, max_length_allele, max_length_peptides)
+
+        ### processing the targets
+        targets = data['Affinity (uM)']
+        ### bringing this to the same scale as the others 
+        ###TODO: find a better way?
+        targets*=5
+        targets = np.array([max(1,i) for i in targets ])
+        ### values are capped at 50k according to MHCflurry 
+        targets = np.array([min(50000,i) for i in targets])
+
+        ### transforming according to MHCflurry formula to range 0-1
+        targets = 1-(np.log(targets)/np.log(50000))
+
+        input_data = np.hstack((input_data, targets.reshape(targets.shape[0],1)))
+
+        pickle.dump(input_data, open(f'{folder}/cached_test_dataset_{task}.p','wb'))
+
+    else:
+        print ('Pre-processed data exists')
+        print ('Loading cached data...')
+        input_data = pickle.load(open(f'{folder}/cached_test_dataset_{task}.p','rb'))
+   
     return input_data
 
 
 @functools.lru_cache()
 def get_train_dataset(folder = 'NetMHCpan_data', task='single_allele', min_nb_examples=1000):
     """
-    This function prepares the dataset for the second task: predicting pan-allele peptide
+    This function prepares the dataset for both the first and second tasks: predicting allele peptide
     binding specificities.
+    For the first task, the function is called with task='single_allele' and outputs a 
+    dictionnary with alleles as keys and the data as a table.
+    For the second task, all allele data is outputed at once as a numpy array and 
+    the encoding of the MHC alleles is added.
     This function performs the encoding of the MHC and peptide sequences to sparse format
     """
     if not os.path.exists(f'{folder}/cached_train_dataset_{task}.p'):
@@ -250,16 +271,18 @@ def get_train_dataset(folder = 'NetMHCpan_data', task='single_allele', min_nb_ex
 
         input_data = np.hstack((input_data, targets.reshape(targets.shape[0],1)))
 
-        example_per_allele = data.groupby('allele').count()['peptide']
-        keep_alleles = list(example_per_allele[example_per_allele>=min_nb_examples].index)
-        example_per_allele = example_per_allele[example_per_allele>=min_nb_examples]
+        if task == 'single_allele':
 
-        data_dict = {}
-        for allele in keep_alleles:
-            temp_ix = np.arange(data.shape[0])[data['allele']==allele]
-            temp = input_data[temp_ix,:]
-            assert temp.shape[0]==example_per_allele.iloc[keep_alleles.index(allele)]
-            data_dict[allele] = temp
+            example_per_allele = data.groupby('allele').count()['peptide']
+            keep_alleles = list(example_per_allele[example_per_allele>=min_nb_examples].index)
+            example_per_allele = example_per_allele[example_per_allele>=min_nb_examples]
+
+            data_dict = {}
+            for allele in keep_alleles:
+                temp_ix = np.arange(data.shape[0])[data['allele']==allele]
+                temp = input_data[temp_ix,:]
+                assert temp.shape[0]==example_per_allele.iloc[keep_alleles.index(allele)]
+                data_dict[allele] = temp
 
         pickle.dump(data_dict, open(f'{folder}/cached_train_dataset_{task}.p','wb'))
 
