@@ -171,6 +171,5 @@ def main(bootstrap_seed, model_seed, hidden_layer_sizes=(50,), alpha=0.001,
 
 
 if __name__ == '__main__':
-    for i in range(100):
-        main(model_seed=numpy.random.randint(2**30),
-                 bootstrap_seed=numpy.random.randint(2**30))
+    main(model_seed=numpy.random.randint(2**30),
+             bootstrap_seed=numpy.random.randint(2**30))
