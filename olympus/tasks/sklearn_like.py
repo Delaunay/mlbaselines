@@ -114,16 +114,15 @@ class EnsembleMetric(Metric):
         for name, subtask in self.task.tasks.items():
             values = subtask.metrics.value()
             for key in keys:
-                ###TODO there is a bug here
                 metrics[key].append(values[f'{name}_{key}'])
 
         stats = dict()
         for key in keys:
             data = numpy.array(metrics[key])
-            stats[f'mean_{key}'] = data.mean()
-            stats[f'std_{key}'] = data.std()
-            stats[f'min_{key}'] = data.min()
-            stats[f'max_{key}'] = data.max()
+            stats[f'mean_{key}'] = float(data.mean())
+            stats[f'std_{key}'] = float(data.std())
+            stats[f'min_{key}'] = float(data.min())
+            stats[f'max_{key}'] = float(data.max())
 
         return stats
 
@@ -187,7 +186,7 @@ class SklearnEnsembleTask(Task):
                     accuracies.append(value)
 
         # We expect accuracy and loss
-        return numpy.array(accuracies).mean(), 0
+        return float(numpy.array(accuracies).mean()), 0
 
     # If you support resuming implement those methods
     def load_state_dict(self, state, strict=True):
