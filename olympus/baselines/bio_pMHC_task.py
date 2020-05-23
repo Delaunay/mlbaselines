@@ -89,7 +89,7 @@ class MLPRegressor:
         return self.model
 
 
-def main(bootstrap_seed, model_seed, hidden_layer_sizes=(50,), alpha=0.001,
+def main(bootstrap_seed=1, model_seed=1, hidden_layer_sizes=(50,), alpha=0.001,
         data_path='.',
         epoch=0,
         uid=None,
