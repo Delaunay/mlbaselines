@@ -244,28 +244,35 @@ def test_generate_hpos():
         'c': 'uniform(-1, 1)',
         'lr': 'uniform(-1, 1)'
     }
+    defaults = {'d': 1, 'e': 2}
 
-    configs = generate_hpos(range(num_experiments), hpos, budget, fidelity, search_space)
+    configs = generate_hpos(
+        range(num_experiments), hpos, budget, fidelity, search_space, NAMESPACE, defaults)
 
     assert len(configs) == len(hpos)
     assert len(configs['grid_search']) == 1
     assert len(configs['nudged_grid_search']) == 1
-    assert configs['grid_search'][0]['name'] == 'grid_search'
-    assert configs['grid_search'][0].get('nudge') is None
-    assert configs['nudged_grid_search'][0]['name'] == 'grid_search'
-    assert configs['nudged_grid_search'][0]['nudge'] == 0.5
+    assert configs['grid_search'][f'{NAMESPACE}-grid-search-p-4']['name'] == 'grid_search'
+    assert configs['grid_search'][f'{NAMESPACE}-grid-search-p-4'].get('nudge') is None
+    assert (configs['nudged_grid_search'][f'{NAMESPACE}-grid-search-nudged-p-4']['name'] ==
+            'grid_search')
+    assert configs['nudged_grid_search'][f'{NAMESPACE}-grid-search-nudged-p-4']['nudge'] == 0.5
     for hpo in hpos[2:]:
         for i in range(num_experiments):
+            if hpo == 'noisy_grid_search':
+                namespace = '{}-noisy-grid-search-p-4-s-{}'.format(NAMESPACE, i)
+            else:
+                namespace = '{}-{}-s-{}'.format(NAMESPACE, hpo.replace('_', '-'), i)
             if hpo == 'bayesopt':
                 rng = numpy.random.RandomState(i)
-                assert configs[hpo][i]['name'] == 'robo'
-                assert configs[hpo][i]['model_seed'] == rng.randint(2**30)
-                assert configs[hpo][i]['prior_seed'] == rng.randint(2**30)
-                assert configs[hpo][i]['init_seed'] == rng.randint(2**30)
-                assert configs[hpo][i]['maximizer_seed'] == rng.randint(2**30)
+                assert configs[hpo][namespace]['name'] == 'robo'
+                assert configs[hpo][namespace]['model_seed'] == rng.randint(2**30)
+                assert configs[hpo][namespace]['prior_seed'] == rng.randint(2**30)
+                assert configs[hpo][namespace]['init_seed'] == rng.randint(2**30)
+                assert configs[hpo][namespace]['maximizer_seed'] == rng.randint(2**30)
             else:
-                assert configs[hpo][i]['name'] == hpo
-                assert configs[hpo][i]['seed'] == i
+                assert configs[hpo][namespace]['name'] == hpo
+                assert configs[hpo][namespace]['seed'] == i
 
 
 @pytest.mark.usefixtures('clean_mongodb')
@@ -284,9 +291,10 @@ def test_register_hpos(client):
         'c': 'uniform(-1, 1)',
         'd': 'uniform(-1, 1)'
     }
-    defaults = {}
+    defaults = {'e': 2}
 
-    configs = generate_hpos(range(num_experiments), hpos, budget, fidelity, search_space)
+    configs = generate_hpos(
+        range(num_experiments), hpos, budget, fidelity, search_space, NAMESPACE, defaults)
 
     stats = {}
 
@@ -297,7 +305,8 @@ def test_register_hpos(client):
         for i, hpo_namespace in enumerate(hpo_namespaces):
             messages = client.monitor().messages(WORK_QUEUE, hpo_namespace, mtype=HPO_ITEM)
             assert len(messages) == 1
-            assert messages[0].message['hpo']['kwargs'] == configs[hpo][i]
+            assert messages[0].message['hpo']['kwargs'] == configs[hpo][hpo_namespace]
+            assert messages[0].message['work']['kwargs'] == defaults
 
 
 @pytest.mark.usefixtures('clean_mongodb')
@@ -319,7 +328,8 @@ def test_register_hpos_resume(client, monkeypatch):
     defaults = {}
     stats = {}
 
-    configs = generate_hpos(range(num_experiments), hpos, budget, fidelity, search_space)
+    configs = generate_hpos(
+        range(num_experiments), hpos, budget, fidelity, search_space, NAMESPACE, defaults)
 
     assert client.monitor().read_count(WORK_QUEUE, namespace, mtype=HPO_ITEM) == 0
     new_namespaces = register_hpos(client, namespace, foo, configs, defaults, stats)
@@ -331,22 +341,28 @@ def test_register_hpos_resume(client, monkeypatch):
         namespace: {}
         for namespace in sum(new_namespaces.values(), [])}
 
-    more_configs = generate_hpos(range(num_experiments + 2), hpos, budget, fidelity, search_space)
+    more_configs = generate_hpos(range(num_experiments + 2), hpos, budget, fidelity, search_space,
+                                 NAMESPACE, defaults)
+            
 
     # Save new namespaces for test
     new_namespaces = defaultdict(list)
     def mock_register_hpo(client, namespace, function, config, defaults):
         new_namespaces[config['name']].append(namespace)
         return register_hpo(client, namespace, function, config, defaults)
+
+    def flatten_configs(confs):
+        return sum((list(configs.keys()) for configs in confs.values()), [])
+
     monkeypatch.setattr('olympus.studies.hpo.main.register_hpo', mock_register_hpo)
     namespaces = register_hpos(client, namespace, foo, more_configs, defaults, stats)
     assert (len(set(sum(new_namespaces.values(), []))) == 
-            len(sum(more_configs.values(), [])) - len(sum(configs.values(), [])))
+            len(flatten_configs(more_configs)) - len(flatten_configs(configs)))
 
     # Verify new registered configs
     for hpo, configs in more_configs.items():
-        for config in configs:
-            messages = client.monitor().messages(WORK_QUEUE, env(namespace, config['namespace']),
+        for hpo_namespace, config in configs.items():
+            messages = client.monitor().messages(WORK_QUEUE, hpo_namespace,
                                                  mtype=HPO_ITEM)
             assert len(messages) == 1
             assert messages[0].message['hpo']['kwargs'] == config
@@ -369,23 +385,24 @@ def test_fetch_hpos_valid_results_first_time(client):
 
     namespaces = {'hpo' + str(i): [NAMESPACE + str(i)] for i in range(1, 3)}
 
-    data = defaultdict(list)
+    data = defaultdict(dict)
     _ = fetch_hpos_valid_curves(client, namespaces, ['e'], data)
 
     assert len(data) == 2
     assert len(data['hpo1']) == 1
     assert len(data['hpo2']) == 1
 
-    assert data['hpo1'][0].attrs['namespace'] == f'{NAMESPACE}1'
-    assert data['hpo1'][0].epoch.values.tolist() == [0, 1]
-    assert data['hpo1'][0].order.values.tolist() == list(range(num_trials))
-    assert data['hpo1'][0].seed.values.tolist() == [1]
-    assert data['hpo1'][0].params.values.tolist() == list('abcd')
-    assert data['hpo1'][0].noise.values.tolist() == ['e']
-    assert data['hpo1'][0].obj.shape == (2, num_trials, 1)
-    assert data['hpo1'][0].valid.shape == (2, num_trials, 1)
+    namespace = f'{NAMESPACE}1'
+    assert data['hpo1'][namespace].attrs['namespace'] == namespace 
+    assert data['hpo1'][namespace].epoch.values.tolist() == [0, 1]
+    assert data['hpo1'][namespace].order.values.tolist() == list(range(num_trials))
+    assert data['hpo1'][namespace].seed.values.tolist() == [1]
+    assert data['hpo1'][namespace].params.values.tolist() == list('abcd')
+    assert data['hpo1'][namespace].noise.values.tolist() == ['e']
+    assert data['hpo1'][namespace].obj.shape == (2, num_trials, 1)
+    assert data['hpo1'][namespace].valid.shape == (2, num_trials, 1)
 
-    assert data['hpo1'][0] == data['hpo2'][0]
+    assert data['hpo1'][namespace] == data['hpo2'][f'{NAMESPACE}2']
 
 
 @pytest.mark.usefixtures('clean_mongodb')
@@ -409,40 +426,54 @@ def test_fetch_hpos_valid_results_update(client):
 
     run_hpos([namespaces['hpo-1'][0]])
 
-    data = defaultdict(list)
-    remainings = fetch_hpos_valid_curves(client, namespaces, ['e'], data)
+    data = defaultdict(dict)
+    hpos_ready, remainings = fetch_hpos_valid_curves(client, namespaces, ['e'], data)
     assert len(remainings) == 2
     assert len(remainings['hpo-1']) == 1
     assert len(remainings['hpo-2']) == 2
 
+    assert len(hpos_ready) == 1
+    assert len(hpos_ready['hpo-1']) == 1
+    assert hpos_ready['hpo-1'][0] == f'{NAMESPACE}-1-1'
+
     assert len(data) == 1
     assert len(data['hpo-1']) == 1
 
-    assert data['hpo-1'][0].attrs['namespace'] == f'{NAMESPACE}-1-1'
+    assert data['hpo-1'][f'{NAMESPACE}-1-1'].attrs['namespace'] == f'{NAMESPACE}-1-1'
 
     run_hpos([namespaces['hpo-1'][1], namespaces['hpo-2'][0]])
 
-    remainings = fetch_hpos_valid_curves(client, remainings, ['e'], data)
+    hpos_ready, remainings = fetch_hpos_valid_curves(client, remainings, ['e'], data)
     assert len(remainings) == 1
     assert len(remainings['hpo-2']) == 1
+
+    assert len(hpos_ready) == 2
+    assert len(hpos_ready['hpo-1']) == 1
+    assert hpos_ready['hpo-1'][0] == f'{NAMESPACE}-1-2'
+    assert len(hpos_ready['hpo-2']) == 1
+    assert hpos_ready['hpo-2'][0] == f'{NAMESPACE}-2-1'
 
     assert len(data) == 2
     assert len(data['hpo-1']) == 2
     assert len(data['hpo-2']) == 1
 
-    assert data['hpo-1'][1].attrs['namespace'] == f'{NAMESPACE}-1-2'
-    assert data['hpo-2'][0].attrs['namespace'] == f'{NAMESPACE}-2-1'
+    assert data['hpo-1'][f'{NAMESPACE}-1-2'].attrs['namespace'] == f'{NAMESPACE}-1-2'
+    assert data['hpo-2'][f'{NAMESPACE}-2-1'].attrs['namespace'] == f'{NAMESPACE}-2-1'
 
     run_hpos([namespaces['hpo-2'][1]])
 
-    remainings = fetch_hpos_valid_curves(client, remainings, ['e'], data)
+    hpos_ready, remainings = fetch_hpos_valid_curves(client, remainings, ['e'], data)
     assert len(remainings) == 0
+    assert len(hpos_ready) == 1
+
+    assert len(hpos_ready['hpo-2']) == 1
+    assert hpos_ready['hpo-2'][0] == f'{NAMESPACE}-2-2'
 
     assert len(data) == 2
     assert len(data['hpo-1']) == 2
     assert len(data['hpo-2']) == 2
 
-    assert data['hpo-2'][1].attrs['namespace'] == f'{NAMESPACE}-2-2'
+    assert data['hpo-2'][f'{NAMESPACE}-2-2'].attrs['namespace'] == f'{NAMESPACE}-2-2'
 
 
 @pytest.mark.usefixtures('clean_mongodb')
@@ -466,9 +497,10 @@ def test_consolidate_results(client):
 
     run_hpos(sum(namespaces.values(), []))
 
-    data = defaultdict(list)
-    remainings = fetch_hpos_valid_curves(client, namespaces, ['e'], data)
+    data = defaultdict(dict)
+    hpos_ready, remainings = fetch_hpos_valid_curves(client, namespaces, ['e'], data)
     assert len(remainings) == 0
+    assert len(hpos_ready) == 2
 
     data = consolidate_results(data)
 
@@ -506,9 +538,10 @@ def test_save_results(client):
 
     run_hpos(sum(namespaces.values(), []))
 
-    data = defaultdict(list)
-    remainings = fetch_hpos_valid_curves(client, namespaces, ['e'], data)
+    data = defaultdict(dict)
+    hpos_ready, remainings = fetch_hpos_valid_curves(client, namespaces, ['e'], data)
     assert len(remainings) == 0
+    assert len(hpos_ready) == 2
 
     data = consolidate_results(data)
 

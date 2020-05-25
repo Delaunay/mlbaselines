@@ -87,7 +87,7 @@ Make sure that it supports ``uid``,
 ``experiment_name`` and ``client``,
 which are required to log the metrics in the database.
 
-The ``objective`` is the metric that will be used to select the median seeds.
+The ``objective`` is the metric that will be used for the hyperparameter optimization.
 
 The ``variables`` are the sources of variation that will be 
 investigated. The values passed will serve as the default values while

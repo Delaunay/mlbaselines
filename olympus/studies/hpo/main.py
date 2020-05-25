@@ -139,21 +139,27 @@ generate_hpo_configs = dict(
 
 
 def fetch_hpos_valid_curves(client, namespaces, variables, data, partial=False):
+    hpos_ready = defaultdict(list)
     remainings = defaultdict(list)
     for hpo in namespaces.keys():
         for hpo_namespace in namespaces[hpo]:
             if is_hpo_completed(client, hpo_namespace) or partial:
                 print(f'Fetching results of {hpo_namespace}')
+
                 hpo_data = fetch_hpo_valid_curves(
                     client, hpo_namespace, variables, partial=partial)
                 if hpo_data:
-                    data[hpo].append(hpo_data)
-                else:
+                    data[hpo][hpo_namespace] = hpo_data
+                    hpos_ready[hpo].append(hpo_namespace)
+                elif partial:
                     print(f'No metrics available for {hpo_namespace}')
+                else:
+                    raise RuntimeError(
+                        f'{hpo_namespace} is completed but no metrics are available!?')
             else:
                 remainings[hpo].append(hpo_namespace)
 
-    return remainings
+    return hpos_ready, remainings
 
 
 def generate_grid_search_tests(client, budget, namespace):
@@ -415,6 +421,66 @@ def fetch_trial_stats(client, namespace):
     return stats
 
 
+def fetch_all_trial_stats(client, namespace):
+    length = len(namespace) + 9
+    query = {
+        'namespace': {'$regex': re.compile(f"^{namespace}", re.IGNORECASE)},
+        'mtype': WORK_ITEM}
+    stats = client.db[WORK_QUEUE].aggregate([
+        {'$match': query},
+        {'$project': {
+            'namespace': 1,
+            'uid': '$message.kwargs.uid',
+            'read': 1,
+            'mtype': 1,
+            'actioned': 1,
+            'heartbeat': 1,
+            'error': 1,
+        }},
+        {'$group': {
+            '_id': {
+                'uid': '$uid',
+                'namespace': '$namespace'
+            },
+            'namespace': '$namespace',
+            'read': {
+                '$last': '$read'
+            },
+            'actioned': {
+                '$last': '$actioned'
+            },
+            'error': {
+                '$sum': {'$cond': [{'$eq':["$error", True]}, 1, 0]}
+            },
+            'retry': {
+                '$sum': '$retry'
+            }
+        }},
+        {'$group': {
+            '_id': '$namespace',
+            'read': {
+                '$sum': {'$cond': [{'$eq':["$read", True]}, 1, 0]}
+            },
+            'actioned': {
+                '$sum': {'$cond': [{'$eq':["$actioned", True]}, 1, 0]}
+            },
+            'error': {
+                '$sum': '$error'
+            },
+            'retry': {
+                '$sum': '$retry'
+            },
+            'count': {
+                '$sum': 1
+            }
+        }}
+    ])
+    stats = {doc['_id']: doc for doc in stats}
+
+    return stats
+
+
+
 def fetch_registered(client, namespace, hpo, seed):
     registered = set()
 
@@ -424,11 +490,18 @@ def fetch_registered(client, namespace, hpo, seed):
     return registered
 
 
-def generate_hpos(seeds, hpos, budget, fidelity, search_space):
+def generate_hpos(seeds, hpos, budget, fidelity, search_space, namespace, defaults):
 
     configs = dict()
     for hpo in hpos:
-        configs[hpo] = generate_hpo_configs[hpo](budget, fidelity, search_space, seeds)
+        configs[hpo] = dict()
+        hpo_configs = generate_hpo_configs[hpo](budget, fidelity, search_space, seeds)
+        for config in hpo_configs:
+            config['namespace'] = env(namespace, config['namespace'])
+            config['defaults'] = copy.deepcopy(defaults)
+            uid = config.pop('uid')
+            config['uid'] = compute_identity(config, IDENTITY_SIZE)
+            configs[hpo][config['namespace']] = config
 
     return configs
 
@@ -441,11 +514,10 @@ def env(namespace, hpo_namespace):
     return namespace + '-' + hpo_namespace.replace('_', '-')
 
 
-def register_hpos(client, namespace, function, configs, defaults, stats, register):
+def register_hpos(client, namespace, function, configs, defaults, stats, register=True):
     namespaces = defaultdict(list)
     for hpo, hpo_configs in configs.items():
-        for config in hpo_configs:
-            hpo_namespace = env(namespace, config['namespace'])
+        for hpo_namespace, config in hpo_configs.items():
             namespaces[hpo].append(hpo_namespace)
             # TODO: make is_registered more efficient
             if hpo_namespace in stats and register:
@@ -453,7 +525,9 @@ def register_hpos(client, namespace, function, configs, defaults, stats, registe
                 continue
             if register:
                 print(f'Registering HPO {hpo_namespace}')
-                register_hpo(client, hpo_namespace, function, config, defaults)
+                hpo_defaults = config.get('defaults', {})
+                hpo_defaults.update(defaults)
+                register_hpo(client, hpo_namespace, function, config, hpo_defaults)
 
     return namespaces
 
@@ -517,11 +591,10 @@ def register_tests(client, namespace, function, configs):
 def consolidate_results(data):
     new_data = dict()
     for hpo, hpo_datas in data.items():
-        hpo_namespaces = [hpo_data.attrs['namespace'] for hpo_data in hpo_datas]
-        indices = numpy.argsort(hpo_namespaces)
-        hpo_data = [hpo_datas[i] for i in indices]
+        hpo_namespaces = sorted(hpo_datas.keys())
+        hpo_data = [hpo_datas[namespace] for namespace in hpo_namespaces]
         new_data[hpo] = xarray.combine_by_coords(hpo_data)
-        new_data[hpo].coords['namespace'] = ('seed', list(sorted(hpo_namespaces)))
+        new_data[hpo].coords['namespace'] = ('seed', hpo_namespaces)
 
     return new_data
 
@@ -570,9 +643,10 @@ def get_status(client, namespace):
     return state
 
 
-def print_status(client, namespace, namespaces):
+def print_status(client, namespace, namespaces, hpo_stats=None):
+    if hpo_stats is None:
+        hpo_stats = fetch_hpo_stats(client, namespace)
 
-    hpo_stats = fetch_hpo_stats(client, namespace)
     trial_stats = fetch_trial_stats(client, namespace)
 
     print()
@@ -622,7 +696,7 @@ def run(uri, database, namespace, function, num_experiments, budget, fidelity, s
 
     configs = generate_hpos(
         list(range(num_experiments)), hpos, budget,
-        fidelity, space)
+        fidelity, space, namespace, defaults)
 
     variable_names = list(sorted(variables.keys()))
 
@@ -650,7 +724,7 @@ def run(uri, database, namespace, function, num_experiments, budget, fidelity, s
     print_status(client, namespace, namespaces)
     data = defaultdict(list)
     while sum(remainings.values(), []):
-        remainings = fetch_hpos_valid_curves(client, remainings, variable_names, data)
+        hpos_ready, remainings = fetch_hpos_valid_curves(client, remainings, variable_names, data)
 
         # TODO: Implement full-train part
         if do_full_train:
