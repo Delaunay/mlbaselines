@@ -1,4 +1,5 @@
 import argparse
+import datetime
 from pprint import pprint
 import re
 from collections import defaultdict
@@ -33,6 +34,7 @@ def main(argv=None):
     parser.add_argument('--database', default='olympus', type=str)
     parser.add_argument('--namespace', default=None, type=str)
     parser.add_argument('--test-only', action='store_true')
+    parser.add_argument('--show-errors', action='store_true')
 
     args = parser.parse_args(argv)
 
@@ -66,6 +68,9 @@ def main(argv=None):
     for namespace in namespaces:
         print()
         print(namespace)
+        if args.show_errors:
+            show_errors(client, namespace, HPO_ITEM)
+            show_errors(client, namespace, WORK_ITEM)
         repair_hpo_duplicates(client, namespace, test_only=args.test_only)
         repair_trials_duplicates(client, namespace, test_only=args.test_only)
         repair_hpo_lost_results(client, args.uri, args.database, namespace, test_only=args.test_only)
@@ -115,6 +120,24 @@ def repair_hpo_duplicates(client, namespace, test_only=False):
         print('OK: Only 1 actionable hpo found')
     else:
         print('OK: HPO completed')
+
+
+def show_errors(client, namespace, mtype):
+
+    cursor = client.db[WORK_QUEUE].find(
+        {'namespace': namespace, 'mtype': mtype, 'actioned': False})
+
+    print(datetime.datetime.utcnow())
+    for i, trial in enumerate(cursor):
+        if trial.get('error') is None:
+            continue
+
+        trial_uid = trial['message']['kwargs']['uid']
+        print(i, trial_uid, trial['_id'], trial['read'], trial['actioned'])
+        error = trial.pop('error')
+        pprint(trial)
+        print('Retries:', trial['retry'])
+        print(error)
 
 
 def repair_trials_duplicates(client, namespace, test_only=False):
