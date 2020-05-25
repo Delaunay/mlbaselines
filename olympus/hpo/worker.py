@@ -34,9 +34,11 @@ class TrialWorker(BaseWorker):
         Can work items run on this worker
 
     """
-    def __init__(self, uri, database, id, experiment=None, hpo_allowed=True, work_allowed=True):
+    def __init__(self, uri, database, id, experiment=None, hpo_allowed=True, work_allowed=True,
+                 log_capture=False):
         super(TrialWorker, self).__init__(uri, database, experiment, id, WORK_QUEUE, RESULT_QUEUE)
         self.namespaced = experiment is not None
+        self.client.capture = log_capture
 
         if work_allowed:
             self.new_handler(WORK_ITEM, self.run_trial)
