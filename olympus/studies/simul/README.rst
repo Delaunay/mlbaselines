@@ -137,7 +137,7 @@ when one is completed it will fetch the results and register the corresponding s
 replicates. This means that a surrogate model will be fitted on the results of the 
 hyper-parameter optimization and a simulation will be executed using the surrogate model.
 Additionaly, biased replicates, that is, replicates using the best hyper-parameter found with 
-random search but with other sources or variation randomized. 
+random search but with other sources of variation randomized. 
 The final results of all these experiments
 will be a dictionary of ``ideal`` replicates, the actual random searches, ``biased`` 
 replicates, the ones with fixed best hyper-parameters and randomized sources of variation,

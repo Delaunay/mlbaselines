@@ -57,7 +57,7 @@ Configuration
 -------------
 
 All configuration files are located in
-``olympus/studies/simul/configs``.
+``olympus/studies/init/configs``.
 
 Here's the ``logreg`` task for example:
 
@@ -134,7 +134,7 @@ The master processes can be started using the ``main.py`` script:
        --namespace logreg-init-case-study \
        --sample-size 100 \
        --extremum min \
-       --save-dir olympus/studies/simul/results
+       --save-dir olympus/studies/init/results
 
 Start one process with ``--extremum min`` and another with ``--extremum max``.
 These will register a random search algorithm in the database and wait for
