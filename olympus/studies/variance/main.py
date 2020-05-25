@@ -139,7 +139,10 @@ def fetch_vars_stats(client, namespace):
             'retry': 1,
         }},
         {'$group': {
-            '_id': '$uid',
+            '_id': {
+                'uid': '$uid',
+                'namespace': '$namespace'
+            },
             'namespace': {
                 '$last': '$namespace'
             },
@@ -246,7 +249,7 @@ def create_trials(configs, params, metrics):
         uid = config['uid']
         if uid not in metrics:
             raise RuntimeError(
-                'Nothing found in result queue for trial {uid}. Is it really completed?')
+                f'Nothing found in result queue for trial {uid}. Is it really completed?')
         params = copy.deepcopy(params)
         params.update(config)
         params['uid'] = uid
