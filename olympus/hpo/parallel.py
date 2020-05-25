@@ -130,7 +130,7 @@ class HPOManager:
 
     def suggest(self, hpo):
         debug('suggest')
-        trials = self._maybe_suggest(hpo)
+        trials = self._maybe_suggest(hpo, **self.work['kwargs'])
 
         if trials is None:
             return 0
@@ -148,9 +148,9 @@ class HPOManager:
         return self.future_client.records()
 
     @staticmethod
-    def _maybe_suggest(hpo):
+    def _maybe_suggest(hpo, **variables):
         try:
-            return hpo.suggest()
+            return hpo.suggest(**variables)
         except OptimizationIsDone:
             return None
         except WaitingForTrials:
