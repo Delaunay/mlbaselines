@@ -127,8 +127,6 @@ class Dataset(TorchDataset):
         classes = defaultdict(list)
 
         for index, batch in enumerate(self.dataset):
-            print(type(batch))
-            print(batch[-1])
             classes[int(batch[-1])].append(index)
 
         return [classes[i] for i in sorted(classes.keys())]
