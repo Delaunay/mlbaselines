@@ -117,9 +117,10 @@ def get_hpo_result_state(client, namespace):
 
 
 def get_hpo(client, namespace, partial=False):
+    result_state = None
     if partial:
         result_state = get_hpo_work_state(client, namespace)
-    else:
+    if result_state is None:
         result_state = get_hpo_result_state(client, namespace)
     if result_state is None:
         raise RuntimeError(f'No HPO for namespace {namespace} or HPO is not completed')
