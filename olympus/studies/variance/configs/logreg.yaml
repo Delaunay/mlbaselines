@@ -1,0 +1,15 @@
+function: 'olympus.baselines.logreg.main'
+
+medians: ['random_state']
+
+objective: 'validation_error_rate'
+
+variables:
+    random_state: 1
+    bootstrap_seed: 1
+
+defaults: {}
+
+params:
+    C: 0.5
+    l1_ratio: 0.5

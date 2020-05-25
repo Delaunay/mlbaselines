@@ -56,9 +56,9 @@ class Accuracy(Metric):
         with stream(self.metric_stream):
             with torch.no_grad():
                 total = 0
-                for data, *_, target in self.loader:
+                for data, target in self.loader:
                     accuracy, loss = task.accuracy(data, target)
-                    total += data[0].shape[0]
+                    total += target.shape[0]
 
                     accs.append(detach(accuracy))
                     losses.append(detach(loss))

@@ -62,7 +62,8 @@ class SklearnTask(Task):
     def accuracy(self, x, y):
         # How to measure accuracy given our model
         pred = self.model.predict(x)
-        accuracy = (pred == y).mean()
+
+        accuracy = (pred == y).sum()
 
         # We expect accuracy and loss
         return accuracy, 0
