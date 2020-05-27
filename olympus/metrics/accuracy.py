@@ -9,6 +9,7 @@ from olympus.utils import error
 from olympus.utils.stat import StatStream
 from olympus.utils.cuda import Stream, stream
 
+import math
 
 class NotFittedError(Exception):
     pass
@@ -58,13 +59,14 @@ class Accuracy(Metric):
                 total = 0
                 for data, target in self.loader:
                     accuracy, loss = task.accuracy(data, target)
-                    total += target.shape[0]
+                    batch_size = target.shape[0]
+                    total += batch_size
 
-                    accs.append(detach(accuracy))
+                    accs.append(detach(accuracy)*batch_size)
                     losses.append(detach(loss))
 
-                acc = sum([item(a) for a in accs]) / total
-                loss_acc = sum([item(l) for l in losses])
+                acc = math.fsum([item(a) for a in accs]) / total
+                loss_acc = math.fsum([item(l) for l in losses])
 
         end = datetime.utcnow()
 
