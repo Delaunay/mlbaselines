@@ -6,6 +6,7 @@ variables:
     init_seed: 1
     sampler_seed: 2
     global_seed: 3
+    bootstrapping_seed: 4
 
 medians: ['init_seed']
 

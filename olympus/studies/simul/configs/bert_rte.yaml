@@ -6,6 +6,7 @@ variables:
     init_seed: 1
     sampler_seed: 2
     global_seed: 3
+    bootstrapping_seed: 4
 
 defaults:
     clean_on_exit: 0
@@ -15,8 +16,8 @@ defaults:
     batch_size: 32
     warmup: 0
     epoch: 3
-    task: 'sst2'
-    ratio: 0.013
+    task: 'rte'
+    ratio: 0.1
     attention_probs_dropout_prob: 0.1
     hidden_dropout_prob: 0.1
 

@@ -703,11 +703,10 @@ def run(uri, database, namespace, function, num_experiments, budget, fidelity, s
     if partial:
         namespaces = defaultdict(list)
         for hpo, hpo_configs in configs.items():
-            for config in hpo_configs:
-                hpo_namespace = env(namespace, config['namespace'])
+            for hpo_namespace, config in hpo_configs.items():
                 namespaces[hpo].append(hpo_namespace)
 
-        data = defaultdict(list)
+        data = defaultdict(dict)
         fetch_hpos_valid_curves(client, namespaces, variable_names, data, partial=True)
 
         data = consolidate_results(data)
@@ -722,7 +721,7 @@ def run(uri, database, namespace, function, num_experiments, budget, fidelity, s
     remainings = namespaces
 
     print_status(client, namespace, namespaces)
-    data = defaultdict(list)
+    data = defaultdict(dict)
     while sum(remainings.values(), []):
         hpos_ready, remainings = fetch_hpos_valid_curves(client, remainings, variable_names, data)
 
