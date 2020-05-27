@@ -62,11 +62,11 @@ class Accuracy(Metric):
                     batch_size = target.shape[0]
                     total += batch_size
 
-                    accs.append(detach(accuracy)*batch_size)
-                    losses.append(detach(loss))
+                    accs.append(detach(accuracy))
+                    losses.append(detach(loss)*batch_size)
 
                 acc = math.fsum([item(a) for a in accs]) / total
-                loss_acc = math.fsum([item(l) for l in losses])
+                loss_acc = math.fsum([item(l) for l in losses]) / total
 
         end = datetime.utcnow()
 
