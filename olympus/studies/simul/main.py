@@ -176,20 +176,22 @@ def env(namespace, hpo_namespace):
     return namespace + '-' + hpo_namespace.replace('_', '-')
 
 
-def consolidate_results(data):
+def consolidate_results(data_hpo, data_replicates):
     new_data = dict()
-    for hpo, hpo_datas in data.items():
-        new_data[hpo] = dict()
-        for replication_type in ['ideal', 'biased', 'simul-fix', 'simul-free']:
+    for hpo, hpo_datas in data_replicates.items():
+        ideal_datas = data_hpo[hpo]
+        hpo_namespaces = sorted(ideal_datas.keys())
+        ideal_data = [ideal_datas[namespace] for namespace in hpo_namespaces]
+        new_data[hpo] = dict(ideal=xarray.combine_by_coords(ideal_data))
+        new_data[hpo]['ideal'].coords['namespace'] = ('seed', hpo_namespaces)
+
+        for replication_type in ['biased', 'simul-fix', 'simul-free']:
             hpo_namespaces = sorted(hpo_datas.keys())
             replicates_data = [hpo_datas[hpo_namespace][replication_type]
                                for hpo_namespace in hpo_namespaces]
             new_data[hpo][replication_type] = xarray.combine_by_coords(replicates_data)
-            if replication_type == 'ideal':
-                replicate_namespaces = hpo_namespaces
-            else:
-                replicate_namespaces = [env(hpo_namespace, replication_type)
-                                        for hpo_namespace in hpo_namespaces]
+            replicate_namespaces = [env(hpo_namespace, replication_type)
+                                    for hpo_namespace in hpo_namespaces]
             new_data[hpo][replication_type].coords['namespace'] = ('seed', replicate_namespaces)
 
     return new_data
@@ -487,7 +489,7 @@ def remaining(hpo_stats):
     return False
 
 
-def fetch_hpos_replicates(client, hpo_configs, replicate_configs, variables, space, data):
+def fetch_hpos_replicates(client, hpo_configs, replicate_configs, variables, space):
     hpos_ready = defaultdict(list)
     remainings = defaultdict(list)
 
@@ -495,8 +497,8 @@ def fetch_hpos_replicates(client, hpo_configs, replicate_configs, variables, spa
     for hpo in replicate_configs.keys():
         data_replicates[hpo] = dict()
         for hpo_namespace in replicate_configs[hpo]:
-            data_replicates[hpo][hpo_namespace] = dict(ideal=data[hpo][hpo_namespace])
             print(f'Fetching replicates of {hpo_namespace}')
+            data_replicates[hpo][hpo_namespace] = dict()
             for simul_type in ['biased', 'simul-fix', 'simul-free']:
                 print(f'    of type {simul_type}')
 
@@ -582,30 +584,32 @@ def run(uri, database, namespace, function, num_experiments, num_simuls,
         register=register)
     remainings = namespaces
 
-    data = defaultdict(dict)
+    data_hpo = defaultdict(dict)
     all_replicates = dict()
     while sum(remainings.values(), []):
         print_status(client, namespace, namespaces)
-        hpos_ready, remainings = fetch_hpos_valid_curves(client, remainings, variable_names, data)
+        hpos_ready, remainings = fetch_hpos_valid_curves(
+            client, remainings, variable_names, data_hpo)
 
         ready_configs = get_ready_configs(hpos_ready, configs, to_replicate)
 
         replicates = generate_replicates(
-            ready_configs, data, variables, objective, hpo_budget, num_replicates,
+            ready_configs, data_hpo, variables, objective, hpo_budget, num_replicates,
             early_stopping=False)
         if register:
             register_all_replicates(client, function, namespace, replicates)
 
         all_replicates.update(replicates)
-        time.sleep(sleep_time)
-        # TODO: Add printing for replicates? It should be included actually
+        if sum(remainings.values(), []):
+            time.sleep(sleep_time)
 
     wait(client, namespace, sleep=sleep_time)
 
-    data = fetch_hpos_replicates(client, configs, all_replicates, variable_names, space, data)
+    data_replicates = fetch_hpos_replicates(
+        client, configs, all_replicates, variable_names, space)
 
     # Save valid results
-    data = consolidate_results(data)
+    data = consolidate_results(data_hpo, data_replicates)
     save_results(namespace, data, save_dir)
 
     # {
