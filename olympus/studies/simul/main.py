@@ -213,9 +213,9 @@ def load_results(namespace, save_dir):
         data = {
             hpo: {
                 rep_type: xarray.Dataset.from_dict(d)
-                for hpo, d in reps.items
+                for rep_type, d in reps.items()
             }
-            for hop, reps in json.loads(f.read()).items()
+            for hpo, reps in json.loads(f.read()).items()
         }
 
     return data
@@ -438,7 +438,7 @@ def fetch_all_trial_info(client, namespace):
                 '$sum': '$error'
             },
             'retry': {
-                '$sum': '$retry'
+                '$max': '$retry'
             },
             'count': {
                 '$sum': 1
@@ -467,7 +467,7 @@ def register_hpo_replicates(client, function, hpo_namespace, configs):
     return new_registered
 
 
-def register(client, function, namespace, replicates):
+def register_all_replicates(client, function, namespace, replicates):
 
     new_registered = set()
     for hpo, hpo_replicates in replicates.items():
@@ -532,7 +532,8 @@ def fetch_hpo_replicates(client, namespace, rep_configs, variables, space, seed)
 def run(uri, database, namespace, function, num_experiments, num_simuls,
         fidelity, space, objective, variables, defaults,
         num_replicates=None,
-        sleep_time=60, do_full_train=False, save_dir='.', seed=1):
+        sleep_time=60, do_full_train=False, save_dir='.', seed=1,
+        register=True):
 
     hpo_budget = 100
     surrogate_budget = 200
@@ -577,16 +578,14 @@ def run(uri, database, namespace, function, num_experiments, num_simuls,
     hpo_stats = fetch_all_hpo_stats(client, namespace)
 
     namespaces = register_hpos(
-        client, namespace, function, configs, defaults, hpo_stats)
+        client, namespace, function, configs, defaults, hpo_stats,
+        register=register)
     remainings = namespaces
 
-    print_status(client, namespace, namespaces)
     data = defaultdict(dict)
     all_replicates = dict()
-    hpo_stats = None
-    while hpo_stats is None or remaining(hpo_stats):
-        hpo_stats = fetch_hpo_stats(client, namespace)
-        print_status(client, namespace, namespaces, hpo_stats)
+    while sum(remainings.values(), []):
+        print_status(client, namespace, namespaces)
         hpos_ready, remainings = fetch_hpos_valid_curves(client, remainings, variable_names, data)
 
         ready_configs = get_ready_configs(hpos_ready, configs, to_replicate)
@@ -594,7 +593,8 @@ def run(uri, database, namespace, function, num_experiments, num_simuls,
         replicates = generate_replicates(
             ready_configs, data, variables, objective, hpo_budget, num_replicates,
             early_stopping=False)
-        register(client, function, namespace, replicates)
+        if register:
+            register_all_replicates(client, function, namespace, replicates)
 
         all_replicates.update(replicates)
         time.sleep(sleep_time)
@@ -639,6 +639,7 @@ def main(args=None):
     parser.add_argument('--num-replicates', default=200, type=int)
     parser.add_argument('--num-simuls', default=50, type=int)
     parser.add_argument('--save-dir', default='.', type=str)
+    parser.add_argument('--monitor-only', action='store_true')
     args = parser.parse_args(args)
 
     namespace = args.namespace
@@ -649,7 +650,8 @@ def main(args=None):
         args.uri, args.database, namespace, args.config,
         num_experiments=args.num_replicates, num_simuls=args.num_simuls,
         sleep_time=args.sleep_time,
-        save_dir=args.save_dir)
+        save_dir=args.save_dir,
+        register=not args.monitor_only)
 
 
 if __name__ == '__main__':
