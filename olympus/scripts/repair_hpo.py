@@ -12,7 +12,6 @@ from olympus.observers.msgtracker import METRIC_QUEUE
 from olympus.hpo.parallel import RESULT_QUEUE, WORK_QUEUE, HPO_ITEM, WORK_ITEM, RESULT_ITEM
 from olympus.hpo.worker import TrialWorker
 from olympus.utils.log import set_verbose_level
-from olympus.utils import timeout
 from olympus.studies.searchspace.main import get_hpo
 
 
@@ -55,7 +54,7 @@ def main(argv=None):
     stats = sorted(doc['_id'] for doc in stats)
 
     if not stats:
-        print(f'No namespace found for {options.namespace}')
+        print(f'No namespace found for {args.namespace}')
         return 0
 
     if len(stats) > 1:
