@@ -188,7 +188,7 @@ def print_status(trial_stats):
     print()
     print(datetime.datetime.now())
     print((' ' * 32) + 'variable   completed    running    pending     count     broken')
-    for namespace, status in trial_stats.items():
+    for namespace, status in sorted(trial_stats.items()):
         # status = dict(
         #     completed=0, broken=0, pending=0,
         #     trials=dict(completed=0, broken=0, pending=0, missing=0))
