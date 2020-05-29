@@ -132,12 +132,52 @@ def generate_simulated_fix(data, config, variables, objective, hpo_budget, num_r
     return configs
 
 
+def get_model_init_var(variables):
+    for candidate in ['init_seed', 'random_state']:
+        if candidate in variables:
+            return candidate
+
+    raise RuntimeError('Could not find the variable name for model initialization')
+
+
+def get_bootstrap_var(variables):
+    for candidate in ['bootstrapping_seed', 'bootstrap_seed']:
+        if candidate in variables:
+            return candidate
+
+    raise RuntimeError('Could not find the variable name for bootstrapping')
+
+
+def limit_to_var(configs, ref_config, var):
+    new_configs = []
+    for config in configs:
+        # Make sure we have HPs from config
+        new_config = copy.deepcopy(config)
+        # But update variables with default values
+        new_config.update(ref_config)
+        # And bring back the single var we want to vary
+        new_config[var] = config[var]
+        # Update corresponding uid
+        new_config.pop('uid', None)
+        new_config['uid'] = compute_identity(new_config, IDENTITY_SIZE)
+        new_configs.append(new_config)
+
+    return new_configs
+
+
 def generate_hpo_replicates(data, config, variables, objective, hpo_budget, num_replicates,
                             early_stopping):
+
     replicates = dict()
     replicates['biased'] = generate_biased_replicates(
         data, config, variables, objective, hpo_budget, 
         num_replicates, early_stopping=early_stopping)
+
+    replicates['weights_init'] = limit_to_var(
+        replicates['biased'], config['defaults'], get_model_init_var(variables))
+    replicates['bootstrap'] = limit_to_var(
+        replicates['biased'], config['defaults'], get_bootstrap_var(variables))
+
     replicates['simul-fix'] = generate_simulated_fix(
         data, config, variables, objective, hpo_budget, num_replicates,
         early_stopping=early_stopping)
@@ -178,6 +218,7 @@ def env(namespace, hpo_namespace):
 
 def consolidate_results(data_hpo, data_replicates):
     new_data = dict()
+    rep_types = ['weights_init', 'bootstrap', 'biased', 'simul-fix', 'simul-free']
     for hpo, hpo_datas in data_replicates.items():
         ideal_datas = data_hpo[hpo]
         hpo_namespaces = sorted(ideal_datas.keys())
@@ -185,7 +226,7 @@ def consolidate_results(data_hpo, data_replicates):
         new_data[hpo] = dict(ideal=xarray.combine_by_coords(ideal_data))
         new_data[hpo]['ideal'].coords['namespace'] = ('seed', hpo_namespaces)
 
-        for replication_type in ['biased', 'simul-fix', 'simul-free']:
+        for replication_type in rep_types:
             hpo_namespaces = sorted(hpo_datas.keys())
             replicates_data = [hpo_datas[hpo_namespace][replication_type]
                                for hpo_namespace in hpo_namespaces]
@@ -499,7 +540,7 @@ def fetch_hpos_replicates(client, hpo_configs, replicate_configs, variables, spa
         for hpo_namespace in replicate_configs[hpo]:
             print(f'Fetching replicates of {hpo_namespace}')
             data_replicates[hpo][hpo_namespace] = dict()
-            for simul_type in ['biased', 'simul-fix', 'simul-free']:
+            for simul_type in ['weights_init', 'bootstrap', 'biased', 'simul-fix', 'simul-free']:
                 print(f'    of type {simul_type}')
 
                 simul_configs = replicate_configs[hpo][hpo_namespace][simul_type]
@@ -597,10 +638,10 @@ def run(uri, database, namespace, function, num_experiments, num_simuls,
             ready_configs, data_hpo, variables, objective, hpo_budget, num_replicates,
             early_stopping=False)
         if register:
-            register_all_replicates(client, function, namespace, replicates)
+            registered_replicates = register_all_replicates(client, function, namespace, replicates)
 
         all_replicates.update(replicates)
-        if sum(remainings.values(), []):
+        if sum(remainings.values(), []) and not registered_replicates:
             time.sleep(sleep_time)
 
     wait(client, namespace, sleep=sleep_time)

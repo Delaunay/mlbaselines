@@ -141,13 +141,15 @@ generate_hpo_configs = dict(
 def fetch_hpos_valid_curves(client, namespaces, variables, data, partial=False):
     hpos_ready = defaultdict(list)
     remainings = defaultdict(list)
+    fetched_one = False
     for hpo in namespaces.keys():
         for hpo_namespace in namespaces[hpo]:
-            if is_hpo_completed(client, hpo_namespace) or partial:
+            if (is_hpo_completed(client, hpo_namespace) and not fetched_one) or partial:
                 print(f'Fetching results of {hpo_namespace}')
 
                 hpo_data = fetch_hpo_valid_curves(
                     client, hpo_namespace, variables, partial=partial)
+                fetched_one = True
                 if hpo_data:
                     data[hpo][hpo_namespace] = hpo_data
                     hpos_ready[hpo].append(hpo_namespace)
@@ -730,9 +732,9 @@ def run(uri, database, namespace, function, num_experiments, budget, fidelity, s
             configs = generate_tests(data, defaults, registered)
             new_registered_tests = register_tests(client, namespace, function, configs)
 
-        print_status(client, namespace, namespaces)
-
-        time.sleep(sleep_time)
+        if not sum(hpos_ready.values(), []):
+            print_status(client, namespace, namespaces)
+            time.sleep(sleep_time)
 
     # Save valid results
     data = consolidate_results(data)
