@@ -626,7 +626,7 @@ def run(uri, database, namespace, function, num_experiments, num_simuls,
     remainings = namespaces
 
     data_hpo = defaultdict(dict)
-    all_replicates = dict()
+    all_replicates = dict(random_search=dict())
     while sum(remainings.values(), []):
         print_status(client, namespace, namespaces)
         hpos_ready, remainings = fetch_hpos_valid_curves(
@@ -640,7 +640,8 @@ def run(uri, database, namespace, function, num_experiments, num_simuls,
         if register:
             registered_replicates = register_all_replicates(client, function, namespace, replicates)
 
-        all_replicates.update(replicates)
+        if replicates.get('random_search'):
+            all_replicates['random_search'].update(replicates['random_search'])
         if sum(remainings.values(), []) and not registered_replicates:
             time.sleep(sleep_time)
 
