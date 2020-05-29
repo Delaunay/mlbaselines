@@ -1,0 +1,24 @@
+function: 'olympus.baselines.segmentation.main'
+
+objective: 'validation_mean_jaccard_distance'
+
+var_name: 'init_seed'
+
+variables:
+    init_seed: 1
+    bootstrapping_seed: 2
+    sampler_seed: 3
+
+fidelity:
+    min: 1
+    max: 240
+    base: 4
+    name: 'epoch'
+
+defaults:
+    half: False
+
+space:
+    learning_rate: 'loguniform(1e-5, 1e-2)'
+    momentum: 'uniform(0.50, 0.99)'
+    weight_decay: 'loguniform(1e-8, 1e-1)'
