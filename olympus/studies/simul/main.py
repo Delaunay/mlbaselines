@@ -35,6 +35,14 @@ from olympus.studies.hpo.main import (
 
 IDENTITY_SIZE = 16
 
+WEIGHTS_INIT = 'weights_init'
+BOOTSTRAP = 'bootstrap'
+HP_FIXED = 'biased'
+SIMUL_FIXED = 'simul-fix'
+SIMUL_FREE = 'simul-free'
+
+REP_TYPES = [WEIGHTS_INIT, BOOTSTRAP, HP_FIXED, SIMUL_FIXED, SIMUL_FREE]
+
 
 def get_configs_to_replicate(configs, num_simuls):
     to_replicate = dict()
@@ -166,36 +174,49 @@ def limit_to_var(configs, ref_config, var):
 
 
 def generate_hpo_replicates(data, config, variables, objective, hpo_budget, num_replicates,
-                            early_stopping):
+                            early_stopping, rep_types):
 
     replicates = dict()
-    replicates['biased'] = generate_biased_replicates(
+
+    hp_fixed = generate_biased_replicates(
         data, config, variables, objective, hpo_budget, 
         num_replicates, early_stopping=early_stopping)
 
-    replicates['weights_init'] = limit_to_var(
-        replicates['biased'], config['defaults'], get_model_init_var(variables))
-    replicates['bootstrap'] = limit_to_var(
-        replicates['biased'], config['defaults'], get_bootstrap_var(variables))
+    if HP_FIXED in rep_types:
+        replicates['biased'] = hp_fixed
 
-    replicates['simul-fix'] = generate_simulated_fix(
-        data, config, variables, objective, hpo_budget, num_replicates,
-        early_stopping=early_stopping)
-    replicates['simul-free'] = generate_simulated_replicates(
-        replicates['simul-fix'], config, variables)
+    if WEIGHTS_INIT in rep_types:
+        replicates['weights_init'] = limit_to_var(
+            hp_fixed, config['defaults'], get_model_init_var(variables))
+
+    if BOOTSTRAP in rep_types:
+        replicates['bootstrap'] = limit_to_var(
+            hp_fixed, config['defaults'], get_bootstrap_var(variables))
+
+    if SIMUL_FIXED in rep_types or SIMUL_FREE in rep_types:
+        simul_fix = generate_simulated_fix(
+            data, config, variables, objective, hpo_budget, num_replicates,
+            early_stopping=early_stopping)
+
+    if SIMUL_FIXED in rep_types:
+        replicates['simul-fix'] = simul_fix
+
+    if SIMUL_FREE in rep_types:
+        replicates['simul-free'] = generate_simulated_replicates(
+            simul_fix, config, variables)
 
     return replicates
 
 
 def generate_replicates(hpos_ready, data, variables, objective, hpo_budget, num_replicates,
-                        early_stopping):
+                        early_stopping, rep_types):
     replicates = dict()
     for hpo, configs in hpos_ready.items():
         replicates[hpo] = dict()
         for namespace, config in configs.items():
             replicates[hpo][namespace] = generate_hpo_replicates(
                 data[hpo][namespace], config, variables, objective, hpo_budget, num_replicates,
-                early_stopping)
+                early_stopping, rep_types)
 
     return replicates
 
@@ -216,9 +237,8 @@ def env(namespace, hpo_namespace):
     return namespace + '-' + hpo_namespace.replace('_', '-')
 
 
-def consolidate_results(data_hpo, data_replicates):
+def consolidate_results(data_hpo, data_replicates, rep_types):
     new_data = dict()
-    rep_types = ['weights_init', 'bootstrap', 'biased', 'simul-fix', 'simul-free']
     for hpo, hpo_datas in data_replicates.items():
         ideal_datas = data_hpo[hpo]
         hpo_namespaces = sorted(ideal_datas.keys())
@@ -530,7 +550,7 @@ def remaining(hpo_stats):
     return False
 
 
-def fetch_hpos_replicates(client, hpo_configs, replicate_configs, variables, space):
+def fetch_hpos_replicates(client, hpo_configs, replicate_configs, variables, space, rep_types):
     hpos_ready = defaultdict(list)
     remainings = defaultdict(list)
 
@@ -540,7 +560,7 @@ def fetch_hpos_replicates(client, hpo_configs, replicate_configs, variables, spa
         for hpo_namespace in replicate_configs[hpo]:
             print(f'Fetching replicates of {hpo_namespace}')
             data_replicates[hpo][hpo_namespace] = dict()
-            for simul_type in ['weights_init', 'bootstrap', 'biased', 'simul-fix', 'simul-free']:
+            for simul_type in rep_types:
                 print(f'    of type {simul_type}')
 
                 simul_configs = replicate_configs[hpo][hpo_namespace][simul_type]
@@ -576,7 +596,8 @@ def run(uri, database, namespace, function, num_experiments, num_simuls,
         fidelity, space, objective, variables, defaults,
         num_replicates=None,
         sleep_time=60, do_full_train=False, save_dir='.', seed=1,
-        register=True):
+        register=True,
+        rep_types=REP_TYPES):
 
     hpo_budget = 100
     surrogate_budget = 200
@@ -636,7 +657,7 @@ def run(uri, database, namespace, function, num_experiments, num_simuls,
 
         replicates = generate_replicates(
             ready_configs, data_hpo, variables, objective, hpo_budget, num_replicates,
-            early_stopping=False)
+            early_stopping=False, rep_types=rep_types)
         if register:
             registered_replicates = register_all_replicates(client, function, namespace, replicates)
 
@@ -648,10 +669,10 @@ def run(uri, database, namespace, function, num_experiments, num_simuls,
     wait(client, namespace, sleep=sleep_time)
 
     data_replicates = fetch_hpos_replicates(
-        client, configs, all_replicates, variable_names, space)
+        client, configs, all_replicates, variable_names, space, rep_types)
 
     # Save valid results
-    data = consolidate_results(data_hpo, data_replicates)
+    data = consolidate_results(data_hpo, data_replicates, rep_types)
     save_results(namespace, data, save_dir)
 
     # {
