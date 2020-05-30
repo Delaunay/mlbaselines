@@ -24,7 +24,8 @@ from olympus.hpo.parallel import (
 from olympus.hpo.robo import build_model, build_bounds
 from olympus.hpo import HPOptimizer, Fidelity
 from olympus.utils.functional import flatten
-from olympus.studies.simul.main import run as run_simul
+from olympus.studies.simul.main import (
+    run as run_simul, HP_FIXED, SIMUL_FREE)
 from olympus.studies.variance.main import load_results as load_variance_results
 
 
@@ -72,14 +73,18 @@ def run(uri, database, namespace, function,
 
     # Reuse simul
 
-    variables[var_name] = extremum_seed
+    # Don't consider this one as a variable
+    variables.pop(var_name, None)
+    # And set to this value in all experiments
+    defaults[var_name] = extremum_seed
     simul_namespace = env(namespace, f'{extremum}')
 
     run_simul(
         uri, database, simul_namespace,
         function=function, fidelity=fidelity, space=space, objective=objective, variables=variables,
         defaults=defaults, sleep_time=sleep_time, save_dir=save_dir,
-        num_replicates=sample_size, num_experiments=2, num_simuls=1, seed=1)
+        num_replicates=sample_size, num_experiments=2, num_simuls=1, seed=1,
+        rep_types=[HP_FIXED, SIMUL_FREE])
 
 
 def run_from_config_file(uri, database, namespace, config_file, **kwargs):
