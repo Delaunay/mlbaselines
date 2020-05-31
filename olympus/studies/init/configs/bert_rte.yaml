@@ -5,6 +5,7 @@ objective: 'validation_error_rate'
 var_name: 'init_seed'
 
 variables:
+    init_seed: 1
     sampler_seed: 2
     global_seed: 3
 
