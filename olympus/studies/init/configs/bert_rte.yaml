@@ -1,0 +1,33 @@
+function: 'olympus.baselines.bert_glue.main'
+
+objective: 'validation_error_rate'
+
+var_name: 'init_seed'
+
+variables:
+    sampler_seed: 2
+    global_seed: 3
+
+defaults:
+    clean_on_exit: 0
+    half: True
+    beta1: 0.9
+    beta2: 0.999
+    batch_size: 32
+    warmup: 0
+    epoch: 3
+    task: 'rte'
+    ratio: 0.1
+    attention_probs_dropout_prob: 0.1
+    hidden_dropout_prob: 0.1
+
+fidelity:
+   min: 3
+   max: 3
+   base: 1
+   name: 'epoch'
+
+space:
+    learning_rate: 'loguniform(0.00001, 0.0001)'
+    weight_decay: 'loguniform(10e-4, 2*10e-3)'
+    init_std: 'loguniform(0.01, 0.5)'
