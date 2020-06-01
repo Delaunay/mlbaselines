@@ -99,11 +99,12 @@ def load_pMHC_dataset(data_path, folder="NetMHCpan_data", alleles_only = False):
         return data, alleles, overlapping_alleles
 
 @functools.lru_cache()
-def get_valid_dataset(folder = "NetMHC"):
+def get_valid_dataset(data_path,folder = "NetMHCpan_data"):
+    task = 'pan_allele'
     if not os.path.exists(f'{folder}/cached_valid_dataset_{task}.p'):
         aminoacids = ["G","P","A","V","L","I","M","C","F","Y","W","H","K","R","Q","N","E","D","S","T"]
         print ('Loading files...')
-        data = pd.read_csv(f'{folder}/Pearson_dataset.tsv',sep='\t')
+        data = pd.read_csv(f'{data_path}/{folder}/Pearson_dataset.tsv',sep='\t')
         data = data[[len(i)<12 and len(i)>7 for i in data['Peptide Sequence']]]
 
         ### loading the allele data from specified folder
@@ -132,7 +133,6 @@ def get_valid_dataset(folder = "NetMHC"):
         data['peptide_sparse'] = peptide_sparse
 
         ### merging these encodings into the dataset
-        
         input_data = merge_dataset(data, 'peptide_sparse', 'allele_seq_sparse', aminoacids, max_length_allele, max_length_peptides)
 
         ### processing the targets
@@ -156,12 +156,13 @@ def get_valid_dataset(folder = "NetMHC"):
     return input_data
 
 @functools.lru_cache()
-def get_test_dataset(folder = "NetMHC"):
+def get_test_dataset(data_path, folder = "NetMHCpan_data"):
+    task = 'pan_allele'
     if not os.path.exists(f'{folder}/cached_train_dataset_{task}.p'):
 
         aminoacids = ["G","P","A","V","L","I","M","C","F","Y","W","H","K","R","Q","N","E","D","S","T"]
         print ('Loading files...')
-        data = pd.read_csv(f'{folder}/hpv_predictions.csv')
+        data = pd.read_csv(f'{data_path}/{folder}/hpv_predictions.csv')
         print ('Loading files...')
         data = data[[len(i)<12 and len(i)>7 for i in data['peptide']]]
         data['allele'] = [''.join(i.split('*')) for i in data['allele']]

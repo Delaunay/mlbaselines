@@ -1,5 +1,5 @@
 import copy
-from collections import defaultdict
+from collections import defaultdict, OrderedDict
 from dataclasses import dataclass
 
 import numpy
@@ -143,12 +143,13 @@ class SklearnEnsembleTask(Task):
         self.name = ''
         self.models = models
 
-        self.tasks = {}
-        for name, model in models.items():
+        self.tasks = OrderedDict()
+        for name, model in sorted(models.items()):
             self.tasks[name] = SklearnTask(model, create_subtask_metrics(name), name=name)
 
         # Measure the time spent training
         self.metrics.append(ElapsedRealTime().every(batch=1))
+        self.metrics.append(SampleCount().every(batch=1))
         self.metrics.append(EnsembleMetric(self))
 
     def get_space(self):
@@ -161,6 +162,14 @@ class SklearnEnsembleTask(Task):
     def init(self, model, uid=None):
         for task in self.tasks.values():
             task.init(model=model, uid=uid)
+
+        # Get a unique identifier for this configuration
+        if uid is None:
+            uid = compute_identity(model, size=16)
+
+        # broadcast a signal that the model is ready
+        # so we can setup logging, data, etc...
+        self.metrics.new_trial(model, uid)
 
     def fit(self, data, epoch=None, context=None):
         # broadcast to observers/metrics that we are starting the training

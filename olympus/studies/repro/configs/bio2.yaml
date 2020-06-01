@@ -1,0 +1,15 @@
+function: 'olympus.baselines.bio_pMHC_task2.main'
+
+objective: 'validation_aac'
+
+variables:
+    random_state: 1
+    bootstrap_seed: 1
+
+resumable: 0
+
+defaults: {}
+
+params:
+        hidden_layer_sizes: 121
+        alpha: 0.45

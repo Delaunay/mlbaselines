@@ -1,15 +1,15 @@
 function: 'olympus.baselines.bio_pMHC_task.main'
 
+medians: ['random_state']
+
 objective: 'mean_validation_aac'
 
 variables:
     random_state: 1
     bootstrap_seed: 1
 
-fidelity: null
-
 defaults: {}
 
-space:
-    hidden_layer_sizes: 'loguniform(1, 100)'
-    alpha: 'uniform(0, 1)'
+params:
+        hidden_layer_sizes: 54
+        alpha: 0.3

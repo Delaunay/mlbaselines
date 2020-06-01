@@ -49,13 +49,14 @@ class MLPRegressor:
     def init(self, **hyper_parameters):
         self.hp.add_parameters(**hyper_parameters)
         self.model = self.model_ctor(
-            # TODO(Assya): Replace random_state if necessary with what sklearn MLPRegressor
-            #              use to set the initial weights.
             random_state=self.random_state,
             **self.hp.parameters(strict=True)
         )
 
     def predict(self, x):
+        #import pdb; pdb.set_trace()
+        #TODO: check if this fixes it
+        x=x[0]
         try:
             return self.model.predict(x)
         except sklearn.exceptions.NotFittedError as e:
@@ -65,18 +66,18 @@ class MLPRegressor:
         self.model = self.model.fit(x, y)
         return self.model
 
-def main(bootstrap_seed, model_seed, hidden_layer_sizes=(50,), alpha=0.001,
+def main(bootstrap_seed, random_state, hidden_layer_sizes=150, alpha=0.001,
         data_path='.',
         epoch=0,
         uid=None,
         experiment_name=None,client=None):
-   """
+    """
 
     Parameters
     ----------
     bootstrap_seed: int
         seed for controling which data-points are selected for training/testing splits
-    model_seed: int
+    random_state: int
         seed for the generation of weights
     hidden_layer_sizes: tuple
         the size of layers ex: (50,) is one layer of 50 neurons
@@ -88,10 +89,11 @@ def main(bootstrap_seed, model_seed, hidden_layer_sizes=(50,), alpha=0.001,
         decides if yes or no we will use ensembling for the test set
 
     """
+    hidden_layer_sizes = int(hidden_layer_sizes)
     # Load Dataset
     train_data = get_train_dataset(folder=option('data.path', data_path),task='pan_allele', min_nb_examples=1000)
-    valid_data = get_valid_dataset(folder=option('data.path', data_path))
-    test_data = get_test_dataset(folder=option('data.path', data_path))
+    valid_data = get_valid_dataset(option('data.path', data_path))
+    test_data = get_test_dataset(option('data.path', data_path))
 
     # one bootstrap seed for all 3 datasets
     rng = numpy.random.RandomState(bootstrap_seed)
@@ -106,7 +108,7 @@ def main(bootstrap_seed, model_seed, hidden_layer_sizes=(50,), alpha=0.001,
 
     # Setup the task
     task = SklearnTask(
-        MLPRegressor(hidden_layer_sizes=hidden_layer_sizes, solver=solver, alpha=alpha),
+        MLPRegressor(solver='lbfgs', random_state=random_state),
         metrics=additional_metrics)
 
     # Save the result of your experiment inside a db
@@ -114,14 +116,13 @@ def main(bootstrap_seed, model_seed, hidden_layer_sizes=(50,), alpha=0.001,
         task.metrics.append(metric_logger(
             client=client,
             experiment=experiment_name))
-
     hyper_parameters = dict(
         model=dict(
-            # TODO(Assya) Pass HPs here
+            hidden_layer_sizes=(hidden_layer_sizes, ),
+            alpha=alpha
         )
     )
-
-    show_dict(hyperparameters)
+    show_dict(hyper_parameters)
 
     # initialize the task with you configuration
     task.init(
@@ -131,12 +132,12 @@ def main(bootstrap_seed, model_seed, hidden_layer_sizes=(50,), alpha=0.001,
 
     # Train
     task.fit(train_data[:, :-1], train_data[:, -1])
-
-    show_dict(task.metrics.value())
+    stats = task.metrics.value()
+    show_dict(stats)
 
     return float(stats['validation_aac'])
 
 if __name__ == '__main__':
-    main(model_seed=numpy.random.randint(2**30),
-             bootstrap_seed=numpy.random.randint(2**30))
+    main(random_state=1,
+         bootstrap_seed=2)
 

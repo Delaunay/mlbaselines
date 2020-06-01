@@ -379,6 +379,8 @@ class SampleCount(Observer):
             batch_size = input.shape[0]
         elif hasattr(input, '__getitem__'):
             batch_size = len(input[0])
+        elif input is None:
+            batch_size = 1
         else:
             batch_size = input.size(0)
 

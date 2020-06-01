@@ -17,9 +17,9 @@ def bootstrap(data, bootstrap_seed):
     rng = numpy.random.RandomState(bootstrap_seed)
     splits = dict(train=dict(), valid=dict(), test=dict())
 
-    for name, datasubset in data.items():
+    for name, datasubset in sorted(data.items()):
         subsplits = data_bootstrap(datasubset, rng)
-        for split_name in splits.keys():
+        for split_name in sorted(splits.keys()):
             splits[split_name][name] = subsplits[split_name]
 
     return splits
@@ -89,12 +89,8 @@ class MLPRegressor:
         return self.model
 
 
-def main(bootstrap_seed=1, model_seed=1, hidden_layer_size=50, alpha=0.001,
-        data_path='.',
-        epoch=0,
-        uid=None,
-        experiment_name=None,
-        client=None):
+def main(bootstrap_seed=1, random_state=1, hidden_layer_sizes=50, alpha=0.001,
+         data_path='.', epoch=0, uid=None, experiment_name=None, client=None):
     """
 
     Parameters
@@ -103,14 +99,16 @@ def main(bootstrap_seed=1, model_seed=1, hidden_layer_size=50, alpha=0.001,
         seed for controling which data-points are selected for training/testing splits
     model_seed: int
         seed for the generation of weights
-    hidden_layer_size: int
+    hidden_layer_sizes: int
         the size of hidden layer ex: one layer of 50 neurons
     alpha: float
         L2 penalty (regularization term) parameter.
+    ensembling: bool
+        decides if yes or no we will use ensembling for the test set
 
     """
 
-    hidden_layer_size = int(hidden_layer_size)
+    hidden_layer_sizes = int(hidden_layer_sizes)
 
     # Load Dataset
 
@@ -128,8 +126,9 @@ def main(bootstrap_seed=1, model_seed=1, hidden_layer_size=50, alpha=0.001,
     #train_data = train_data[allele]
     dataset_splits = bootstrap(train_data, bootstrap_seed)
 
-    rng = numpy.random.RandomState(model_seed)
+    rng = numpy.random.RandomState(random_state)
     models = {name: MLPRegressor(solver='lbfgs', random_state=int(rng.randint(2**30)))
+    #models = {name: MLPRegressor( random_state=int(rng.randint(2**30)))
               for name in sorted(dataset_splits['train'].keys())}
 
     def create_subtask_metrics(name):
@@ -150,7 +149,7 @@ def main(bootstrap_seed=1, model_seed=1, hidden_layer_size=50, alpha=0.001,
 
     hyper_parameters = dict(
         model=dict(
-            hidden_layer_sizes=(hidden_layer_size, ),
+            hidden_layer_sizes=(hidden_layer_sizes, ),
             alpha=alpha
         )
     )
@@ -172,5 +171,7 @@ def main(bootstrap_seed=1, model_seed=1, hidden_layer_size=50, alpha=0.001,
 
 
 if __name__ == '__main__':
-    main(model_seed=numpy.random.randint(2**30),
-             bootstrap_seed=numpy.random.randint(2**30))
+    #main(random_state=numpy.random.randint(2**30),
+    #         bootstrap_seed=numpy.random.randint(2**30))
+    main(random_state=2,
+             bootstrap_seed=2)

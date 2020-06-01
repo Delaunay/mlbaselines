@@ -1,0 +1,17 @@
+function: 'olympus.baselines.bio_pMHC_task2.main'
+
+objective: 'validation_aac'
+
+var_name: 'random_state'
+
+variables:
+    random_state: 1
+    bootstrap_seed: 1
+
+defaults: {}
+
+fidelity: null
+
+space:
+    hidden_layer_sizes: 'loguniform(20, 400)'
+    alpha: 'uniform(0, 1)'
