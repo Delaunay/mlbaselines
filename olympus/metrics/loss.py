@@ -75,14 +75,14 @@ class OnlineLoss(Metric):
     def load_state_dict(self, state_dict):
         self.losses = state_dict['losses']
 
-    def on_new_batch(self, step, task, input, context):
+    def on_end_batch(self, step, task, input, context):
         loss = context.get('loss')
 
         # compute accuracy for the current batch
         if loss is not None:
             self.loss_accumulator.append(loss)
 
-    def on_new_epoch(self, epoch, task, context):
+    def on_end_epoch(self, epoch, task, context):
         if self.loss_accumulator:
             self.losses.append(
                 sum(l.item() for l in self.loss_accumulator) / len(self.loss_accumulator))

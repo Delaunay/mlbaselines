@@ -1,19 +1,37 @@
 from datetime import datetime
 import os
 import io
+from shutil import copyfile
 import tempfile
 import torch
+import json
+
+from filelock import FileLock
 
 from olympus.utils import info
 from olympus.utils.options import options
 
 
 class BaseStorage:
+    Kio = 1024
+    Mio = 1024 * 1024
+
     def load(self, *args, **kwargs):
         pass
 
-    def safe_load(self, *args, **kwargs):
-        pass
+    def safe_load(self, name, device):
+        """Handles a few common exceptions for you and returns None if a file is not found"""
+        try:
+            return self.load(name, device=device)
+
+        except RuntimeError as e:
+            # This error happens when there is a mismatch between save device and current device
+            if 'CPU-only machine' in str(e):
+                raise KeyboardInterrupt('Job got scheduled on bad node.') from e
+
+        except FileNotFoundError:
+            info(f'State file {name} was not found')
+            return None
 
     def __init__(self, *args, **kwargs):
         pass
@@ -21,14 +39,11 @@ class BaseStorage:
     def set_base(self, *args, **kwargs):
         pass
 
+    def save_meta(self, uid, meta):
+        pass
+
     def show_memory_usage(self):
         return {}
-
-    def garbage_collect_in_memory(self, *args, **kwargs):
-        pass
-
-    def garbage_collect_on_disk(self, *args, **kwargs):
-        pass
 
     def garbage_collect(self, *args, **kwargs):
         pass
@@ -48,42 +63,158 @@ class BaseStorage:
     def save(self, *args, **kwargs):
         pass
 
+    def rename(self, old, new):
+        pass
+
+    def copyfile(self, old, new):
+        pass
+
+    def remove(self, file):
+        pass
+
 
 def NoStorage(*args, **kwargs):
     return BaseStorage(*args, **kwargs)
 
 
-class StateStorage(BaseStorage):
-    Kio = 1024
-    Mio = 1024 * 1024
-    USE_IN_MEMORY_CACHE = False
+def safe_write(filename, buffer):
+    dirname = os.path.dirname(filename)
+    if dirname:
+        os.makedirs(dirname, exist_ok=True)
 
-    def __init__(self, folder=options('state.storage', '/tmp'),
-                 time_buffer=options('state.storage.time', 5 * 60, type=int)):
-        # typically root/task_name/experiment_name/trial_id
-        self.folder = None
-        self.set_base(folder)
+    fd, name = tempfile.mkstemp('meta', dir=dirname)
 
-        self.time_buffer = time_buffer
-        self.last_save = datetime.utcnow()
+    file = os.fdopen(fd, 'wb')
+    file.write(buffer)
+    file.close()
 
+    os.rename(name, filename)
+
+
+class InMemoryMetaStorage:
+    """Provide reverse mapping from uid back to parameters"""
+    def __init__(self):
         self.cache = dict()
-        self.in_memory = 0
-        self.on_disk = 0
-        self.on_disk_files = dict()
 
-    def set_base(self, folder):
-        self.folder = folder
-        os.makedirs(self.folder, exist_ok=True)
+    def save(self, folder, uid, meta):
+        self.cache[uid] = meta
+
+    def load(self, folder, uid=None):
+        data = self.cache
+
+        if uid is not None:
+            return data.get(uid, dict())
+
+        return data
+
+
+class FileMetaStorage:
+    """Provide reverse mapping from uid back to parameters"""
+    def __init__(self, folder):
+        self.lock = FileLock(os.path.join(folder, 'meta.lock'), timeout=3)
+
+    def loc(self, folder):
+        return os.path.join(folder, 'meta.json')
+
+    def save(self, folder, uid, meta):
+        filename = self.loc(folder)
+        with self.lock:
+            if os.path.exists(filename):
+                with open(filename, 'r') as fp:
+                    data = json.load(fp)
+            else:
+                data = dict()
+
+            old_meta = data.get(uid, dict())
+            old_meta.update(meta)
+            data[uid] = old_meta
+
+            safe_write(filename, json.dumps(data).encode('utf-8'))
+
+    def load(self, folder, uid=None):
+        with open(self.loc(folder), 'r') as fp:
+            data = json.load(fp)
+
+        if uid is not None:
+            return data.get(uid, dict())
+
+        return data
+
+
+class InMemoryStorage(BaseStorage):
+    """Save states in memory
+
+    Parameters
+    ----------
+    format: str
+        Which format is used to save the state, default to dict (i.e native python state dict)
+        It can also be set to bytes to have a format that is writable directly to disc
+    """
+    def __init__(self, format='dict'):
+        self.format = format
+        self.cache = dict()
+        self.meta = InMemoryMetaStorage()
+        self.in_memory = 0
+
+    def write(self, filename, data):
+        self.cache[filename] = data
+
+    def read(self, filename):
+        return self.cache.get(filename)
+
+    def exits(self, filename):
+        return filename in self.cache
+
+    def rename(self, old, new):
+        state = self.pop_from_cache(old)
+        self.save(new, state)
+
+    def load_meta(self):
+        self.meta.load(None, None)
+
+    def save_meta(self, uid, meta):
+        self.meta.save(None, uid, meta)
+
+    def remove(self, file):
+        self.cache.pop(file, None)
+
+    def save(self, filename, state):
+        buffer = state
+
+        if self.format == 'bytes':
+            # Writes the state inside a buffer
+            buffer = io.BytesIO()
+            torch.save(state, buffer)
+            buffer = buffer.getbuffer()
+
+        self.insert_cache(filename, buffer)
+        return True
+
+    def load(self, filename, device=None):
+        """
+
+        Parameters
+        ----------
+        filename: str
+            file to load the state from
+
+        device: torch.device
+            it indicates the location where all tensors should be loaded.
+        """
+        buffer = self.read(filename)
+
+        if self.format == 'bytes':
+            return torch.load(buffer, map_location=lambda storage, loc: storage)
+
+        return buffer
 
     def show_memory_usage(self):
         return {
-            'on_disk': self.on_disk / StateStorage.Mio,
-            'on_disk_file_count': len(self.on_disk_files),
-            'in_memory': self.in_memory / StateStorage.Mio
+            'in_memory': self.in_memory / BaseStorage.Mio,
+            'count': len(self.cache)
         }
 
-    def garbage_collect_in_memory(self, gc_time):
+    def garbage_collect(self, gc_time):
         now = datetime.utcnow()
         old = self.in_memory
         to_be_deleted = []
@@ -93,13 +224,54 @@ class StateStorage(BaseStorage):
                 to_be_deleted.append(name)
 
         for name in to_be_deleted:
-            self._pop_from_cache(name)
+            self.pop_from_cache(name)
 
         new = self.in_memory
         freed = old - new
         return freed
 
-    def garbage_collect_on_disk(self, gc_time):
+    def insert_cache(self, key, buffer):
+        if key in self.cache:
+            self.pop_from_cache(key)
+
+        self.cache[key] = (buffer, datetime.utcnow())
+        if self.format == 'bytes':
+            self.in_memory += buffer.getbuffer().nbytes
+
+    def pop_from_cache(self, key) -> bytes:
+        buffer, _ = self.cache.pop(key, (None, None))
+
+        if buffer and self.format == 'bytes':
+            self.in_memory -= buffer.getbuffer().nbytes
+
+        return buffer
+
+
+class FileStateStorage(BaseStorage):
+    def __init__(self, folder=options('state.storage', '/tmp')):
+        # typically root/task_name/experiment_name/trial_id
+        self.folder = None
+        self.set_base(folder)
+        self.last_save = datetime.utcnow()
+
+        self.on_disk = 0
+        self.on_disk_files = dict()
+        self.meta = FileMetaStorage(self.folder)
+
+    def load_meta(self):
+        self.meta.load(self.folder, None)
+
+    def set_base(self, folder):
+        self.folder = folder
+        os.makedirs(self.folder, exist_ok=True)
+
+    def show_memory_usage(self):
+        return {
+            'on_disk': self.on_disk / BaseStorage.Mio,
+            'on_disk_file_count': len(self.on_disk_files)
+        }
+
+    def garbage_collect(self, gc_time):
         now = datetime.utcnow()
         old = self.on_disk
         to_be_deleted = []
@@ -115,15 +287,14 @@ class StateStorage(BaseStorage):
         freed = old - new
         return freed
 
-    def garbage_collect(self, gc_time):
-        freed = 0
-        freed += self.garbage_collect_in_memory(gc_time)
-        freed += self.garbage_collect_on_disk(gc_time)
-
-        return freed
-
     def _file(self, filename):
         return f'{self.folder}/{filename}.state'
+
+    def rename(self, old, new):
+        os.rename(self._file(old), self._file(new))
+
+    def copyfile(self, old, new):
+        copyfile(self._file(old), self._file(new))
 
     def open(self, filename, mode):
         return open(self._file(filename), mode)
@@ -137,43 +308,30 @@ class StateStorage(BaseStorage):
     def exits(self, filename):
         return os.path.exists(self._file(filename))
 
+    def save_meta(self, uid, meta):
+        self.meta.save(self.folder, uid, meta)
+
+    def remove(self, file):
+        try:
+            os.remove(self._file(file))
+        except FileNotFoundError:
+            pass
+
     def save(self, filename, state):
         from olympus.utils import info
-
         path = self._file(filename)
-        dirname = os.path.dirname(path)
-        if dirname:
-            os.makedirs(dirname, exist_ok=True)
 
         # Writes the state inside a buffer
         buffer = io.BytesIO()
         torch.save(state, buffer)
         buffer = buffer.getbuffer()
 
-        # if it has been a while write it to disk
-        elapsed_time = (datetime.utcnow() - self.last_save).total_seconds()
-        if elapsed_time > self.time_buffer:
-            # write it inside a temporary file
-            fd, name = tempfile.mkstemp('state', dir=self.folder)
+        safe_write(path, buffer)
 
-            file = os.fdopen(fd, 'wb')
-            file.write(buffer)
-            file.close()
-
-            # move temporary file to right spot
-            os.rename(name, path)
-            info(f'State was written to {path}')
-
-            # Remove from cache it is in
-            self._pop_from_cache(filename)
-            self._insert_disk(filename, buffer.nbytes)
-            self.last_save = datetime.utcnow()
-            return True
-        else:
-            info(f'({elapsed_time:.2f} > {self.time_buffer}) skipping checkpoint')
-
-        self._insert_cache(filename, buffer)
-        return False
+        # Remove from cache it is in
+        self._insert_disk(filename, buffer.nbytes)
+        self.last_save = datetime.utcnow()
+        return True
 
     def _insert_disk(self, key, size):
         if key in self.on_disk_files:
@@ -187,21 +345,6 @@ class StateStorage(BaseStorage):
         if size:
             self.on_disk -= size
 
-    def _insert_cache(self, key, buffer):
-        if StateStorage.USE_IN_MEMORY_CACHE:
-            if key in self.cache:
-                self._pop_from_cache(key)
-
-            self.cache[key] = (buffer, datetime.utcnow())
-            self.in_memory += buffer.getbuffer().nbytes
-
-    def _pop_from_cache(self, key):
-        buffer, _ = self.cache.pop(key, (None, None))
-        if buffer:
-            self.in_memory -= buffer.getbuffer().nbytes
-
-        return buffer
-
     def load(self, filename, device=None):
         """
 
@@ -213,23 +356,8 @@ class StateStorage(BaseStorage):
         device: torch.device
             it indicates the location where all tensors should be loaded.
         """
-        buffer = self._pop_from_cache(filename)
-
-        if buffer is None:
-            buffer = self._file(filename)
-
+        buffer = self._file(filename)
         return torch.load(buffer, map_location=lambda storage, loc: storage)
 
-    def safe_load(self, name, device):
-        """Handles a few common exceptions for you and returns None if a file is not found"""
-        try:
-            return self.load(name, device=device)
 
-        except RuntimeError as e:
-            # This error happens when there is a mismatch between save device and current device
-            if 'CPU-only machine' in str(e):
-                raise KeyboardInterrupt('Job got scheduled on bad node.') from e
-
-        except FileNotFoundError:
-            info(f'State file {name} was not found')
-            return None
+StateStorage = FileStateStorage

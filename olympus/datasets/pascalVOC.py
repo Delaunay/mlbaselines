@@ -2,12 +2,12 @@ from filelock import FileLock
 import torch
 import torch.nn.functional as F
 import torchvision
-from torchvision import datasets, transforms
+from torchvision import transforms
 from torch.utils.data import Dataset
 import numpy as np
 
 from olympus.datasets.dataset import AllDataset
-from olympus.datasets.cache import DatasetCache
+from olympus.datasets.decorator.cache import DatasetCache
 from olympus.utils import option
 
 

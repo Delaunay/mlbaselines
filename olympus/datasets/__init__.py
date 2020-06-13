@@ -1,12 +1,12 @@
 import copy
 from collections import defaultdict
 import torch
-from torch.utils.data import DataLoader as TorchDataLoader, Dataset as TorchDataset, Subset, ConcatDataset
+from torch.utils.data import DataLoader as TorchDataLoader, Dataset as TorchDataset
 
 from olympus.utils import warning, option, MissingArgument
 from olympus.utils.factory import fetch_factories
 from olympus.datasets.transformed import TransformedSubset
-from olympus.datasets.split import generate_splits
+from olympus.datasets.split import SplitDataset
 from olympus.datasets.sampling import RandomSampler, SequentialSampler
 
 
@@ -137,60 +137,6 @@ class Dataset(TorchDataset):
             return self.dataset.categories
 
         return set()
-
-
-class SplitDataset(TorchDataset):
-    """Split the main dataset into 3 subsets using the split_method"""
-    def __init__(self, dataset, split_method):
-        self.dataset = dataset
-        if isinstance(split_method, dict):
-            self.splits = generate_splits(dataset, **split_method)
-        else:
-            self.splits = generate_splits(dataset, split_method)
-
-    # This function is not compliant with the Dataset Interface on purpose
-    # we do not want people to use this class as a normal dataset because it is not
-    # def __getitem__(self, subset_name, index):
-    #   raise getattr(self, subset_name)[index]
-
-    @property
-    def train(self) -> Subset:
-        return Subset(self.dataset, self.splits.train)
-
-    @property
-    def valid(self) -> Subset:
-        return Subset(self.dataset, self.splits.valid)
-
-    @property
-    def test(self) -> Subset:
-        return Subset(self.dataset, self.splits.test)
-
-    @property
-    def extended_train(self):
-        import numpy as np
-        merged_indices = np.concatenate([self.splits.train, self.splits.valid])
-        return Subset(self.dataset, merged_indices)
-
-    @property
-    def train_indices(self):
-        return self.splits.train
-
-    @property
-    def test_indices(self):
-        return self.splits.test
-
-    @property
-    def valid_indices(self):
-        return self.splits.valid
-
-    def get_collate_fn(self):
-        return self.dataset.get_collate_fn()
-
-    def __getattr__(self, item):
-        if hasattr(self.dataset, item):
-            return getattr(self.dataset, item)
-
-        raise AttributeError(f'Attribute {item} was not found in SplitDataset')
 
 
 class ResumableDataLoader:
@@ -379,7 +325,7 @@ class DataLoader:
             arguments.pop('shuffle', None)
 
         transform = arguments.pop('transform', None)
-        if transform is None:
+        if transform is None and isinstance(self.split_dataset.transforms, dict):
             transform = self.split_dataset.transforms.get(subset_name, None)
 
         arguments['collate_fn'] = self._fetch_collate_function(

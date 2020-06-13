@@ -2,7 +2,8 @@ import pytest
 
 import torch
 
-from olympus.models import Model, Initializer
+from olympus.models import Model, Initializer, register_model
+from olympus.utils import MissingParameters
 
 
 def test_model_fixed_init():
@@ -46,6 +47,51 @@ def test_model_new_object_init_hp_set():
 
     assert dict(m.get_space()) == dict(initializer=dict(mean='normal(0, 1)', std='normal(1, 1)'))
     m.init(initializer=dict(mean=0, std=1))
+
+
+class MyModel(torch.nn.Module):
+    def __init__(self, input_size, output_size, a, b):
+        super(MyModel, self).__init__()
+
+    @staticmethod
+    def get_space():
+        return {
+            'a': 'uniform(0, 1)'
+        }
+
+
+register_model('TestModel', MyModel)
+
+
+def test_model_with_parameter_and_hp_1():
+    m: Model = Model(
+        'TestModel',
+        input_size=(1, 28, 28),
+        output_size=10)
+
+    # Missing a
+    with pytest.raises(MissingParameters):
+        m.init()
+
+    # Missing b
+    with pytest.raises(TypeError):
+        m.init(a=0)
+
+    m.init(a=0, b=0)
+
+
+def test_model_with_parameter_and_hp_2():
+    m: Model = Model(
+        'TestModel',
+        b=0,
+        input_size=(1, 28, 28),
+        output_size=10)
+
+    # Missing a
+    with pytest.raises(MissingParameters):
+        m.init()
+
+    m.init(a=0)
 
 
 # models = known_models()

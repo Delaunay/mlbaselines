@@ -42,6 +42,20 @@ class Initialization:
         pass
 
 
+class NoInit(Initialization):
+    """Some model have fixed init and do not require random init"""
+    def __call__(self, model):
+        return model
+
+    @staticmethod
+    def get_space():
+        return {}
+
+    @staticmethod
+    def defaults():
+        return {}
+
+
 class Uniform(Initialization):
     def __init__(self, a, b):
         self.a = a
@@ -114,4 +128,6 @@ class Orthogonal(Initialization):
 builders = {
     'uniform': Uniform,
     'normal': Normal,
-    'orthogonal': Orthogonal}
+    'orthogonal': Orthogonal,
+    'noinit': NoInit
+}

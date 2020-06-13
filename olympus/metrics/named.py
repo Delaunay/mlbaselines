@@ -1,3 +1,5 @@
+import torch
+
 from dataclasses import dataclass, field
 from olympus.observers.observer import Metric
 
@@ -23,6 +25,9 @@ class NamedMetric(Metric):
 
     def on_end_batch(self, task, step, input, context):
         value = context.get(self.name)
+
+        if isinstance(value, torch.Tensor):
+            value = value.item()
 
         if value is not None:
             self.accumulator += value

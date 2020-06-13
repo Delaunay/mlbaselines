@@ -7,6 +7,7 @@ def split(datasets, data_size, seed, ratio, index, balanced):
     n_valid = datasets.valid_size
     n_test = datasets.test_size
     n_points = len(datasets)
+
     assert n_points == n_train + n_valid + n_test
 
     info('Using the original split')

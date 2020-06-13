@@ -1,14 +1,17 @@
 import copy
-from dataclasses import dataclass, field
+import os
+from shutil import copyfile
+from typing import Callable
 import hashlib
-
+from datetime import datetime
 
 from olympus.observers.observer import Observer
 from olympus.resuming import load_state_dict, state_dict
-from olympus.utils import info, warning, set_rng_states, get_rng_states
+from olympus.utils import info, warning, set_rng_states, get_rng_states, TimeThrottler
 from olympus.utils.functional import flatten
 from olympus.utils.options import option
-from olympus.utils.storage import BaseStorage
+from olympus.utils.storage import BaseStorage, InMemoryStorage
+from olympus.observers.earlystopping import IsBest
 
 
 def unique_trial_id(task, o_params):
@@ -32,31 +35,149 @@ class BadCheckpoint(Exception):
     pass
 
 
-@dataclass
+GLOBAL_BUFFER = InMemoryStorage()
+
+
 class CheckPointer(Observer):
-    storage: BaseStorage = None
-    frequency_epoch: int = field(
-        default_factory=lambda: option('checkpoint.frequency_epoch', 1, type=int))
+    """
+    Parameters
+    ----------
+    storage: BaseStorage
+        A storage instance that specify where and how to storage task states
 
-    # Batch resuming is not supported
-    frequency_new_trial: int = 1
-    frequency_end_epoch: int = 1
+    keep_best: str
+        Name of the metric to use to keep track of the best weight
 
-    epoch: int = 0
-    # checkpoint is done last after all other metrics have finished computing their statistics
-    priority: int = -11
-    uid = None
+    time_buffer: int
+        Time in second in between file system writes
+        Used to not overwhelm the filesystem.
+        Parallel FS can be very slow when dealing with small files like states
+
+    save_init: bool
+        Save the initial weights
+
+    Examples
+    --------
+    Checkpointer that keeps the best states
+
+    >>> storage = Storage()
+    >>> CheckPointer(storage, keep_best='validation_loss')
+
+    Notes
+    -----
+
+    The way saving best weights works is, the best weight state is only created if a
+    worse weight would overwrite it. That means when the training start no best weights is created
+    up until we reach a point in training where the loss start to oscillate, the best weight would be created then.
+
+    When a state is not saved on the file system its state is kept inside the checkpoint as pending, so we do not
+    miss the best model state.
+
+    At the end of training, any pending states are pushed to the filesystem
+
+    Because of complex interaction between in memory caching and saving the best weights, time_buffer might not be
+    honoured exactly. When the best configuration is found and it should be cached it can happen that the weight
+    is forced pushed to the file system instead
+    """
+    def __init__(self, storage: BaseStorage, keep_best: str = None, time_buffer=option('state.storage.time', 5 * 60, type=int),
+                 save_init: bool = False):
+        self.storage = storage
+        self.frequency_epoch: int = option('checkpoint.frequency_epoch', 1, type=int)
+
+        # Keep best state mechanic
+        self.best_name: str = None
+        self.keep_best: Callable = None
+        if keep_best is not None:
+            self.keep_best = IsBest(keep_best)
+
+        self.save_init = save_init
+
+        # Time throttling
+        self.time_buffer = time_buffer
+        self.last_save = datetime.utcnow()
+
+        # Batch resuming is not supported
+        self.frequency_new_trial: int = 1
+        self.frequency_end_epoch: int = 1
+        # cleanup at the end of training
+        self.frequency_end_train: int = 1
+
+        self.epoch: int = 0
+        # checkpoint is done last after all other metrics have finished computing their statistics
+        self.priority: int = -11
+        self.uid = None
+
+        self.pending = None
+
+    def save_pending(self):
+        if self.pending is None:
+            return False
+
+        is_best, state = self.pending
+
+        name = self.uid
+        if self.best_name is not None:
+            name = self.best_name
+
+        if is_best:
+            self.storage.save(name, state)
+            self.pending = None
+            return True
+
+    def new_best_name(self):
+        return f'{self.keep_best.metric}_{self.keep_best.best}_{self.uid}'
 
     def save(self, task):
+        if self.uid is None:
+            raise BadCheckpoint('No uid was given cannot save state')
+
         was_saved = False
         state = state_dict(task)
         state['rng'] = get_rng_states()
 
-        if self.uid is None:
-            raise BadCheckpoint('No uid was given cannot save state')
+        # Was enough time passed since last save
+        now = datetime.utcnow()
+        elapsed = now - self.last_save
+        should_save = elapsed.seconds > self.time_buffer
+
+        # Is it the best model we have seen so far
+        is_best = True
+        if self.keep_best is not None:
+            is_best = self.keep_best(task.metrics.value())
 
         if state:
-            was_saved = self.storage.save(self.uid, state)
+            # Current model is not the best and we did not save the last model in a different path
+            # (which is the best right now)
+            # So we need to move the last state so it does not get overridden by current state
+            if not is_best and self.best_name is None:
+                info(f'Saving best ({self.keep_best.metric}: {self.keep_best.best})')
+                self.best_name = self.new_best_name()
+
+                was_pending = self.save_pending()
+                if not was_pending:
+                    self.storage.rename(self.uid, self.best_name)
+
+            if should_save:
+                was_saved = self.storage.save(self.uid, state)
+                self.save_pending()
+                self.pending = None
+                self.last_save = datetime.utcnow()
+            else:
+                self.save_pending()
+                self.pending = (is_best, state)
+
+            # we have a new best and the best was saved as with a different filename
+            # So we need to change both the best state and the latest state
+            if is_best and self.best_name is not None:
+                info(f'New best ({self.keep_best.metric}: {self.keep_best.best})')
+
+                self.storage.remove(self.best_name)
+                self.best_name = self.new_best_name()
+
+                was_pending = self.save_pending()
+                if not was_pending:
+                    self.storage.copyfile(self.uid, self.best_name)
+
         else:
             warning('The state dictionary was empty!')
 
@@ -69,6 +190,15 @@ class CheckPointer(Observer):
     def on_end_epoch(self, task, epoch, context):
         self.epoch = epoch
         self.save(task)
+
+    def on_end_train(self, task, step=None):
+        if self.pending is None:
+            return
+
+        is_best, state = self.pending
+
+        self.storage.save(self.uid, state)
+        self.pending = None
 
     def on_new_trial(self, task, step, parameters, uid):
         """On new trial try to resume the new trial"""
@@ -85,7 +215,14 @@ class CheckPointer(Observer):
             load_state_dict(task, state)
             info(f'Resuming (trial_id: {self.uid})')
         else:
+            meta = dict(parameters=parameters, task=type(task).__name__)
+            self.storage.save_meta(self.uid, meta)
             info(f'Starting a new (trial_id: {self.uid})')
+
+        if state is None and self.save_init:
+            state = state_dict(task)
+            # state['rng'] = get_rng_states()
+            self.storage.save(f'init_{self.uid}', state)
 
     def value(self):
         return {}

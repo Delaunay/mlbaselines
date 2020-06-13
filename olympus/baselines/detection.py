@@ -125,8 +125,7 @@ def detection_baseline(model, weight_init,
         dataloader=train,
         device=device,
         storage=storage,
-        criterion=reduce_loss,
-        logger=logger)
+        criterion=reduce_loss)
 
     name = 'validation'
     if hpo_done:

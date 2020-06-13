@@ -9,6 +9,11 @@ from olympus.dashboard.queue_pages import GanttQueue, FANVOAQueue, LogsQueue, St
 from olympus.dashboard.pages.experiment import ExperimentOverview
 from olympus.dashboard.pages.study import StudyOverview
 
+from olympus.dashboard.states import StateBrowser, InspectModel
+
+from olympus.utils import option
+from olympus.utils.storage import StateStorage
+
 import rpcjs.elements as html
 from rpcjs.dashboard import Dashboard
 from rpcjs.page import Page
@@ -46,14 +51,19 @@ def dashboard():
                              '   - local archive: zip:/home/setepenre/work/olympus/data.zip\n')
     parser.add_argument('--database', type=str, default='olympus',
                         help='Name of the database')
+    parser.add_argument('--storage', type=str, default=option('state.storage', '/home/setepenre/zshare/tmp'),
+                        help='FS path to storage')
     args = parser.parse_args()
 
     dash = Dashboard()
     client = new_monitor(args.uri, args.database)
 
+    state_storage = StateStorage(folder=args.storage)
+
     navbar = html.navbar(
         Experiments='/experiment',
         Studies='/study',
+        States='/state/browse',
         Debug='/',
     )
 
@@ -68,6 +78,8 @@ def dashboard():
     dash.add_page(MetricQueue(client), header=navbar)
     dash.add_page(ExperimentOverview(client), header=navbar)
     dash.add_page(StudyOverview(client), header=navbar)
+    dash.add_page(StateBrowser(state_storage), header=navbar)
+    dash.add_page(InspectModel(state_storage), header=navbar)
 
     return dash
 

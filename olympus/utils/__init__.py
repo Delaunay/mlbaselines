@@ -64,6 +64,18 @@ def decompress_dict(state: Dict) -> Dict:
 class TimeThrottler:
     """Limit how often the function `fun` is called in seconds
 
+    Parameters
+    ----------
+    fun:
+        function to throttle
+
+    every: int
+        Time in second in between each calls
+
+    callback:
+        function called when throttled
+
+
     Examples
     --------
 
@@ -80,10 +92,11 @@ class TimeThrottler:
             throttled_print(i)
             time.sleep(1)
     """
-    def __init__(self, fun: Callable[[A], R], every=10):
+    def __init__(self, fun: Callable[[A], R], every=10, callback=None):
         self.fun = fun
         self.last_time: float = 0
         self.every: float = every
+        self.callback = callback
 
     def __call__(self, *args, **kwargs) -> Optional[R]:
         now = time.time()
@@ -92,6 +105,9 @@ class TimeThrottler:
         if elapsed > self.every:
             self.last_time = now
             return self.fun(*args, **kwargs)
+
+        if self.callback:
+            return self.callback(*args, **kwargs)
 
         return None
 
@@ -249,18 +265,30 @@ def missing_params(space, kwargs, missing):
     return missing
 
 
-def update_params(space, kwargs, params):
+def update_params(space, kwargs, params, strict=True, unknown_params=None):
+    if unknown_params is None:
+        unknown_params = dict()
+
     for k, v in kwargs.items():
         if k not in space:
-            raise WrongParameter(f'{k} is not a valid parameter, pick from: {space.keys()}')
+            unknown_params[k] = v
+            continue
 
         if isinstance(v, dict):
             if k not in params:
                 params[k] = {}
 
-            update_params(space[k], v, params[k])
+            ukwn = update_params(space[k], v, params[k], strict=False)
+            if ukwn:
+                unknown_params[k] = ukwn
+
         else:
             params[k] = v
+
+    if strict and len(unknown_params) > 0:
+        raise WrongParameter(f'{list(unknown_params.keys())} is not a valid parameter, pick from: {list(space.keys())}')
+
+    return unknown_params
 
 
 class HyperParameters:
@@ -283,9 +311,19 @@ class HyperParameters:
         """Returns a dictionary of missing parameters"""
         return missing_params(self.space, self.current_parameters, {})
 
-    def add_parameters(self, **kwargs):
-        """Insert a new parameter value"""
-        update_params(self.space, kwargs, self.current_parameters)
+    def add_parameters(self, strict=True, **kwargs):
+        """Insert a new parameter value
+
+        Parameters
+        ----------
+        strict: bool
+            control if an exception is raised or not when an unknown parameter is encountered
+
+        Returns
+        -------
+        a dictionary of unknown parameter
+        """
+        return update_params(self.space, kwargs, self.current_parameters, strict=strict)
 
     def parameters(self, strict=False):
         """Returns all the parameters and checks if any are missing"""

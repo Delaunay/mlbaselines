@@ -9,6 +9,7 @@ class Task:
         self._metrics = MetricList(task=self)
         self.bad_state = False
         self.dataloader = None
+        self.stopped = False
 
     @property
     def device(self):

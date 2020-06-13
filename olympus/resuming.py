@@ -39,6 +39,9 @@ class DefaultResumingAspect(Resumable):
     """Iterates over an object attributes and look for resumable attributes"""
 
     def load_state_dict(self, obj, states, strict=True):
+        if states is None or len(states) <= 0:
+            return
+
         missing_fields = []
 
         for field_name, field in obj.__dict__.items():
@@ -54,15 +57,18 @@ class DefaultResumingAspect(Resumable):
 
     def state_dict(self, obj, destination=None, prefix='', keep_vars=False):
         state = select(destination, {})
+        types = dict()
 
         for field_name, field in obj.__dict__.items():
             if hasattr(field, 'state_dict'):
                 try:
                     state[field_name] = state_dict(field)
+                    types[field_name] = type(field)
                 except:
                     print(f'An error occurred when trying {field_name}')
                     raise
 
+        state['types'] = types
         return state
 
 

@@ -98,6 +98,11 @@ class Model(nn.Module):
     def __init__(self, name=None, *, half=False, model=None, input_size=None, output_size=None,
                  weight_init=default_init, **kwargs):
         super(Model, self).__init__()
+        # Save all the args that ware passed down so we can instantiate it again in standalone
+        self.replay_args = dict(
+            name=name, half=half, model=model, input_size=input_size, output_size=output_size,
+            weight_init=weight_init, kwargs=kwargs)
+
         self.transform = lambda x: try_convert(x, self.device, self.dtype)
         self.half = half
         self._model = None
@@ -143,7 +148,7 @@ class Model(nn.Module):
             raise MissingArgument('Model or Name need to be set')
 
         # Any Additional parameters set Hyper parameters
-        self.hyper_parameters.add_parameters(**kwargs)
+        self.other_params = self.hyper_parameters.add_parameters(strict=False, **kwargs)
 
     @property
     def dtype(self):
@@ -162,22 +167,24 @@ class Model(nn.Module):
         return self.hyper_parameters.parameters(strict=False)
 
     def init(self, override=False, **model_hyperparams):
-        self.hyper_parameters.add_parameters(**model_hyperparams)
+        others = self.hyper_parameters.add_parameters(strict=False, **model_hyperparams)
+        self.other_params.update(others)
+
         params = self.hyper_parameters.parameters(strict=True)
 
         initializer = params.pop('initializer', {})
         if isinstance(initializer, dict):
             self.weight_init.init(**initializer)
 
-        self._model = self.model_builder.invoke(**params)
+        self._model = self.model_builder.invoke(**self.other_params, **params)
         self.weight_init(self._model)
 
         if self.half:
             self._model = network_to_half(self._model)
 
         # Register module so we can use all the parent methods
-        self.add_module('main_model', self._model)
-
+        self.add_module('_model', self._model)
+        self.replay_args['kwargs'].update(model_hyperparams)
         return self
 
     @property
@@ -196,9 +203,22 @@ class Model(nn.Module):
     def state_dict(self, destination=None, prefix='', keep_vars=False):
         destination = {
             'model': self.model.state_dict(None, prefix, keep_vars),
-            'half': self.half
+            'half': self.half,
+            'replay': self.replay_args,
+            'types': {
+                'model': type(self.model)
+            }
         }
         return destination
+
+    @staticmethod
+    def from_state(state):
+        kwargs = state.get('replay')
+        kwargs.update(kwargs.pop('kwargs', dict()))
+        m = Model(**kwargs)
+        m.init()
+        m.load_state_dict(state)
+        return m
 
     def load_state_dict(self, state_dict, strict=True):
         self.half = state_dict['half']

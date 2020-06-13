@@ -157,12 +157,18 @@ class Segmentation(Task):
     # Training
     # ---------------------------------------------------------------------
     def fit(self, epochs, context=None):
+        if self.stopped:
+            return
+
         with BadResumeGuard(self):
             self.classifier.to(self.device)
             self._start(epochs)
 
             for epoch in range(self._first_epoch, epochs):
                 self.epoch(epoch + 1, context)
+
+                if self.stopped:
+                    break
 
             self.metrics.end_train()
             self._first_epoch = epochs

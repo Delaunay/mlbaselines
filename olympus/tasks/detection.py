@@ -9,8 +9,7 @@ from olympus.observers import ProgressView, Speed, ElapsedRealTime, CheckPointer
 
 
 class ObjectDetection(Task):
-    def __init__(self, detector, optimizer, lr_scheduler, dataloader, criterion=None, device=None,
-                 storage=None, logger=None):
+    def __init__(self, detector, optimizer, lr_scheduler, dataloader, criterion=None, device=None, storage=None):
         super(ObjectDetection, self).__init__(device=device)
 
         self._first_epoch = 0
@@ -73,11 +72,17 @@ class ObjectDetection(Task):
     # Training
     # --------------------------------------------------------------------
     def fit(self, epochs, context=None):
+        if self.stopped:
+            return
+
         with BadResumeGuard(self):
             self._start(epochs)
 
             for epoch in range(self._first_epoch, epochs):
                 self.epoch(epoch + 1, context)
+
+                if self.stopped:
+                    break
 
             self.report(pprint=True, print_fun=print)
             self.metrics.end_train()

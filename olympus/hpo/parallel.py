@@ -7,7 +7,6 @@ from msgqueue.backends.queue import RecordQueue
 
 from olympus.hpo.optimizer import (
     OptimizationIsDone, WaitingForTrials, HyperParameterOptimizer, TrialDoesNotExist)
-from olympus.hpo.utility import FunctionWithSpace
 from olympus.utils.importutil import get_import_path
 from olympus.utils import debug, info, option, warning
 
@@ -19,9 +18,6 @@ HPO_ITEM = 100
 
 def make_remote_call(function, *args, **kwargs):
     """Make a remote function call"""
-    if isinstance(function, FunctionWithSpace):
-        function = function.fun
-
     module = get_import_path(function)
     function_name = function.__name__
     return {

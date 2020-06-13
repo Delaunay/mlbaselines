@@ -20,6 +20,8 @@ class HPO(Task):
 
     def fit(self, objective):
         """Train the model a few times and return a best trial/set of parameters"""
+        if self.stopped:
+            return
 
         self.metrics.start_train()
         while not self.hpo.is_done():

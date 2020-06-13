@@ -17,6 +17,7 @@ class MetricQueue(InspectQueue):
         self.title = 'Metric Queue'
         self.xlabel = None
         self.ylabel = None
+        self.y2label = None
         self.colors = None
         self.data = None
         self.graph_id = 'graph'
@@ -87,8 +88,12 @@ class MetricQueue(InspectQueue):
         ylabel = self.columns[self.ylabel]
         kwargs = {
             'x': alt.X(xlabel, type=self.guess_datatype(xlabel, mark)),
-            'y': alt.Y(ylabel, type=self.guess_datatype(xlabel, mark))
+            'y': alt.Y(ylabel, type=self.guess_datatype(ylabel, mark))
         }
+
+        if self.y2label is not None:
+            y2label = self.columns[self.y2label]
+            kwargs['y2'] = alt.Y2(y2label)
 
         if self.shape is not None:
             shape = self.columns[self.shape]
@@ -125,6 +130,9 @@ class MetricQueue(InspectQueue):
                 'Y axis',
                 html.select_dropdown(options, 'y-label')),
             html.div(
+                'Y2 axis',
+                html.select_dropdown(options, 'y2-label')),
+            html.div(
                 'Colors',
                 html.select_dropdown(options, 'colors')),
             html.div(
@@ -137,11 +145,12 @@ class MetricQueue(InspectQueue):
         )
 
         # Request callbacks when those two values change
-        bind('mark'   , 'change', self.set_attribute_callback('mark'), property='selectedIndex')
-        bind('x-label', 'change', self.set_attribute_callback('xlabel'), property='selectedIndex')
-        bind('y-label', 'change', self.set_attribute_callback('ylabel'), property='selectedIndex')
-        bind('colors' , 'change', self.set_attribute_callback('colors'), property='selectedIndex')
-        bind('shape'  , 'change', self.set_attribute_callback('shape'), property='selectedIndex')
+        bind('mark'    , 'change', self.set_attribute_callback('mark'), property='selectedIndex')
+        bind('x-label' , 'change', self.set_attribute_callback('xlabel'), property='selectedIndex')
+        bind('y-label' , 'change', self.set_attribute_callback('ylabel'), property='selectedIndex')
+        bind('y2-label', 'change', self.set_attribute_callback('y2label'), property='selectedIndex')
+        bind('colors'  , 'change', self.set_attribute_callback('colors'), property='selectedIndex')
+        bind('shape'   , 'change', self.set_attribute_callback('shape'), property='selectedIndex')
         return form_html
 
     def show_queue(self, queue, namespace, delimiter=None):

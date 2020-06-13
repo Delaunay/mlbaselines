@@ -101,13 +101,13 @@ class Classification(Task):
         optimizer: Dict
             Optimizer hyper parameters!s
 
-        lr_shchedule: Dict
+        lr_schedule: Dict
             lr schedule hyper parameters
 
         model: Dict
             model hyper parameters
 
-        trial_id: Optional[str]
+        uid: Optional[str]
             trial id to use for logging.
             When using orion usually it already created a trial for us we just need to append to it
         """
@@ -152,12 +152,18 @@ class Classification(Task):
     # Training
     # ---------------------------------------------------------------------
     def fit(self, epochs, context=None):
+        if self.stopped:
+            return
+
         with BadResumeGuard(self):
             self.classifier.to(self.device)
             self._start(epochs)
 
             for epoch in range(self._first_epoch, epochs):
                 self.epoch(epoch + 1, context)
+
+                if self.stopped:
+                    break
 
             self.metrics.end_train()
             self._first_epoch = epochs
