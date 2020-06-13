@@ -1,13 +1,10 @@
 import numbers
 import random
 
+import torch
 from torch.utils.data.dataset import Subset
-from torchvision.transforms.functional import to_pil_image
 import torchvision.transforms.functional as F
 from torchvision import transforms
-
-from olympus.resuming import state_dict
-from olympus.utils import compress_dict, decompress_dict
 
 
 class TransformedSubset(Subset):
