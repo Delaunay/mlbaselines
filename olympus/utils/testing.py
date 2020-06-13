@@ -1,14 +1,14 @@
 import torch
 import torch.nn as nn
 from torch.optim import SGD
+from sspace.space import hyperparameter, uniform
 
 from random import Random
 
 from olympus.observers import metric_logger
-from olympus.hpo.utility import hyperparameters
 
 
-@hyperparameters(epoch='fidelity(1, 30, 4)', lr='uniform(0, 1)', b='uniform(0, 1)', c='uniform(0, 1)')
+@hyperparameter(lr=uniform(0, 1), b=uniform(0, 1), c=uniform(0, 1))
 def my_trial(epoch, lr, a, b, c, **kwargs):
     import time
     time.sleep(epoch / 10)

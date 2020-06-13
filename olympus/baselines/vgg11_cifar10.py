@@ -50,7 +50,7 @@ def main(bootstrapping_seed=1, sampler_seed=1, transform_seed=1, init_seed=1,
         task.metrics.append(metric_logger(client=client, experiment=experiment_name))
 
     if _interrupt:
-        from olympus.studies.repro.main import InterruptingMetric
+        from studies import InterruptingMetric
         # Will raise interrupt every `_interrupt` epochs
         task.metrics.append(InterruptingMetric(frequency_epoch=_interrupt))
         storage.time_buffer = 0

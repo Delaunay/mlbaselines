@@ -1,13 +1,8 @@
 import argparse
-from collections import defaultdict
 from dataclasses import dataclass, field
-import datetime
 import json
-import time
 import os
 import copy
-import re
-import pprint
 
 import numpy
 
@@ -18,13 +13,8 @@ import yaml
 
 import xarray
 
-from olympus.observers.msgtracker import METRIC_QUEUE
 from olympus.observers.observer import Metric
-from olympus.hpo.parallel import (
-    make_remote_call, RESULT_QUEUE, WORK_QUEUE, WORK_ITEM, HPO_ITEM, RESULT_ITEM)
-from olympus.hpo import HPOptimizer, Fidelity
-from olympus.utils.functional import flatten
-from olympus.studies.variance.main import fetch_results, register, wait
+from studies import fetch_results, register, wait
 
 
 IDENTITY_SIZE = 16

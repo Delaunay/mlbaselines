@@ -2,9 +2,7 @@ import copy
 
 from sspace.space import compute_identity
 
-from olympus.studies.repro.main import generate
-
-import pytest
+from studies import generate
 
 
 def test_generate():

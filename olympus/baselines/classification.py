@@ -186,8 +186,7 @@ def main(**kwargs):
 
     # save partial results here
     state_storage = StateStorage(
-        folder=option('state.storage', '/tmp/olympus/classification'),
-        time_buffer=30)
+        folder=option('state.storage', '/tmp/olympus/classification'))
 
     def main_task():
         task = classification_baseline(device=device, storage=state_storage, **kwargs)

@@ -60,7 +60,7 @@ def make_detection_task(client=None):
         dataloader=loader.train(),
         device=device,
         criterion=reduce_loss,
-        storage=StateStorage(folder=f'{base}/detection_short', time_buffer=0),
+        storage=StateStorage(folder=f'{base}/detection_short'),
         logger=client)
 
     return main_task

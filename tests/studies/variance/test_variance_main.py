@@ -10,11 +10,11 @@ from sspace.space import compute_identity
 from msgqueue.backends import new_client
 
 from olympus.hpo import Fidelity
-from olympus.hpo.parallel import make_remote_call, RESULT_QUEUE, WORK_QUEUE, WORK_ITEM, HPO_ITEM
+from olympus.hpo.parallel import WORK_QUEUE, WORK_ITEM
 from olympus.hpo.worker import TrialWorker
-from olympus.observers.msgtracker import MSGQTracker, METRIC_QUEUE, METRIC_ITEM, metric_logger
-from olympus.studies.searchspace.main import create_valid_curves_xarray
-from olympus.studies.variance.main import (
+from olympus.observers.msgtracker import METRIC_QUEUE, METRIC_ITEM
+from studies import create_valid_curves_xarray
+from studies import (
     generate, fetch_registered, env, register, remaining, fetch_results, get_medians,
     save_results, load_results, create_trials, fetch_vars_stats)
 

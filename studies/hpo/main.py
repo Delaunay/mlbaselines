@@ -6,7 +6,6 @@ import time
 import os
 import copy
 import re
-import pprint
 
 import numpy
 
@@ -17,13 +16,10 @@ import yaml
 
 import xarray
 
-from olympus.observers.msgtracker import METRIC_QUEUE
 from olympus.hpo.parallel import (
     make_remote_call, RESULT_QUEUE, WORK_QUEUE, WORK_ITEM, HPO_ITEM, RESULT_ITEM)
 from olympus.hpo import HPOptimizer, Fidelity
-from olympus.utils.functional import flatten
-from olympus.studies.searchspace.main import fetch_hpo_valid_curves, is_hpo_completed, is_registered
-
+from studies import fetch_hpo_valid_curves, is_hpo_completed
 
 IDENTITY_SIZE = 16
 

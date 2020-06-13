@@ -12,20 +12,14 @@
 import json
 import time
 
-import pandas
 import numpy
 import xarray
 
 import seaborn as sns
-import matplotlib.pyplot as plt
 
 from matplotlib import pyplot as plt
-from itertools import groupby  
 
 import joblib
-
-from olympus.studies.simul.main import load_results
-
 
 # Use joblib to speed things up when rerunning
 mem = joblib.Memory('joblib_cache')

@@ -60,8 +60,9 @@ class CheckPointer(Observer):
     --------
     Checkpointer that keeps the best states
 
-    >>> storage = Storage()
-    >>> CheckPointer(storage, keep_best='validation_loss')
+    >>> from olympus.utils.storage import FileStateStorage
+    >>> storage = FileStateStorage(folder='/tmp/chckpt')
+    >>> chk = CheckPointer(storage, keep_best='validation_loss')
 
     Notes
     -----
@@ -138,7 +139,7 @@ class CheckPointer(Observer):
         # Was enough time passed since last save
         now = datetime.utcnow()
         elapsed = now - self.last_save
-        should_save = elapsed.seconds > self.time_buffer
+        should_save = elapsed.total_seconds() > self.time_buffer
 
         # Is it the best model we have seen so far
         is_best = True
@@ -223,6 +224,17 @@ class CheckPointer(Observer):
             state = state_dict(task)
             # state['rng'] = get_rng_states()
             self.storage.save(f'init_{self.uid}', state)
+
+    def load_best(self, task):
+        best = self.best_name
+        if self.best_name is None:
+            best = self.uid
+
+        state = self.storage.safe_load(best, device=task.device)
+
+        if state is not None:
+            set_rng_states(state['rng'])
+            load_state_dict(task, state)
 
     def value(self):
         return {}

@@ -11,7 +11,7 @@ if __name__ == '__main__':
         'nlp': ['transformers'],
         'parallel': ['psycopg2-binary', 'pymongo'],
         'testing': ['pytest', 'pytest-cov', 'codecov', 'coverage'],
-        'analysis': ['xarray', 'scikit-learn', 'matplotlib', 'scikit-optimize']
+        'analysis': ['xarray', 'scikit-learn', 'matplotlib', 'scikit-optimize', 'seaborn']
     }
 
     all_packages = []
@@ -50,11 +50,7 @@ if __name__ == '__main__':
             'olympus.utils',
             'olympus.utils.fp16',
             'olympus.utils.gpu',
-            'olympus.utils.images',
-            'olympus.studies',
-            'olympus.studies.hpo',
-            'olympus.studies.searchspace',
-            'olympus.studies.variance'
+            'olympus.utils.images'
         ],
         setup_requires=['setuptools'],
         install_require=['torch', 'filelock', 'torchvision'],

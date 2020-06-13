@@ -4,11 +4,11 @@ import torch.nn as nn
 
 import numpy as np
 
-from olympus.datasets import DataLoader, known_datasets, Dataset, SplitDataset
+from olympus.datasets import DataLoader, Dataset, SplitDataset
 from olympus.metrics import MeanIoU
 
-from olympus.models import Model, known_models, Initializer, known_initialization
-from olympus.optimizers import Optimizer, known_optimizers, LRSchedule
+from olympus.models import Model, Initializer
+from olympus.optimizers import Optimizer, LRSchedule
 
 from olympus.tasks import Segmentation
 from olympus.utils import (
@@ -133,7 +133,7 @@ def main(bootstrapping_seed=1, sampler_seed=1, init_seed=1,
          _interrupt=0):
 
     base_folder = options('state.storage', '/tmp')
-    storage = StateStorage(folder=base_folder, time_buffer=5 * 60)
+    storage = StateStorage(folder=base_folder)
 
     split_method = {
         'split_method': 'bootstrap',
@@ -160,7 +160,7 @@ def main(bootstrapping_seed=1, sampler_seed=1, init_seed=1,
         task.metrics.append(metric_logger(client=client, experiment=experiment_name))
 
     if _interrupt:
-        from olympus.studies.repro.main import InterruptingMetric
+        from studies import InterruptingMetric
         # Will raise interrupt every `_interrupt` epochs
         task.metrics.append(InterruptingMetric(frequency_epoch=_interrupt))
         storage.time_buffer = 0

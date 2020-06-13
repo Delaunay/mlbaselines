@@ -2,7 +2,6 @@ import copy
 from collections import defaultdict, OrderedDict
 
 import numpy
-import xarray
 
 import pymongo
 
@@ -12,20 +11,18 @@ from sspace import Space
 from msgqueue.backends import new_client
 
 from olympus.hpo.optimizer import Trial
-from olympus.studies.searchspace.main import create_valid_curves_xarray
-from olympus.studies.variance.main import create_trials, fetch_vars_stats
-from olympus.studies.hpo.main import (
-    generate_grid_search, generate_noisy_grid_search, generate_random_search,
-    generate_bayesopt, generate_hpos, register_hpo, register_hpos, env,
-    fetch_hpos_valid_curves, fetch_all_hpo_stats)
-from olympus.studies.simul.main import (
+from studies import create_valid_curves_xarray
+from studies import fetch_vars_stats
+from studies.hpo.main import (
+    generate_hpos, register_hpos, fetch_hpos_valid_curves, fetch_all_hpo_stats)
+from studies import (
     reset_pool_size, randomize_seeds, IDENTITY_SIZE, remaining,
     generate_biased_replicates, convert_data_to_xy, cutoff, fit_model, convert_samples_to_x,
     simulate_hpo, generate_simulated_fix, generate_simulated_replicates, generate_replicates,
     get_ready_configs, register, fetch_hpos_replicates, consolidate_results, get_configs_to_replicate)
-from olympus.observers.msgtracker import MSGQTracker, METRIC_QUEUE, METRIC_ITEM, metric_logger
+from olympus.observers.msgtracker import METRIC_QUEUE, METRIC_ITEM
 from olympus.hpo.parallel import (
-    exec_remote_call, make_remote_call, RESULT_QUEUE, WORK_QUEUE, WORK_ITEM, HPO_ITEM)
+    RESULT_QUEUE, WORK_QUEUE)
 from olympus.hpo.worker import TrialWorker
 from olympus.hpo import Fidelity
 

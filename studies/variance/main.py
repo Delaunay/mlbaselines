@@ -15,8 +15,8 @@ from sspace.space import compute_identity
 from msgqueue.backends import new_client
 
 from olympus.hpo.optimizer import Trial
-from olympus.hpo.parallel import make_remote_call, RESULT_QUEUE, WORK_QUEUE, WORK_ITEM, HPO_ITEM
-from olympus.studies.searchspace.main import fetch_metrics, create_valid_curves_xarray
+from olympus.hpo.parallel import make_remote_call, WORK_QUEUE, WORK_ITEM
+from studies import fetch_metrics, create_valid_curves_xarray
 
 
 IDENTITY_SIZE = 16

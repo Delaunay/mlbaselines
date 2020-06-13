@@ -147,7 +147,7 @@ def run_no_interrupts(epoch, params, device, storage=NoStorage()):
 
 def run_with_interrupts(epoch, batch_freq, state_folder, params, device):
     print('=' * 80)
-    state_storage = StateStorage(folder=state_folder, time_buffer=0)
+    state_storage = StateStorage(folder=state_folder)
 
     def make_task():
         task_resume = make_base_task(device, storage=state_storage)
@@ -247,7 +247,7 @@ def create_resumed_trained_trial(epochs=5):
     old_task = create_trained_trial(epochs)
     checkpointer = old_task.metrics.get('CheckPointer')
     uid = checkpointer.uid
-    state_storage = StateStorage(folder='/tmp/olympus/tests', time_buffer=0)
+    state_storage = StateStorage(folder='/tmp/olympus/tests')
     checkpointer.storage = state_storage
     checkpointer.save(old_task)
 
@@ -358,7 +358,7 @@ def task_deterministic_2(epoch=5):
     state_folder = '/tmp/olympus/tests'
     file_name = f'{state_folder}/93c88038692bf4baf715ca3806d8a46347a646552f08ede113ef68efae6f1579.state'
 
-    state_storage = StateStorage(folder=state_folder, time_buffer=0)
+    state_storage = StateStorage(folder=state_folder)
 
     # Run in one step
     metrics1 = run_no_interrupts(epoch * 2, params, device, state_storage)

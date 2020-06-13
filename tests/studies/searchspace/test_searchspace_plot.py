@@ -8,13 +8,13 @@ import pytest
 
 from msgqueue.backends import new_client
 
-from olympus.observers.msgtracker import MSGQTracker, METRIC_QUEUE, METRIC_ITEM, metric_logger
+from olympus.observers.msgtracker import METRIC_QUEUE, METRIC_ITEM
 from olympus.hpo.parallel import (
-    exec_remote_call, make_remote_call, RESULT_QUEUE, WORK_QUEUE, WORK_ITEM, HPO_ITEM)
+    RESULT_QUEUE, WORK_QUEUE)
 from olympus.hpo.worker import TrialWorker
 from olympus.hpo import Fidelity
-from olympus.studies.searchspace.main import register_hpo, fetch_hpo_valid_curves
-from olympus.studies.searchspace.plot import xarray_to_scipy_results, plot
+from studies import register_hpo, fetch_hpo_valid_curves
+from studies import xarray_to_scipy_results, plot
 
 
 URI = 'mongo://127.0.0.1:27017'

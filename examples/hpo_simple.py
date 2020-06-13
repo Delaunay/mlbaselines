@@ -45,7 +45,7 @@ def make_task():
         lr_scheduler=lr_schedule,
         dataloader=loader.train(),
         device=device,
-        storage=StateStorage(folder=f'{base}/hpo_simple', time_buffer=0))
+        storage=StateStorage(folder=f'{base}/hpo_simple'))
 
     main_task.metrics.append(
         Accuracy(name='validation', loader=loader.valid(batch_size=64))

@@ -6,7 +6,6 @@ import time
 import os
 import copy
 import re
-import pprint
 
 import numpy
 
@@ -18,17 +17,15 @@ import yaml
 
 import xarray
 
-from olympus.observers.msgtracker import METRIC_QUEUE
 from olympus.hpo.parallel import (
-    make_remote_call, RESULT_QUEUE, WORK_QUEUE, WORK_ITEM, HPO_ITEM, RESULT_ITEM)
+    make_remote_call, WORK_QUEUE, WORK_ITEM, HPO_ITEM)
 from olympus.hpo.robo import build_model, build_bounds
 from olympus.hpo import HPOptimizer, Fidelity
-from olympus.utils.functional import flatten
-from olympus.studies.searchspace.main import (
-    fetch_hpo_valid_curves, is_hpo_completed, is_registered, fetch_metrics,
+from studies import (
+    fetch_metrics,
     create_valid_curves_xarray)
-from olympus.studies.variance.main import wait, fetch_vars_stats, remaining, create_trials
-from olympus.studies.hpo.main import (
+from studies import wait, create_trials
+from studies.hpo.main import (
     generate_hpos, register_hpos, fetch_hpo_stats, fetch_all_hpo_stats, fetch_hpos_valid_curves,
     fetch_trial_stats, print_status)
 

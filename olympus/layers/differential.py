@@ -18,7 +18,7 @@ class Differential(nn.Module):
     Examples
     --------
 
-    >>> diff = Differential((10, 20), k=3)
+    >>> diff = Differential((10, 20), k=3, eps=0)
     >>> batch_size = 3
     >>> x = torch.randn((batch_size, 10, 20))
     >>> result = diff(x)

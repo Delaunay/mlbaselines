@@ -1,25 +1,21 @@
 import copy
-from collections import defaultdict
 
 import numpy
-import xarray
 
 import pymongo
 
 import pytest
 
-from sspace.space import compute_identity
-
 from msgqueue.backends import new_client
-from olympus.studies.searchspace.main import (
+from studies import (
     register_hpo,
     get_hpo, fetch_metrics, get_array_names, fetch_hpo_valid_curves,
     save_results, load_results, is_registered, is_hpo_completed)
 
 
-from olympus.observers.msgtracker import MSGQTracker, METRIC_QUEUE, METRIC_ITEM, metric_logger
+from olympus.observers.msgtracker import METRIC_QUEUE, METRIC_ITEM
 from olympus.hpo.parallel import (
-    exec_remote_call, make_remote_call, RESULT_QUEUE, WORK_QUEUE, WORK_ITEM, HPO_ITEM)
+    exec_remote_call, RESULT_QUEUE, WORK_QUEUE, WORK_ITEM, HPO_ITEM)
 from olympus.hpo.worker import TrialWorker
 from olympus.hpo import Fidelity
 from olympus.utils import decompress_dict

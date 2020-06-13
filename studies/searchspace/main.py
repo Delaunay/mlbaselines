@@ -17,7 +17,7 @@ from olympus.hpo.parallel import make_remote_call, RESULT_QUEUE, WORK_QUEUE, HPO
 from olympus.utils.functional import flatten
 from olympus.utils.log import warning
 
-from olympus.studies.searchspace.plot import plot
+from studies import plot
 
 
 def register_hpo(client, namespace, function, config, defaults):

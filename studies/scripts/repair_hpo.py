@@ -8,12 +8,11 @@ import threading
 from msgqueue.backends import new_client
 
 from olympus.hpo.optimizer import HyperParameterOptimizer
-from olympus.observers.msgtracker import METRIC_QUEUE
 from olympus.hpo.parallel import RESULT_QUEUE, WORK_QUEUE, HPO_ITEM, WORK_ITEM, RESULT_ITEM
 from olympus.hpo.worker import TrialWorker
 from olympus.utils.log import set_verbose_level
 #from olympus.utils import timeout
-from olympus.studies.searchspace.main import get_hpo
+from studies import get_hpo
 
 
 def get_hpo_status(client, namespace, queue, item):

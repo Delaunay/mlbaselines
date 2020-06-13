@@ -10,13 +10,12 @@ from sspace.space import compute_identity
 
 from msgqueue.backends import new_client
 
-from olympus.studies.hpo.main import (
+from studies.hpo.main import (
     generate_grid_search, generate_noisy_grid_search, generate_random_search,
-    generate_bayesopt, generate_hpos, register_hpo, register_hpos, env,
-    fetch_hpos_valid_curves, consolidate_results, save_results, load_results)
-from olympus.observers.msgtracker import MSGQTracker, METRIC_QUEUE, METRIC_ITEM, metric_logger
+    generate_bayesopt, generate_hpos, register_hpo, register_hpos, fetch_hpos_valid_curves, consolidate_results, save_results, load_results)
+from olympus.observers.msgtracker import METRIC_QUEUE, METRIC_ITEM
 from olympus.hpo.parallel import (
-    exec_remote_call, make_remote_call, RESULT_QUEUE, WORK_QUEUE, WORK_ITEM, HPO_ITEM)
+    RESULT_QUEUE, WORK_QUEUE, HPO_ITEM)
 from olympus.hpo.worker import TrialWorker
 from olympus.hpo import Fidelity
 

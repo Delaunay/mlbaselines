@@ -11,7 +11,7 @@ set_option('progress.frequeuency.batch', 1)
 set_option('progress.show.metrics', 'epoch')
 
 # For checkpoints
-storage = StateStorage(folder='./checkpoints', time_buffer=5 * 60)
+storage = StateStorage(folder='./checkpoints')
 
 task = classification_baseline(
     "vgg11", 'glorot_uniform', 'sgd', 'exponential', "cifar10", 128, torch.device('cuda'),

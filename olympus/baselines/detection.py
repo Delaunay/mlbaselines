@@ -147,8 +147,7 @@ def main(**kwargs):
 
     # save partial results here
     state_storage = StateStorage(
-        folder=option('state.storage', f'{base}/detection'),
-        time_buffer=30)
+        folder=option('state.storage', f'{base}/detection'))
 
     def main_task():
         return detection_baseline(device=device, storage=state_storage, **kwargs)

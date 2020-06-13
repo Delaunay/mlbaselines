@@ -145,7 +145,7 @@ def main(**kwargs):
     experiment_name = args.experiment_name.format(**kwargs)
 
     # save partial results here
-    state_storage = StateStorage(folder=option('state.storage', f'{base}/a2c'), time_buffer=30)
+    state_storage = StateStorage(folder=option('state.storage', f'{base}/a2c'))
 
     def main_task():
         return a2c_baseline(device=device, storage=state_storage, **kwargs)
