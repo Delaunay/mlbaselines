@@ -80,8 +80,13 @@ jobs:
         make travis-classification
 
     - name: upload-coverage
-      env:
-        CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
-      run: |
-        source ~/unittest_env/bin/activate
-        make travis-end
+      uses: codecov/codecov-action@v1
+      with:
+        token: ${{ secrets.CODECOV_TOKEN }}
+
+#    - name: upload-coverage
+#      env:
+#        CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
+#      run: |
+#        source ~/unittest_env/bin/activate
+#        make travis-end
