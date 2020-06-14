@@ -79,6 +79,11 @@ jobs:
         source ~/unittest_env/bin/activate
         make travis-classification
 
+    - name: merge-reports
+      run: |
+        source ~/unittest_env/bin/activate
+        travis-combine
+
     - name: upload-coverage
       uses: codecov/codecov-action@v1
       with:
