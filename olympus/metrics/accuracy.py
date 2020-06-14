@@ -47,6 +47,10 @@ class Accuracy(Metric):
         self.accuracies = state_dict['accuracies']
         self.losses = state_dict['losses']
 
+    def on_new_trial(self, task, step, parameters, uid):
+        if not hasattr(task, 'accuracy'):
+            raise AttributeError('Task need the accuracy method to compute the AccuracyMetric')
+
     def compute_accuracy(self, task):
         start = datetime.utcnow()
         losses = []

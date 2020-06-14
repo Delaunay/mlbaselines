@@ -116,8 +116,12 @@ def classification_baseline(model, initializer,
     set_seeds(global_seed)
 
     dataset = SplitDataset(
-        Dataset(dataset, path=option('data.path', data_path), transform=transform,
-                transform_seed=transform_seed, cache=cache),
+        Dataset(
+            dataset,
+            path=option('data.path', data_path),
+            transform=transform,
+            transform_seed=transform_seed,
+            cache=cache),
         split_method=split_method
     )
 

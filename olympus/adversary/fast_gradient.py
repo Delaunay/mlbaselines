@@ -5,8 +5,8 @@ import torch
 from torch import Tensor
 import torch.nn.functional as F
 
-from olympus.adversary.adversary import Adversary, AdversaryStat
 from olympus.utils import debug
+from .adversary import Adversary, AdversaryStat
 
 
 Image = TypeVar('Image')
@@ -70,6 +70,11 @@ class FastGradientAdversary(Adversary):
 
         noises = self.get_noise(image, original_image)
         return self.postprocessor(image), noises
+
+
+builders = {
+    'fast_gradient': FastGradientAdversary
+}
 
 
 if __name__ == '__main__':

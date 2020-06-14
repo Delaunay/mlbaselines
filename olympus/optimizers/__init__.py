@@ -141,6 +141,11 @@ class Optimizer(TorchOptimizer):
                  dynamic_loss_scale=False, scale_window=1000, scale_factor=2,
                  min_loss_scale=None, max_loss_scale=2.**24, **kwargs):
         self._optimizer = None
+
+        if params is not None:
+            params = list(params)
+            assert isinstance(params, (list, tuple))
+
         self._model_parameters = params
         self._half_parameters(
             half,  loss_scale, dynamic_loss_scale,
@@ -233,6 +238,10 @@ class Optimizer(TorchOptimizer):
         MissingParameters
             if an hyper parameter is missing
         """
+        if params is not None:
+            params = list(params)
+            assert isinstance(params, (list, tuple))
+
         if self._optimizer and not override:
             warning('Optimizer is already set, use override=True to force re initialization')
             return self

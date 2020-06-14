@@ -1,6 +1,6 @@
 
 
-def plot_mean_objective_altair(results, fidelity='epoch'):
+def plot_mean_objective_altair(results, objective='objective', fidelity='epoch'):
     """Plot the evolution of the objective averaged over all trials, and show the
 
     Parameters
@@ -33,15 +33,37 @@ def plot_mean_objective_altair(results, fidelity='epoch'):
     # data = pd.DataFrame(results)
     line = alt.Chart(data).mark_line().encode(
         x=alt.X(f'{fidelity}:Q'),
-        y='mean(objective):Q'
+        y=f'mean({objective}):Q'
     )
     band = alt.Chart(data).mark_errorband(extent='ci').encode(
         x=alt.X(f'{fidelity}:Q'),
-        y=alt.Y('objective:Q', title='objective'),
+        y=alt.Y(f'{objective}:Q', title='objective'),
     )
 
     graph = (band + line).configure_view(height=500, width=1000)
     return graph
+
+
+def plot_objective_altair(objective='objective', fidelity='epoch'):
+    import altair as alt
+    alt.themes.enable('dark')
+
+    data = alt.Data(name='data')
+    line = alt.Chart(data).mark_line().encode(
+        x=alt.X(f'{fidelity}:Q'),
+        y=f'min({objective}):Q'
+    )
+
+    scatter = alt.Chart(data).mark_circle().encode(
+        x=alt.X(f'{fidelity}:Q'),
+        y=f'{objective}:Q'
+    )
+
+    stdev = alt.Chart(data).mark_circle().encode(
+        x=alt.X(f'{fidelity}:Q'),
+        y=f'stdev({objective}):Q'
+    )
+    return (line + scatter) & stdev
 
 
 plots = {

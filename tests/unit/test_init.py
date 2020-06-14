@@ -1,9 +1,16 @@
+import pytest
+import random
+
 from olympus.baselines.classification import classification_baseline
 from olympus.utils import fetch_device
 from olympus.utils.storage import NoStorage
 
 
-def test_model_init():
+seeds = [random.randint(0, 10000) for i in range(10)]
+
+
+@pytest.mark.parametrize('seed', seeds)
+def test_model_init(seed):
     params = {
         'optimizer': {
             'lr': 0.011113680070144951,
@@ -20,10 +27,10 @@ def test_model_init():
     device = fetch_device()
 
     model2 = classification_baseline(
-        'logreg', 'glorot_uniform', 'sgd', 'none', 'test-mnist', 32, device, storage=NoStorage())
+        'logreg', 'glorot_uniform', 'sgd', 'none', 'test-mnist', 32, device, init_seed=seed, storage=NoStorage())
 
     model1 = classification_baseline(
-        'logreg', 'glorot_uniform', 'sgd', 'none', 'test-mnist', 32, device, storage=NoStorage())
+        'logreg', 'glorot_uniform', 'sgd', 'none', 'test-mnist', 32, device, init_seed=seed, storage=NoStorage())
 
     model1.init(**params)
     model2.init(**params)

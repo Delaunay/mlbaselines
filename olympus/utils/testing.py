@@ -7,6 +7,8 @@ from random import Random
 
 from olympus.observers import metric_logger
 
+import time
+
 
 @hyperparameter(lr=uniform(0, 1), b=uniform(0, 1), c=uniform(0, 1))
 def my_trial(epoch, lr, a, b, c, **kwargs):
@@ -15,8 +17,8 @@ def my_trial(epoch, lr, a, b, c, **kwargs):
     return lr * a - b * c
 
 
-def _data(features=32):
-    r = Random(0)
+def _data(seed, features=32):
+    r = Random(seed)
     weights = torch.as_tensor([[r.uniform(0, 1) for i in range(features)] for _ in range(2)]).t()
 
     with torch.no_grad():
@@ -35,8 +37,8 @@ class LinearRegression(nn.Module):
         return out
 
 
-def tiny_task(batch_size, epochs, lr, experiment_name, client=None, uid=None):
-    x, y = _data()
+def tiny_task(batch_size, epochs, lr, seed, experiment_name, client=None, uid=None):
+    x, y = _data(seed)
     n, features = x.shape
 
     model = LinearRegression(features, 2).cuda()
@@ -65,9 +67,10 @@ def tiny_task(batch_size, epochs, lr, experiment_name, client=None, uid=None):
             loss.backward()
             optimizer.step()
 
+        time.sleep(1)
         loss_epoch = sum([l.cpu().item() for l in losses]) / (n // batch_size)
 
-        x_val, y_val = _data()
+        x_val, y_val = _data(seed)
         val_loss = criterion(y_val, model(x_val)).cpu().item()
 
         logger.log(

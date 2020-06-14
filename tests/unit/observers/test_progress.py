@@ -3,8 +3,10 @@ import time
 import pytest
 import os
 from olympus.observers import ObserverList, Speed, ProgressView, ElapsedRealTime
+from olympus.observers import SampleCount
 
-x = [np.zeros((4, 3, 224, 224))]
+BATCH_SIZE = 4
+x = [np.zeros((BATCH_SIZE, 3, 224, 224))]
 
 
 #
@@ -85,6 +87,31 @@ def test_speed_5():
     assert speed.step_time.sd <= 0.1
     assert speed.step_time.count == 5
     assert speed.value()['batch_speed'] - 4 <= 0.1
+
+
+def test_sample_count():
+    # Speed drop the first 5 observations
+    count = SampleCount()
+
+    task = TaskMock(epochs=12, steps=12)
+    task.metrics.append(count)
+    task.fit()
+
+    assert count.value()['sample_count'] == BATCH_SIZE * 12 * 12
+
+
+def test_elapsed_real_time():
+    # Speed drop the first 5 observations
+    timer = ElapsedRealTime()
+
+    task = TaskMock(
+        epochs=12,
+        steps=12,
+        callback=stop_after(None, None, sleep_time=0.01))
+    task.metrics.append(timer)
+    task.fit()
+
+    assert timer.value()['elapsed_time'] - 12 * 12 * 0.01 < 0.1
 
 
 def named_print(name):

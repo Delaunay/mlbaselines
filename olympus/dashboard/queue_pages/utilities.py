@@ -1,21 +1,27 @@
+import time
+
 from olympus.hpo.parallel import WORK_ITEM, HPO_ITEM, WORKER_LEFT, WORKER_JOIN, RESULT_ITEM, SHUTDOWN
 from olympus.observers.msgtracker import METRIC_ITEM
+from olympus.utils import debug
 
 from msgqueue.backends.queue import Message
-from datetime import datetime
+from msgqueue.backends import new_monitor
 
 
 def extract_message(m: Message):
     data = m.message
-    data['g1'] = m.g1
-    data['g0'] = m.g0
-    if m.read_time:
-        data['read_time'] = m.read_time.toordinal()
 
-    if m.actioned_time:
-        data['actioned_time'] = m.actioned_time.toordinal()
+    if isinstance(data, dict):
+        data['g1'] = m.g1
+        data['g0'] = m.g0
+        if m.read_time:
+            data['read_time'] = m.read_time.toordinal()
 
-    data['created_time'] = m.time.toordinal()
+        if m.actioned_time:
+            data['actioned_time'] = m.actioned_time.toordinal()
+
+        data['created_time'] = m.time.toordinal()
+
     return data
 
 
@@ -146,3 +152,51 @@ def extract_last_results(messages):
                 results[uid] = params
 
     return list(results.values()), list(columns)
+
+
+class ThreadFlag:
+    def __init__(self):
+        self.running = True
+
+
+RUNNING = None
+
+
+def stop_thread():
+    global RUNNING
+
+    # set the flag of the previous thread to false
+    if RUNNING is not None:
+        RUNNING.running = False
+
+    # Make a new flag for the new thread
+    RUNNING = ThreadFlag()
+    return RUNNING
+
+
+def fetch_new_messages(client, queue, namespace, preprocessor, mtime=None):
+    """Fetch new messages for realtime plots"""
+    def fetcher():
+        flag = stop_thread()
+        last_time = mtime
+        monitor = client
+
+        if isinstance(client, dict):
+            monitor = new_monitor(**client)
+
+        while flag.running:
+            # Only fetch new messages
+            messages = monitor.messages(queue, namespace, time=last_time)
+
+            if len(messages) > 0:
+                debug('messages')
+                last_time = messages[-1].time
+                yield list(preprocessor(messages))
+            else:
+                debug('nothing')
+
+            # just let the browser breath
+            time.sleep(1)
+        debug('stopping')
+
+    return fetcher

@@ -1,6 +1,9 @@
 import signal
 import sys
+import time
 import atexit
+
+from .log import warning
 
 
 class SignalHandler:
@@ -26,3 +29,30 @@ class SignalHandler:
     def atexit(self):
         pass
 
+
+class Protected(object):
+    def __init__(self):
+        self.signal_received = None
+        self.handlers = dict()
+        self.start = 0
+
+    def __enter__(self):
+        self.signal_received = False
+        self.start = time.time()
+        self.handlers[signal.SIGINT] = signal.signal(signal.SIGINT, self.handler)
+        self.handlers[signal.SIGTERM] = signal.signal(signal.SIGTERM, self.handler)
+
+    def handler(self, sig, frame):
+        warning(f'Delaying signal {sig} to finish operations')
+        self.signal_received = (sig, frame)
+
+    def __exit__(self, type, value, traceback):
+        signal.signal(signal.SIGINT, self.handlers[signal.SIGINT])
+        signal.signal(signal.SIGTERM, self.handlers[signal.SIGTERM])
+
+        if self.signal_received:
+            warning(f'Termination was delayed by {time.time() - self.start:.4f} s')
+            handler = self.handlers[self.signal_received[0]]
+
+            if callable(handler):
+                handler(*self.signal_received)

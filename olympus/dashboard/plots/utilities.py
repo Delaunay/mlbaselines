@@ -96,3 +96,48 @@ class AltairMatrix:
             chart &= row
 
         return chart
+
+
+def altair_to_pdf(chart, filename, webdriver='firefox'):
+    from lxml import etree
+    from svglib.svglib import SvgRenderer
+    from reportlab.graphics import renderPDF
+    import tempfile
+    import os
+
+    name = tempfile.mktemp()
+
+    with open(name, 'w') as fp:
+        chart.save(fp, format='svg', webdriver=webdriver)
+
+    parser = etree.XMLParser(
+        remove_comments=True,
+        resolve_entities=True)
+    doc = etree.parse(name, parser=parser)
+    svg_root = doc.getroot()
+
+    svgRenderer = SvgRenderer(name)
+    drawing = svgRenderer.render(svg_root)
+
+    if drawing is not None:
+        data = renderPDF.drawToString(drawing)
+
+        with open(filename, 'wb') as output:
+            output.write(data)
+
+    os.remove(name)
+
+
+if __name__ == '__main__':
+    from olympus.dashboard.plots.training_curve import plot_mean_objective_altair
+
+    chart = plot_mean_objective_altair([
+        dict(epoch=1, objective=0.229, uid=0),
+        dict(epoch=1, objective=0.239, uid=1),
+        dict(epoch=1, objective=0.249, uid=2),
+        dict(epoch=2, objective=0.312, uid=0),
+        dict(epoch=2, objective=0.333, uid=1),
+        dict(epoch=2, objective=0.346, uid=2),
+    ])
+
+    altair_to_pdf(chart, 'check.pdf')

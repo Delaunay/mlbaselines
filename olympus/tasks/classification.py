@@ -54,7 +54,7 @@ class Classification(Task):
         self.criterion = criterion
         self.preprocessor = Preprocessor()
         # ------------------------------------------------------------------
-        # TODO: This should go inside user code it will remove 2 arguments
+
         self.metrics.append(ElapsedRealTime().every(batch=1))
         self.metrics.append(SampleCount().every(batch=1, epoch=1))
         self.metrics.append(OnlineTrainAccuracy())
@@ -128,7 +128,7 @@ class Classification(Task):
         # We need to set the device now so optimizer receive cuda tensors
         self.set_device(self.device)
         self.optimizer.init(
-            parameters,
+            params=parameters,
             override=True, **optimizer
         )
         self.lr_scheduler.init(

@@ -48,7 +48,7 @@ def get_log_record_constructor():
 if globals().get('oly_log') is None:
     logging.basicConfig(
         level=option('logging.level', logging.WARN, type=int),
-        format='%(asctime)s %(relativeCreated)8d [%(levelname)8s] %(name)s [%(process)d] %(pathname)s:%(lineno)d %(message)s',
+        format='%(asctime)s [%(levelname)8s] %(name)s [%(process)d] %(pathname)s:%(lineno)d %(message)s',
         stream=sys.stdout
     )
 

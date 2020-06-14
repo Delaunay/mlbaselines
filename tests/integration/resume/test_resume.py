@@ -5,13 +5,14 @@ from typing import Callable
 from dataclasses import dataclass, field
 
 from olympus.utils import fetch_device, set_verbose_level
-from olympus.utils.compare import compare_states as compare
 set_verbose_level(60)
 
+from olympus.utils.compare import compare_states as compare
 from olympus.observers.observer import Metric
 from olympus.baselines.classification import classification_baseline
 from olympus.utils.storage import StateStorage, NoStorage
 from olympus.resuming import BadResume
+from olympus.utils.compare import compare_states
 
 import pytest
 
@@ -46,7 +47,7 @@ keys = [
     'validation_accuracy',
     'online_train_loss',
     'online_train_accuracy',
-    'epoch',
+#     'epoch',
     'sample_count'
 ]
 
@@ -76,7 +77,7 @@ def random_interrupt_batch(epoch):
 def remove(filename):
     try:
         os.remove(filename)
-    except:
+    except FileNotFoundError:
         pass
 
 
@@ -127,7 +128,9 @@ def make_base_task(device, storage):
         device, storage=storage)
 
     chk = task.metrics.get('CheckPointer')
+    chk.time_buffer = 0
     chk.frequency_epoch = 1
+
     return task
 
 
@@ -221,6 +224,7 @@ def main_resume(epoch, batch_freq=0):
     print(f'interrupted = {interruption_counter}')
     print(f'interrupted = {interruption_counter_batch}')
     print(f'{"key":>30} | {"NoInterrupt":>12} | {"Interrupted":>12}')
+
     for k, v in metrics1.items():
         print(f'{k:>30} | {v:12.4f} | {metrics2.get(k, float("NaN")):12.4f}')
 
@@ -345,6 +349,7 @@ def task_deterministic(epoch=5):
     metrics2 = run_no_interrupts(epoch, params, device)
     remove(file_name)
 
+    print(metrics1)
     for k in keys:
         diff = abs(metrics1[k] - metrics2[k])
         print(f'{k:>30} => {diff}')
@@ -390,12 +395,25 @@ def test_task_resume():
 
 
 if __name__ == '__main__':
+    import torch
     os.environ['OLYMPUS_DATA_PATH'] = '/tmp'
 
+    # torch.load(buffer, map_location=lambda storage, loc: storage)
+    # d1 = torch.load('/home/setepenre/Downloads/study_repro/42228172-2-1.state')
+    # d2 = torch.load('/home/setepenre/Downloads/study_repro/42228171-1-1.state')
+    # compare(d1, d2)
+
+    d1 = torch.load('/home/setepenre/Downloads/study_repro/42228172-2-1.state')
+    d2 = torch.load('/home/setepenre/Downloads/study_repro/42228171-1-1.state')
+
+    match, s = compare_states(d1, d2)
+    print(s)
+
+
+    # def compare(d1, d2, depth=0):
+
     # test_task_deterministic()
-
-    test_task_resume()
-
+    # test_task_resume()
     # test_model_resume_train(2)
     # main_resume(20, 1)
     # main_resume(5)

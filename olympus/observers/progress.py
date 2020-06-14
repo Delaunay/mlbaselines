@@ -359,20 +359,13 @@ class ProgressView(Observer):
 @dataclass
 class SampleCount(Observer):
     sample_count: int = 0
-    epoch: int = 0
-
     frequency_end_batch: int = 1
-    frequency_end_epoch: int = 1
 
     def state_dict(self):
-        return dict(epoch=self.epoch, sample_count=self.sample_count)
+        return dict(sample_count=self.sample_count)
 
     def load_state_dict(self, state_dict):
         self.sample_count = state_dict['sample_count']
-        self.epoch = state_dict['epoch']
-
-    def on_end_epoch(self, task, epoch, context):
-        self.epoch = epoch
 
     def on_end_batch(self, task, step, input=None, context=None):
         if hasattr(input, 'shape'):
@@ -389,7 +382,6 @@ class SampleCount(Observer):
     def value(self):
         return {
             'sample_count': self.sample_count,
-            'epoch': self.epoch
         }
 
 

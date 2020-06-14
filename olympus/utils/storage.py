@@ -9,6 +9,7 @@ import json
 from filelock import FileLock
 
 from olympus.utils import info
+from olympus.utils.signals import Protected
 from olympus.utils.options import options
 
 
@@ -318,6 +319,10 @@ class FileStateStorage(BaseStorage):
             pass
 
     def save(self, filename, state):
+        with Protected():
+            return self._save(filename, state)
+
+    def _save(self, filename, state):
         from olympus.utils import info
         path = self._file(filename)
 

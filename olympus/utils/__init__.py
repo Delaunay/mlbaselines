@@ -1,4 +1,5 @@
 import random
+import signal
 import time
 from typing import Callable, Optional, TypeVar, Dict, NoReturn, Union
 from urllib.parse import urlparse
@@ -59,6 +60,18 @@ def decompress_dict(state: Dict) -> Dict:
         return bson.decode(decompressed_bson)
 
     return state
+
+
+def encode_rng_state(state):
+    state = list(state)
+    state[1] = state[1].tolist()
+    return tuple(state)
+
+
+def decode_rng_state(state):
+    state = list(state)
+    state[1] = numpy.array(state[1])
+    return tuple(state)
 
 
 class TimeThrottler:

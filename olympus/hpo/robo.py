@@ -24,8 +24,8 @@ from sspace.space import compute_identity
 
 from olympus.hpo.optimizer import Trial, HyperParameterOptimizer, WaitingForTrials, OptimizationIsDone
 from olympus.hpo.fidelity import Fidelity
-from olympus.utils import new_seed, compress_dict, decompress_dict
-from olympus.utils.functional import unflatten, encode_rng_state, decode_rng_state
+from olympus.utils import new_seed, compress_dict, decompress_dict, encode_rng_state, decode_rng_state
+from olympus.utils.functional import unflatten
 
 
 def build_model(lower, upper, model_type="gp_mcmc", model_seed=1, prior_seed=1):

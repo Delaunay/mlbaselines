@@ -1,7 +1,5 @@
 import copy
 
-import numpy
-
 
 def select(a, b):
     if a is not None:
@@ -45,15 +43,3 @@ def unflatten(dictionary):
             sub_dictionary = sub_dictionary[part]
         sub_dictionary[parts[-1]] = value
     return unflattened_dictionary
-
-
-def encode_rng_state(state):
-    state = list(state)
-    state[1] = state[1].tolist()
-    return tuple(state)
-
-
-def decode_rng_state(state):
-    state = list(state)
-    state[1] = numpy.array(state[1])
-    return tuple(state)

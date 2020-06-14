@@ -6,9 +6,10 @@ from torch import Tensor
 import torch.nn.functional as F
 
 
-from olympus.adversary.adversary import Adversary, AdversaryStat
 from olympus.optimizers import Optimizer
 from olympus.utils import debug, show_dict
+
+from .adversary import Adversary, AdversaryStat
 
 Image = TypeVar('Image')
 
@@ -84,6 +85,24 @@ class GradientAscentAdversary(Adversary):
 
         return idx.item(), probabilities[0, idx].item(), probabilities[0, target]
 
+    def to_batch(self, image):
+        if isinstance(image, list) and isinstance(image[0], Image.Image):
+            original_image = self.preprocessor(image)
+            input_image = original_image.clone()
+
+        elif isinstance(image, torch.Tensor):
+            original_image = image.clone()
+            input_image = image
+
+        else:
+            raise RuntimeError('Expects Tensor or list of images')
+
+        return original_image, input_image
+
+    def generate_image(self, image, min_confidence, lr=0.7, max_iter=500, round_trip=False):
+        batch, noises = self.generate(image, min_confidence, lr, max_iter, round_trip)
+        return self.postprocessor(batch), noises
+
     def generate(self, image, min_confidence, lr=0.7, max_iter=500, round_trip=False):
         """Generate an adversarial example that should be misclassified as target_class
 
@@ -107,33 +126,24 @@ class GradientAscentAdversary(Adversary):
         """
         self.model.eval()
 
-        target = self.target_class
-
-        if isinstance(image, list) and isinstance(image[0], Image.Image):
-            original_image = self.preprocessor(image)
-            input_image = original_image.clone()
-        elif isinstance(image, torch.Tensor):
-            original_image = image.clone()
-            input_image = image
-        else:
-            raise RuntimeError('Expects Tensor or list of images')
-
         target_confidence = 0
+        target = self.target_class
+        original_image, batch = self.to_batch(image)
 
         for i in range(max_iter):
             if target_confidence > min_confidence:
                 break
 
-            input_image.requires_grad = True
+            batch.requires_grad = True
 
             optimizer = Optimizer(
                 'sgd',
-                params=[input_image],
+                params=[batch],
                 lr=lr,
                 momentum=0,
                 weight_decay=0)
 
-            probabilities = F.softmax(self.model(input_image), dim=1)
+            probabilities = F.softmax(self.model(batch), dim=1)
 
             class_predicted = torch.argmax(probabilities)
             prediction_confidence = probabilities[0, class_predicted]
@@ -153,10 +163,15 @@ class GradientAscentAdversary(Adversary):
             optimizer.step()
 
             if round_trip:
-                input_image = self.preprocessor(self.postprocessor(input_image))
+                batch = self.preprocessor(self.postprocessor(batch))
 
-        noises = self.get_noise(input_image, original_image)
-        return self.postprocessor(input_image), noises
+        noises = self.get_noise(batch, original_image)
+        return batch, noises
+
+
+builders = {
+    'gradient_ascent': GradientAscentAdversary
+}
 
 
 if __name__ == '__main__':
@@ -182,3 +197,4 @@ if __name__ == '__main__':
         s.save('adversary.jpg')
 
     show_dict(adversary.report())
+
