@@ -58,10 +58,12 @@ travis-custom:
 travis-hpo_parallel:
 	COVERAGE_FILE=.coverage.hpo_parallel coverage run examples/hpo_parallel.py
 
-travis-end:
+travis-combine:
 	coverage combine
 	coverage report -m
 	coverage xml
+
+travis-end: travis-combine
 	codecov
 
 travis-a2c: clean

@@ -79,9 +79,19 @@ jobs:
         source ~/unittest_env/bin/activate
         make travis-classification
 
-    - name: upload-coverage
-      env:
-        CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
+    - name: merge-reports
       run: |
         source ~/unittest_env/bin/activate
-        make travis-end
+        make travis-combine
+
+    - name: upload-coverage
+      uses: codecov/codecov-action@v1
+      with:
+        token: ${{ secrets.CODECOV_TOKEN }}
+
+#    - name: upload-coverage
+#      env:
+#        CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
+#      run: |
+#        source ~/unittest_env/bin/activate
+#        make travis-end
