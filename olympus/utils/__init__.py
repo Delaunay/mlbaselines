@@ -5,7 +5,6 @@ from typing import Callable, Optional, TypeVar, Dict, NoReturn, Union
 from urllib.parse import urlparse
 
 import base64
-import bson
 import zlib
 
 import numpy
@@ -15,11 +14,33 @@ import torch
 from olympus.utils.options import option, set_option
 from olympus.utils.chrono import Chrono
 from olympus.utils.functional import select, flatten
-from olympus.utils.arguments import parse_args, show_hyperparameter_space, required, get_parameters, drop_empty_key
-from olympus.utils.log import warning, info, debug, error, critical, exception, set_verbose_level, set_log_level
+from olympus.utils.arguments import (
+    parse_args,
+    show_hyperparameter_space,
+    required,
+    get_parameters,
+    drop_empty_key,
+)
+from olympus.utils.log import (
+    warning,
+    info,
+    debug,
+    error,
+    critical,
+    exception,
+    set_verbose_level,
+    set_log_level,
+)
 
-A = TypeVar('A')
-R = TypeVar('R')
+try:
+    import bson
+
+    BSON_ERROR = None
+except ImportError as e:
+    BSON_ERROR = e
+
+A = TypeVar("A")
+R = TypeVar("R")
 
 
 class MissingArgument(Exception):
@@ -28,22 +49,25 @@ class MissingArgument(Exception):
 
 def fetch_device():
     """Set the default device to CPU if cuda is not available"""
-    default = 'cpu'
+    default = "cpu"
     if torch.cuda.is_available():
-        default = 'cuda'
+        default = "cuda"
 
-    return torch.device(option('device.type', default))
+    return torch.device(option("device.type", default))
 
 
 def show_dict(dictionary: Dict, indent: int = 0, print_fun=print) -> NoReturn:
-    print_fun(' ' * indent + '-' * 80)
+    print_fun(" " * indent + "-" * 80)
     for k, v in dictionary.items():
-        print_fun(f'{k:>30}: {v}')
-    print_fun(' ' * indent + '-' * 80)
+        print_fun(f"{k:>30}: {v}")
+    print_fun(" " * indent + "-" * 80)
 
 
 def compress_dict(state: Dict) -> Dict:
     """Compress a state dictionary and return a json friendly compressed state"""
+    if BSON_ERROR:
+        raise BSON_ERROR
+
     binary = bson.encode(state)
     compressed_json = base64.b64encode(zlib.compress(binary))
     crc32 = zlib.crc32(binary)
@@ -52,10 +76,13 @@ def compress_dict(state: Dict) -> Dict:
 
 def decompress_dict(state: Dict) -> Dict:
     """Decompress a state dictionary and return its json"""
-    if 'zlib' in state:
-        binary = base64.b64decode(state['zlib'])
+    if BSON_ERROR:
+        raise BSON_ERROR
+
+    if "zlib" in state:
+        binary = base64.b64decode(state["zlib"])
         decompressed_bson = zlib.decompress(binary)
-        assert zlib.crc32(decompressed_bson) == state['crc32'], 'State is corrupted'
+        assert zlib.crc32(decompressed_bson) == state["crc32"], "State is corrupted"
 
         return bson.decode(decompressed_bson)
 
@@ -105,6 +132,7 @@ class TimeThrottler:
             throttled_print(i)
             time.sleep(1)
     """
+
     def __init__(self, fun: Callable[[A], R], every=10, callback=None):
         self.fun = fun
         self.last_time: float = 0
@@ -131,8 +159,8 @@ def parse_uri_options(options: str) -> Dict:
 
     opt = dict()
 
-    for item in options.split('&'):
-        k, v = item.split('=')
+    for item in options.split("&"):
+        k, v = item.split("=")
         opt[k] = v
 
     return opt
@@ -143,26 +171,26 @@ def parse_uri(uri: str) -> Dict:
     netloc = parsed.netloc
 
     arguments = {
-        'scheme': parsed.scheme,
-        'path': parsed.path,
-        'query': parse_uri_options(parsed.query),
-        'fragment': parsed.fragment,
-        'params': parsed.params
+        "scheme": parsed.scheme,
+        "path": parsed.path,
+        "query": parse_uri_options(parsed.query),
+        "fragment": parsed.fragment,
+        "params": parsed.params,
     }
 
     if netloc:
-        usr_pwd_add_port = netloc.split('@')
+        usr_pwd_add_port = netloc.split("@")
 
         if len(usr_pwd_add_port) == 2:
-            usr_pwd = usr_pwd_add_port[0].split(':')
+            usr_pwd = usr_pwd_add_port[0].split(":")
             if len(usr_pwd) == 2:
-                arguments['password'] = usr_pwd[1]
-            arguments['username'] = usr_pwd[0]
+                arguments["password"] = usr_pwd[1]
+            arguments["username"] = usr_pwd[0]
 
-        add_port = usr_pwd_add_port[-1].split(':')
+        add_port = usr_pwd_add_port[-1].split(":")
         if len(add_port) == 2:
-            arguments['port'] = add_port[1]
-        arguments['address'] = add_port[0]
+            arguments["port"] = add_port[1]
+        arguments["address"] = add_port[0]
 
     return arguments
 
@@ -198,7 +226,7 @@ def find_batch_size(model, shape, low, high, dtype=torch.float32):
 
         # ran out of memory
         except RuntimeError as e:
-            if 'out of memory' in str(e):
+            if "out of memory" in str(e):
                 b = mid
             else:
                 raise e
@@ -212,6 +240,7 @@ class CircularDependencies(Exception):
 
 class LazyCall:
     """Save the call parameters of a function for it can be invoked at a later date"""
+
     def __init__(self, fun, *args, **kwargs):
         self.fun = fun
         self.args = args
@@ -237,7 +266,7 @@ class LazyCall:
 
     def __getattr__(self, item):
         if self.obj is None and self.is_processing:
-            raise CircularDependencies('Circular dependencies')
+            raise CircularDependencies("Circular dependencies")
 
         self.invoke()
         return getattr(self.obj, item)
@@ -299,7 +328,9 @@ def update_params(space, kwargs, params, strict=True, unknown_params=None):
             params[k] = v
 
     if strict and len(unknown_params) > 0:
-        raise WrongParameter(f'{list(unknown_params.keys())} is not a valid parameter, pick from: {list(space.keys())}')
+        raise WrongParameter(
+            f"{list(unknown_params.keys())} is not a valid parameter, pick from: {list(space.keys())}"
+        )
 
     return unknown_params
 
@@ -315,6 +346,7 @@ class HyperParameters:
     kwargs:
         A dictionary of defined hyper parameters
     """
+
     def __init__(self, space, **kwargs):
         self.space = space
         self.current_parameters = {}
@@ -343,7 +375,9 @@ class HyperParameters:
         if strict:
             missing = self.missing_parameters()
             if missing:
-                raise MissingParameters('Parameters are missing: {}'.format(', '.join(missing.keys())))
+                raise MissingParameters(
+                    "Parameters are missing: {}".format(", ".join(missing.keys()))
+                )
 
         return self.current_parameters
 
@@ -356,16 +390,17 @@ def new_seed(**kwargs):
     """Global seed management"""
     global SEEDS
     import random
-    assert len(kwargs) == 1, 'Only single seed can be registered'
+
+    assert len(kwargs) == 1, "Only single seed can be registered"
 
     # Allow user to force seed to change seeds automatically each time the program is ran
     # Disabled by default
-    automatic_seeding = option('seeding.random', default=False, type=bool)
+    automatic_seeding = option("seeding.random", default=False, type=bool)
 
     for name, value in kwargs.items():
         # do not change the seed if it was already set
         if name in SEEDS:
-            warning(f'Resetting a global seed for {name}')
+            warning(f"Resetting a global seed for {name}")
 
         if not automatic_seeding:
             SEEDS[name] = value
@@ -402,21 +437,21 @@ def set_seeds(seed):
 def get_rng_states():
     state = dict()
     if torch.cuda.is_available():
-        state['torch_cuda'] = torch.cuda.get_rng_state_all()
+        state["torch_cuda"] = torch.cuda.get_rng_state_all()
 
-    state['random'] = random.getstate()
-    state['numpy'] = numpy.random.get_state()
-    state['torch_cpu'] = torch.get_rng_state()
+    state["random"] = random.getstate()
+    state["numpy"] = numpy.random.get_state()
+    state["torch_cpu"] = torch.get_rng_state()
 
     return state
 
 
 def set_rng_states(state):
     if torch.cuda.is_available():
-        torch.cuda.set_rng_state_all(state['torch_cuda'])
-    elif 'torch_cuda' in state:
-        raise RuntimeError('Cannot restore state without a GPU.')
+        torch.cuda.set_rng_state_all(state["torch_cuda"])
+    elif "torch_cuda" in state:
+        raise RuntimeError("Cannot restore state without a GPU.")
 
-    random.setstate(state['random'])
-    numpy.random.set_state(state['numpy'])
-    torch.set_rng_state(state['torch_cpu'])
+    random.setstate(state["random"])
+    numpy.random.set_state(state["numpy"])
+    torch.set_rng_state(state["torch_cpu"])

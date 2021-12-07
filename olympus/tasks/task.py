@@ -4,12 +4,16 @@ from olympus.metrics import MetricList
 
 class Task:
     def __init__(self, device=None):
-        self._device = device if device else torch.device('cpu')
+        self._device = device if device else torch.device("cpu")
         self._first_epoch = 0
         self._metrics = MetricList(task=self)
         self.bad_state = False
         self.dataloader = None
         self.stopped = False
+
+    @property
+    def events(self):
+        return self._metrics
 
     @property
     def device(self):
@@ -23,11 +27,11 @@ class Task:
         for name in dir(self):
             attr = getattr(self, name)
 
-            if hasattr(attr, 'to'):
+            if hasattr(attr, "to"):
                 try:
                     setattr(self, name, attr.to(device=device))
                 except:
-                    print(f'Cant set attribute on {name} {attr}')
+                    print(f"Cant set attribute on {name} {attr}")
                     raise
 
         self._device = device
@@ -37,7 +41,7 @@ class Task:
         raise NotImplementedError()
 
     def _start(self, epochs):
-        progress = self.metrics.get('ProgressView')
+        progress = self.metrics.get("ProgressView")
 
         if progress:
             # in case of a resume
@@ -106,7 +110,7 @@ class Task:
         """
         raise NotImplementedError()
 
-    def state_dict(self, destination=None, prefix='', keep_vars=False):
+    def state_dict(self, destination=None, prefix="", keep_vars=False):
         """Save a state the task can go back to if an error occur"""
         raise NotImplementedError()
 
@@ -115,6 +119,7 @@ class Task:
         # RL Creates a lot of small torch.tensor
         # They need to be GCed so pytorch can reuse that memory
         import gc
+
         # Only GC the most recent gen because that where the small tensors are
         gc.collect(2)
         # -----------------------------
@@ -122,25 +127,25 @@ class Task:
 
 class GenerateSummary:
     dispatch = {
-        'Model': lambda model: model.model,
-        'Optimizer': lambda optimizer: optimizer.optimizer,
-        'DataLoader': lambda data: data.dataset,
-        'TransformedSubset': lambda data: data.dataset,
-        'MetricList': lambda metrics: metrics.metrics,
-        'LRSchedule': lambda schedule: schedule.lr_scheduler
+        "Model": lambda model: model.model,
+        "Optimizer": lambda optimizer: optimizer.optimizer,
+        "DataLoader": lambda data: data.dataset,
+        "TransformedSubset": lambda data: data.dataset,
+        "MetricList": lambda metrics: metrics.metrics,
+        "LRSchedule": lambda schedule: schedule.lr_scheduler,
     }
 
     _rename = {
-        '_metrics': 'metrics',
-        '_device': 'device',
-        '_first_epoch': 'first_epoch'
+        "_metrics": "metrics",
+        "_device": "device",
+        "_first_epoch": "first_epoch",
     }
 
     def __init__(self):
         self.output = []
 
-    def print(self, msg='', end='\n'):
-        self.output.append(f'{msg}{end}')
+    def print(self, msg="", end="\n"):
+        self.output.append(f"{msg}{end}")
 
     def is_nested(self, name):
         return name in GenerateSummary.dispatch
@@ -152,12 +157,12 @@ class GenerateSummary:
         return GenerateSummary._rename.get(name, name)
 
     def get_name(self, attr, obj, type_name, depth=0):
-        self.print(f'{"  " * depth} {self.rename(attr)}: ', end='')
+        self.print(f'{"  " * depth} {self.rename(attr)}: ', end="")
 
         if not self.is_nested(type_name):
-            if type_name == 'device':
+            if type_name == "device":
                 self.print(str(obj))
-            elif type_name == 'list':
+            elif type_name == "list":
                 self.print()
                 for item in obj:
                     self.print(f'{"  " * (depth + 1)} - {type(item).__name__}')
@@ -173,12 +178,12 @@ class GenerateSummary:
     def task_summary(self, obj):
         self.output = []
 
-        self.print('=' * 80)
+        self.print("=" * 80)
         self.print(type(obj).__name__)
-        self.print('-' * 80)
+        self.print("-" * 80)
         for attr, value in obj.__dict__.items():
             type_name = type(value).__name__
             self.get_name(attr, value, type_name)
-        self.print('=' * 80)
+        self.print("=" * 80)
 
-        return ''.join(self.output)
+        return "".join(self.output)
