@@ -8,7 +8,7 @@ from olympus.utils.factory import fetch_factories
 from olympus.optimizers.schedules import LRSchedule, known_schedule
 
 
-registered_optimizers = fetch_factories('olympus.optimizers', __file__)
+registered_optimizers = fetch_factories("olympus.optimizers", __file__)
 
 
 def known_optimizers():
@@ -27,7 +27,7 @@ def register_optimizer(name, factory, override=False):
     global registered_optimizers
 
     if name in registered_optimizers:
-        warning(f'{name} was already registered, use override=True to ignore')
+        warning(f"{name} was already registered, use override=True to ignore")
 
         if not override:
             return
@@ -133,13 +133,26 @@ class Optimizer(TorchOptimizer):
     WrongParameter
         if a wrong hyper parameter is passed in kwargs
     """
+
     half = False
     half_args = dict()
     _optimizer = None
 
-    def __init__(self, name=None, *, params=None, optimizer=None, half=False, loss_scale=1,
-                 dynamic_loss_scale=False, scale_window=1000, scale_factor=2,
-                 min_loss_scale=None, max_loss_scale=2.**24, **kwargs):
+    def __init__(
+        self,
+        name=None,
+        *,
+        params=None,
+        optimizer=None,
+        half=False,
+        loss_scale=1,
+        dynamic_loss_scale=False,
+        scale_window=1000,
+        scale_factor=2,
+        min_loss_scale=None,
+        max_loss_scale=2.0 ** 24,
+        **kwargs,
+    ):
         self._optimizer = None
 
         if params is not None:
@@ -148,24 +161,29 @@ class Optimizer(TorchOptimizer):
 
         self._model_parameters = params
         self._half_parameters(
-            half,  loss_scale, dynamic_loss_scale,
-            scale_window, scale_factor, min_loss_scale, max_loss_scale
+            half,
+            loss_scale,
+            dynamic_loss_scale,
+            scale_window,
+            scale_factor,
+            min_loss_scale,
+            max_loss_scale,
         )
 
         # Track defined hyper parameters
         self.hyper_parameters = HyperParameters(space={})
 
         if optimizer:
-            warning('Using custom optimizer')
+            warning("Using custom optimizer")
             if isinstance(optimizer, type):
                 self.optimizer_builder = optimizer
 
-                if hasattr(optimizer, 'get_space'):
+                if hasattr(optimizer, "get_space"):
                     self.hyper_parameters.space = optimizer.get_space()
             else:
                 self._optimizer = self._wrap_optimizer(optimizer)
 
-                if hasattr(self._optimizer, 'get_space'):
+                if hasattr(self._optimizer, "get_space"):
                     self.hyper_parameters.space = self._optimizer.get_space()
 
         elif name:
@@ -175,24 +193,31 @@ class Optimizer(TorchOptimizer):
             if not self.optimizer_builder:
                 raise RegisteredOptimizerNotFound(name)
 
-            if hasattr(self.optimizer_builder, 'get_space'):
+            if hasattr(self.optimizer_builder, "get_space"):
                 self.hyper_parameters.space = self.optimizer_builder.get_space()
 
         else:
-            raise MissingArgument('optimizer or name needs to be set')
+            raise MissingArgument("optimizer or name needs to be set")
 
         # All additional args are hyper parameters
         self.hyper_parameters.add_parameters(**kwargs)
 
-    def _half_parameters(self, half=False, loss_scale=1,
-                         dynamic_loss_scale=False, scale_window=1000, scale_factor=2,
-                         min_loss_scale=None, max_loss_scale=2.**24):
+    def _half_parameters(
+        self,
+        half=False,
+        loss_scale=1,
+        dynamic_loss_scale=False,
+        scale_window=1000,
+        scale_factor=2,
+        min_loss_scale=None,
+        max_loss_scale=2.0 ** 24,
+    ):
         """Save the configuration of the fp16 optimizer"""
         self.half = half
 
         static_loss_scale = loss_scale
         if dynamic_loss_scale:
-            static_loss_scale = 'dynamic'
+            static_loss_scale = "dynamic"
 
         self.half_args = dict(
             static_loss_scale=static_loss_scale,
@@ -202,14 +227,15 @@ class Optimizer(TorchOptimizer):
                 scale_factor=scale_factor,
                 scale_window=scale_window,
                 min_loss_scale=min_loss_scale,
-                max_loss_scale=max_loss_scale
+                max_loss_scale=max_loss_scale,
             ),
-            verbose=False
+            verbose=False,
         )
 
     def _wrap_optimizer(self, optimizer):
         if self.half:
             from olympus.utils.fp16 import FP16Optimizer
+
             return FP16Optimizer(optimizer, **self.half_args)
 
         return optimizer
@@ -217,7 +243,7 @@ class Optimizer(TorchOptimizer):
     def get_space(self) -> Dict[str, str]:
         """Return the dimension space of each parameters"""
         if self._optimizer:
-            warning('Optimizer is already set')
+            warning("Optimizer is already set")
 
         return self.hyper_parameters.missing_parameters()
 
@@ -243,7 +269,9 @@ class Optimizer(TorchOptimizer):
             assert isinstance(params, (list, tuple))
 
         if self._optimizer and not override:
-            warning('Optimizer is already set, use override=True to force re initialization')
+            warning(
+                "Optimizer is already set, use override=True to force re initialization"
+            )
             return self
 
         # add missing hyper parameters
@@ -253,10 +281,13 @@ class Optimizer(TorchOptimizer):
             params = self._model_parameters
 
         if params is None:
-            raise MissingArgument('Missing Model parameters!')
+            raise MissingArgument("Missing model parameters inside  optimizer!")
 
         self._optimizer = self._wrap_optimizer(
-            self.optimizer_builder(params, **self.hyper_parameters.parameters(strict=True)))
+            self.optimizer_builder(
+                params, **self.hyper_parameters.parameters(strict=True)
+            )
+        )
 
     @property
     def optimizer(self):
@@ -293,7 +324,7 @@ class Optimizer(TorchOptimizer):
                         state[k] = v.to(device=device)
         return self
 
-    def state_dict(self, destination=None, prefix='', keep_vars=False):
+    def state_dict(self, destination=None, prefix="", keep_vars=False):
         s = self.optimizer.state_dict()
         return s
 

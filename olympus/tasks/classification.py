@@ -3,7 +3,13 @@ import torch
 from torch.nn import Module, CrossEntropyLoss
 from torch.nn.functional import log_softmax
 
-from olympus.observers import ElapsedRealTime, SampleCount, ProgressView, Speed, CheckPointer
+from olympus.observers import (
+    ElapsedRealTime,
+    SampleCount,
+    ProgressView,
+    Speed,
+    CheckPointer,
+)
 from olympus.metrics import OnlineTrainAccuracy
 from olympus.tasks.task import Task
 from olympus.utils import select, drop_empty_key
@@ -40,8 +46,19 @@ class Classification(Task):
     storage: Storage
         Where to save checkpoints in case of failures
     """
-    def __init__(self, classifier, optimizer, lr_scheduler, dataloader, criterion=None, device=None,
-                 storage=None, preprocessor=None, metrics=None):
+
+    def __init__(
+        self,
+        classifier,
+        optimizer,
+        lr_scheduler,
+        dataloader,
+        criterion=None,
+        device=None,
+        storage=None,
+        preprocessor=None,
+        metrics=None,
+    ):
         super(Classification, self).__init__(device=device)
         criterion = select(criterion, CrossEntropyLoss())
 
@@ -65,7 +82,7 @@ class Classification(Task):
             for metric in metrics:
                 self.metrics.append(metric)
 
-        self.metrics.append(ProgressView(self.metrics.get('Speed')))
+        self.metrics.append(ProgressView(self.metrics.get("Speed")))
 
         if storage:
             self.metrics.append(CheckPointer(storage=storage))
@@ -80,18 +97,20 @@ class Classification(Task):
     # ---------------------------------------------------------------------
     def get_space(self):
         """Return hyper parameter space"""
-        return drop_empty_key({
-            'optimizer': self.optimizer.get_space(),
-            'lr_schedule': self.lr_scheduler.get_space(),
-            'model': self.model.get_space()
-        })
+        return drop_empty_key(
+            {
+                "optimizer": self.optimizer.get_space(),
+                "lr_schedule": self.lr_scheduler.get_space(),
+                "model": self.model.get_space(),
+            }
+        )
 
     def get_current_space(self):
         """Get currently defined parameter space"""
         return {
-            'optimizer': self.optimizer.get_current_space(),
-            'lr_schedule': self.lr_scheduler.get_current_space(),
-            'model': self.model.get_current_space()
+            "optimizer": self.optimizer.get_current_space(),
+            "lr_schedule": self.lr_scheduler.get_current_space(),
+            "model": self.model.get_current_space(),
         }
 
     def init(self, optimizer=None, lr_schedule=None, model=None, uid=None):
@@ -115,31 +134,21 @@ class Classification(Task):
         lr_schedule = select(lr_schedule, {})
         model = select(model, {})
 
-        self.classifier.init(
-            **model
-        )
+        self.classifier.init(**model)
 
         # list of all parameters this task has
         parameters = self.preprocessor.parameters()
-        parameters.append({
-            'params': self.classifier.parameters()}
-        )
+        parameters.append({"params": self.classifier.parameters()})
 
         # We need to set the device now so optimizer receive cuda tensors
         self.set_device(self.device)
-        self.optimizer.init(
-            params=parameters,
-            override=True, **optimizer
-        )
-        self.lr_scheduler.init(
-            self.optimizer,
-            override=True, **lr_schedule
-        )
+        self.optimizer.init(params=parameters, override=True, **optimizer)
+        self.lr_scheduler.init(self.optimizer, override=True, **lr_schedule)
 
         self.hyper_parameters = {
-            'optimizer': optimizer,
-            'lr_schedule': lr_schedule,
-            'model': model
+            "optimizer": optimizer,
+            "lr_schedule": lr_schedule,
+            "model": model,
         }
 
         # Get all hyper parameters even the one that were set manually
@@ -171,10 +180,11 @@ class Classification(Task):
     def epoch(self, epoch, context):
         self.current_epoch = epoch
         self.metrics.new_epoch(epoch, context)
-        iterations = len(self.dataloader) * (epoch - 1)
+        # iterations = len(self.dataloader) * (epoch - 1)
 
         for step, mini_batch in enumerate(self.dataloader):
-            step += iterations
+            # why is this there
+            # step += iterations
             self.metrics.new_batch(step, mini_batch, None)
 
             results = self.step(step, mini_batch, context)
@@ -200,16 +210,17 @@ class Classification(Task):
 
         results = {
             # to compute online loss
-            'loss': loss.detach(),
+            "loss": loss.detach(),
             # to compute only accuracy
-            'predictions': predictions.detach()
+            "predictions": predictions.detach(),
         }
 
         return results
+
     # ---------------------------------------------------------------------
 
     def _get_validation_accuracy(self, x):
-        return self.metrics.value().get('validation_accuracy', None)
+        return self.metrics.value().get("validation_accuracy", None)
 
     def eval_loss(self, batch):
         self.model.eval()
@@ -253,12 +264,12 @@ class Classification(Task):
 
     def load_state_dict(self, state, strict=True):
         load_state_dict(self, state, strict, force_default=True)
-        self._first_epoch = state['epoch']
-        self.current_epoch = state['epoch']
+        self._first_epoch = state["epoch"]
+        self.current_epoch = state["epoch"]
 
-    def state_dict(self, destination=None, prefix='', keep_vars=False):
+    def state_dict(self, destination=None, prefix="", keep_vars=False):
         state = state_dict(self, destination, prefix, keep_vars, force_default=True)
-        state['epoch'] = self.current_epoch
+        state["epoch"] = self.current_epoch
         return state
 
     def parameters(self):

@@ -12,5 +12,6 @@ h5py
 tqdm
 pandas
 emcee
+filelock
 geffnet==0.9.3
 transformers==2.8.0

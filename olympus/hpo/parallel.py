@@ -1,9 +1,14 @@
 import copy
 import time
 
-from msgqueue.worker import WORKER_JOIN, WORKER_LEFT, SHUTDOWN, WORK_ITEM, RESULT_ITEM
-from msgqueue.backends import new_client
-from msgqueue.backends.queue import RecordQueue
+try:
+    from msgqueue.worker import WORKER_JOIN, WORKER_LEFT, SHUTDOWN, WORK_ITEM, RESULT_ITEM
+    from msgqueue.backends import new_client
+    from msgqueue.backends.queue import RecordQueue
+
+    MSGQUEUE_ERR = None
+except ImportError as e:
+    MSGQUEUE_ERR = e
 
 from olympus.hpo.optimizer import (
     OptimizationIsDone, WaitingForTrials, HyperParameterOptimizer, TrialDoesNotExist)

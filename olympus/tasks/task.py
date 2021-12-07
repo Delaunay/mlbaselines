@@ -46,6 +46,7 @@ class Task:
         if progress:
             # in case of a resume
             progress.epoch = self._first_epoch
+            progress.set_max_epochs(epochs)
 
         if not self.resumed():
             self.metrics.start_train()

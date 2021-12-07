@@ -7,29 +7,29 @@ from ctypes import Structure, c_double, c_int
 
 class StatStreamStruct(Structure):
     _fields_ = [
-        ('sum', c_double),
-        ('sum_sqr', c_double),
-        ('first_obs', c_double),
-        ('min', c_double),
-        ('max', c_double),
-        ('current_count', c_int),
-        ('current_obs', c_double),
-        ('drop_obs', c_int)
+        ("sum", c_double),
+        ("sum_sqr", c_double),
+        ("first_obs", c_double),
+        ("min", c_double),
+        ("max", c_double),
+        ("current_count", c_int),
+        ("current_obs", c_double),
+        ("drop_obs", c_int),
     ]
 
 
 class StatStream(object):
     """
-        Sharable object
+    Sharable object
 
-        Store the sum of the observations amd the the sum of the observations squared
-        The first few observations are discarded (usually slower than the rest)
+    Store the sum of the observations amd the the sum of the observations squared
+    The first few observations are discarded (usually slower than the rest)
 
-        The average and the standard deviation is computed at the user's request
+    The average and the standard deviation is computed at the user's request
 
-        In order to make the computation stable we store the first observation and subtract it to every other
-        observations. The idea is if x ~ N(mu, sigma)  x - x0 and the sum of x - x0 should be close(r) to 0 allowing
-        for greater precision; without that trick `var` was getting negative on some iteration.
+    In order to make the computation stable we store the first observation and subtract it to every other
+    observations. The idea is if x ~ N(mu, sigma)  x - x0 and the sum of x - x0 should be close(r) to 0 allowing
+    for greater precision; without that trick `var` was getting negative on some iteration.
     """
 
     def __init__(self, drop_first_obs=10):
@@ -38,38 +38,39 @@ class StatStream(object):
             0,  # sum
             0,  # sum_sqr
             0,  # first_obs
-            float('+inf'),  # min
-            float('-inf'),  # max
+            float("+inf"),  # min
+            float("-inf"),  # max
             0,  # current_count
             0,  # current_obs
-            drop_first_obs)  # drop_obs
+            drop_first_obs,  # drop_obs
+        )
 
     @staticmethod
     def from_dict(data):
         cls = StatStream()
 
-        cls.struct.sum = data['sum']
-        cls.struct.sum_sqr = data['sum_sqr']
-        cls.struct.first_obs = data['first_obs']
-        cls.struct.min = data['min']
-        cls.struct.max = data['max']
-        cls.struct.current_count = data['current_count']
-        cls.struct.current_obs = data['current_obs']
-        cls.struct.drop_obs = data['drop_obs']
+        cls.struct.sum = data["sum"]
+        cls.struct.sum_sqr = data["sum_sqr"]
+        cls.struct.first_obs = data["first_obs"]
+        cls.struct.min = data["min"]
+        cls.struct.max = data["max"]
+        cls.struct.current_count = data["current_count"]
+        cls.struct.current_obs = data["current_obs"]
+        cls.struct.drop_obs = data["drop_obs"]
 
         return cls
 
     def state_dict(self):
         data = dict()
 
-        data['sum'] = self.struct.sum
-        data['sum_sqr'] = self.struct.sum_sqr
-        data['first_obs'] = self.struct.first_obs
-        data['min'] = self.struct.min
-        data['max'] = self.struct.max
-        data['current_count'] = self.struct.current_count
-        data['current_obs'] = self.struct.current_obs
-        data['drop_obs'] = self.struct.drop_obs
+        data["sum"] = self.struct.sum
+        data["sum_sqr"] = self.struct.sum_sqr
+        data["first_obs"] = self.struct.first_obs
+        data["min"] = self.struct.min
+        data["max"] = self.struct.max
+        data["current_count"] = self.struct.current_count
+        data["current_obs"] = self.struct.current_obs
+        data["drop_obs"] = self.struct.drop_obs
 
         return data
 
@@ -144,14 +145,14 @@ class StatStream(object):
     @property
     def avg(self) -> float:
         if self.count == 0:
-            return float('NaN')
+            return float("NaN")
 
         return self.sum / float(self.count) + self.first_obs
 
     @property
     def var(self) -> float:
         if self.count == 0:
-            return float('NaN')
+            return float("NaN")
 
         avg = self.sum / float(self.count)
         return self.sum_sqr / float(self.count) - avg * avg
@@ -162,13 +163,11 @@ class StatStream(object):
 
     def to_json(self):
         data = {
-            'avg': self.avg,
-            'min': self.min,
-            'max': self.max,
-            'sd': self.sd,
-            'count': self.count,
-            'unit': 's'
+            "avg": self.avg,
+            "min": self.min,
+            "max": self.max,
+            "sd": self.sd,
+            "count": self.count,
+            "unit": "s",
         }
         return data
-
-
